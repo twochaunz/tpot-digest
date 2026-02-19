@@ -1,13 +1,25 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers.accounts import router as accounts_router
 from app.routers.auth import router as auth_router
+from app.routers.scheduler import router as scheduler_router
 from app.routers.topics import router as topics_router
 from app.routers.topics import subtopics_router
 from app.routers.tweets import router as tweets_router
 
-app = FastAPI(title="tpot-digest", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app):
+    from app.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
+    yield
+    stop_scheduler()
+
+
+app = FastAPI(title="tpot-digest", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,6 +31,7 @@ app.add_middleware(
 
 app.include_router(accounts_router)
 app.include_router(auth_router)
+app.include_router(scheduler_router)
 app.include_router(topics_router)
 app.include_router(subtopics_router)
 app.include_router(tweets_router)
