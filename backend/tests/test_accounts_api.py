@@ -24,9 +24,6 @@ async def override_get_db():
         yield session
 
 
-app.dependency_overrides[get_db] = override_get_db
-
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -35,12 +32,14 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest_asyncio.fixture(autouse=True)
 async def setup_database():
     """Create tables before each test and drop them after."""
+    app.dependency_overrides[get_db] = override_get_db
     async with engine_test.begin() as conn:
         # Only create the accounts table (avoids PG-specific types in other models)
         await conn.run_sync(Account.__table__.create)
     yield
     async with engine_test.begin() as conn:
         await conn.run_sync(Account.__table__.drop)
+    app.dependency_overrides.pop(get_db, None)
 
 
 @pytest_asyncio.fixture
