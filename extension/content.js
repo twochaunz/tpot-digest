@@ -23,6 +23,15 @@
     return "profile";
   }
 
+  function sendMessage(msg) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(msg, (resp) => {
+        if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+        resolve(resp);
+      });
+    });
+  }
+
   // ── Tweet Data Extraction ──────────────────────────────────────────
 
   function extractTweetData(article) {
@@ -71,11 +80,13 @@
     };
   }
 
-  // ── Toast ──────────────────────────────────────────────────────────
+  // ── Toast (errors and duplicates only) ─────────────────────────────
 
   function showToast(message, isError) {
     const existing = document.querySelector(".tpot-toast");
     if (existing) existing.remove();
+    const existing2 = document.querySelector(".tpot-action-card");
+    if (existing2) existing2.remove();
 
     const toast = document.createElement("div");
     toast.className = "tpot-toast " + (isError ? "error" : "success");
@@ -83,6 +94,171 @@
     document.body.appendChild(toast);
 
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3000);
+  }
+
+  // ── Action Card ────────────────────────────────────────────────────
+
+  async function showActionCard(tweetDbId, authorHandle) {
+    const existing = document.querySelector(".tpot-action-card");
+    if (existing) existing.remove();
+    const existingToast = document.querySelector(".tpot-toast");
+    if (existingToast) existingToast.remove();
+
+    const today = new Date().toISOString().slice(0, 10);
+    const [topicsResp, catsResp] = await Promise.all([
+      sendMessage({ type: "GET_TOPICS", date: today }),
+      sendMessage({ type: "GET_CATEGORIES" }),
+    ]);
+    const topics = (topicsResp && topicsResp.topics) || [];
+    const categories = (catsResp && catsResp.categories) || [];
+
+    const card = document.createElement("div");
+    card.className = "tpot-action-card";
+
+    // Auto-dismiss timer
+    let timer = null;
+    function startTimer() {
+      clearTimeout(timer);
+      timer = setTimeout(() => { if (card.parentNode) card.remove(); }, 3000);
+    }
+    function pauseTimer() { clearTimeout(timer); }
+    card.addEventListener("mouseenter", pauseTimer);
+    card.addEventListener("mouseleave", startTimer);
+    card.addEventListener("focusin", pauseTimer);
+    card.addEventListener("focusout", (e) => {
+      if (!card.contains(e.relatedTarget)) startTimer();
+    });
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "tpot-ac-header";
+    header.textContent = "\u2713 Saved @" + authorHandle;
+    card.appendChild(header);
+
+    // Topic select
+    const topicLabel = document.createElement("label");
+    topicLabel.textContent = "Topic";
+    card.appendChild(topicLabel);
+
+    const topicContainer = document.createElement("div");
+    const topicSelect = document.createElement("select");
+    topicSelect.innerHTML = '<option value="">—</option>';
+    topics.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = t.title;
+      topicSelect.appendChild(opt);
+    });
+    const newOpt = document.createElement("option");
+    newOpt.value = "__new__";
+    newOpt.textContent = "+ New topic\u2026";
+    topicSelect.appendChild(newOpt);
+    topicContainer.appendChild(topicSelect);
+
+    const newTopicInput = document.createElement("input");
+    newTopicInput.type = "text";
+    newTopicInput.placeholder = "Topic name";
+    newTopicInput.style.display = "none";
+    topicContainer.appendChild(newTopicInput);
+
+    topicSelect.addEventListener("change", () => {
+      if (topicSelect.value === "__new__") {
+        topicSelect.style.display = "none";
+        newTopicInput.style.display = "";
+        newTopicInput.focus();
+      }
+    });
+    card.appendChild(topicContainer);
+
+    // Category select
+    const catLabel = document.createElement("label");
+    catLabel.textContent = "Category";
+    card.appendChild(catLabel);
+    const catSelect = document.createElement("select");
+    catSelect.innerHTML = '<option value="">—</option>';
+    categories.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.name;
+      catSelect.appendChild(opt);
+    });
+    card.appendChild(catSelect);
+
+    // Date
+    const dateLabel = document.createElement("label");
+    dateLabel.textContent = "Date";
+    card.appendChild(dateLabel);
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.value = today;
+    card.appendChild(dateInput);
+
+    // Memo
+    const memoLabel = document.createElement("label");
+    memoLabel.textContent = "Memo";
+    card.appendChild(memoLabel);
+    const memoInput = document.createElement("textarea");
+    memoInput.placeholder = "Optional notes\u2026";
+    card.appendChild(memoInput);
+
+    // Actions
+    const actions = document.createElement("div");
+    actions.className = "tpot-ac-actions";
+
+    const dismissBtn = document.createElement("button");
+    dismissBtn.className = "tpot-ac-btn secondary";
+    dismissBtn.textContent = "Dismiss";
+    dismissBtn.addEventListener("click", () => card.remove());
+    actions.appendChild(dismissBtn);
+
+    const assignBtn = document.createElement("button");
+    assignBtn.className = "tpot-ac-btn primary";
+    assignBtn.textContent = "Assign";
+    assignBtn.addEventListener("click", async () => {
+      assignBtn.disabled = true;
+      assignBtn.textContent = "Saving\u2026";
+      pauseTimer();
+
+      try {
+        let topicId = topicSelect.value;
+
+        if (topicSelect.style.display === "none" && newTopicInput.value.trim()) {
+          const createResp = await sendMessage({
+            type: "CREATE_TOPIC",
+            topic: { title: newTopicInput.value.trim(), date: dateInput.value },
+          });
+          if (createResp.error) throw new Error(createResp.error);
+          topicId = String(createResp.topic.id);
+        }
+
+        const updates = {};
+        if (memoInput.value.trim()) updates.memo = memoInput.value.trim();
+        if (dateInput.value !== today) updates.saved_at = dateInput.value + "T00:00:00Z";
+        if (Object.keys(updates).length > 0) {
+          await sendMessage({ type: "UPDATE_TWEET", tweetDbId: tweetDbId, updates });
+        }
+
+        if (topicId && topicId !== "" && topicId !== "__new__") {
+          const catId = catSelect.value ? Number(catSelect.value) : null;
+          await sendMessage({
+            type: "ASSIGN_TWEET",
+            assignment: { tweet_ids: [tweetDbId], topic_id: Number(topicId), category_id: catId },
+          });
+        }
+
+        header.textContent = "\u2713 Assigned!";
+        setTimeout(() => { if (card.parentNode) card.remove(); }, 800);
+      } catch (err) {
+        assignBtn.textContent = "Error";
+        assignBtn.disabled = false;
+        setTimeout(() => { assignBtn.textContent = "Assign"; }, 1500);
+      }
+    });
+    actions.appendChild(assignBtn);
+    card.appendChild(actions);
+
+    document.body.appendChild(card);
+    startTimer();
   }
 
   // ── Save Handler ───────────────────────────────────────────────────
@@ -138,8 +314,11 @@
       button.classList.remove("saving");
       button.classList.add("saved");
 
-      const status = saveResp && saveResp.status === "duplicate" ? "already saved" : "saved";
-      showToast("Tweet " + status + " — @" + tweetData.author_handle, false);
+      if (saveResp && saveResp.status === "duplicate") {
+        showToast("Tweet already saved — @" + tweetData.author_handle, false);
+      } else {
+        showActionCard(saveResp.id, tweetData.author_handle);
+      }
     } catch (err) {
       button.classList.remove("saving");
       showToast("Save failed: " + err.message, true);
