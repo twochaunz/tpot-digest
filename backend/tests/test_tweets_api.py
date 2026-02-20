@@ -115,3 +115,57 @@ async def test_delete_tweet(client: AsyncClient):
 
     tweets_after = (await client.get("/api/tweets")).json()
     assert len(tweets_after) == 0
+
+
+@pytest.mark.asyncio
+async def test_list_unassigned_tweets(client: AsyncClient):
+    # Save 2 tweets
+    for i in range(2):
+        await client.post("/api/tweets", json={
+            "tweet_id": f"unassigned_{i}",
+            "author_handle": "test",
+            "text": f"Tweet {i}",
+            "screenshot_base64": TINY_PNG,
+        })
+    resp = await client.get("/api/tweets", params={"unassigned": True})
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_search_tweets(client: AsyncClient):
+    await client.post("/api/tweets", json={
+        "tweet_id": "s1",
+        "author_handle": "test",
+        "text": "Claude 4 is incredible",
+        "screenshot_base64": TINY_PNG,
+    })
+    await client.post("/api/tweets", json={
+        "tweet_id": "s2",
+        "author_handle": "test",
+        "text": "OpenAI raises funding",
+        "screenshot_base64": TINY_PNG,
+    })
+    resp = await client.get("/api/tweets", params={"q": "Claude"})
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+    assert "Claude" in resp.json()[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_list_thread_tweets(client: AsyncClient):
+    for i in range(3):
+        await client.post("/api/tweets", json={
+            "tweet_id": f"thread_{i}",
+            "author_handle": "test",
+            "text": f"Thread part {i}",
+            "thread_id": "thread_0",
+            "thread_position": i,
+            "screenshot_base64": TINY_PNG,
+        })
+    resp = await client.get("/api/tweets", params={"thread_id": "thread_0"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 3
+    assert data[0]["thread_position"] == 0
+    assert data[2]["thread_position"] == 2
