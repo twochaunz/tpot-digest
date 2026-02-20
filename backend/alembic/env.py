@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -22,8 +23,6 @@ from app.models import Tweet, Topic, Category, TweetAssignment  # noqa: E402, F4
 target_metadata = Base.metadata
 
 # Override sqlalchemy.url from environment variable if set
-import os  # noqa: E402
-
 database_url = os.getenv("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
