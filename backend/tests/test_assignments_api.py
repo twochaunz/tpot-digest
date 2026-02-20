@@ -1,0 +1,128 @@
+import pytest
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
+
+from app.db import Base, get_db
+from app.main import app
+from app.models import Tweet, Topic, Category, TweetAssignment  # noqa: F401
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_sqlite(type_, compiler, **kw):
+    return compiler.visit_JSON(type_, **kw)
+
+
+TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+engine = create_async_engine(TEST_DB_URL, echo=False)
+async_session = async_sessionmaker(engine, expire_on_commit=False)
+
+
+async def override_get_db():
+    async with async_session() as session:
+        yield session
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def setup_db():
+    app.dependency_overrides[get_db] = override_get_db
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest_asyncio.fixture
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+
+TINY_PNG = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4"
+    "nGNgYPgPAAEDAQAIicLsAAAABJRU5ErkJggg=="
+)
+
+
+async def _create_tweets(client, count=3):
+    ids = []
+    for i in range(count):
+        resp = await client.post("/api/tweets", json={
+            "tweet_id": f"assign_{i}",
+            "author_handle": "test",
+            "text": f"Tweet {i}",
+            "screenshot_base64": TINY_PNG,
+        })
+        ids.append(resp.json()["id"])
+    return ids
+
+
+@pytest.mark.asyncio
+async def test_bulk_assign(client: AsyncClient):
+    tweet_ids = await _create_tweets(client, 3)
+    topic = (await client.post("/api/topics", json={"title": "Test", "date": "2026-02-20"})).json()
+    cat = (await client.post("/api/categories", json={"name": "commentary"})).json()
+
+    resp = await client.post("/api/tweets/assign", json={
+        "tweet_ids": tweet_ids,
+        "topic_id": topic["id"],
+        "category_id": cat["id"],
+    })
+    assert resp.status_code == 200
+    assert resp.json()["assigned"] == 3
+
+    # Verify tweets show up under the topic
+    filtered = await client.get("/api/tweets", params={"topic_id": topic["id"]})
+    assert len(filtered.json()) == 3
+
+
+@pytest.mark.asyncio
+async def test_bulk_unassign(client: AsyncClient):
+    tweet_ids = await _create_tweets(client, 2)
+    topic = (await client.post("/api/topics", json={"title": "Test", "date": "2026-02-20"})).json()
+
+    await client.post("/api/tweets/assign", json={
+        "tweet_ids": tweet_ids,
+        "topic_id": topic["id"],
+    })
+
+    resp = await client.post("/api/tweets/unassign", json={
+        "tweet_ids": tweet_ids,
+        "topic_id": topic["id"],
+    })
+    assert resp.status_code == 200
+
+    # Tweets should now be unassigned
+    unassigned = await client.get("/api/tweets", params={"unassigned": True})
+    assert len(unassigned.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_assign_updates_category(client: AsyncClient):
+    tweet_ids = await _create_tweets(client, 1)
+    topic = (await client.post("/api/topics", json={"title": "Test", "date": "2026-02-20"})).json()
+    cat1 = (await client.post("/api/categories", json={"name": "commentary"})).json()
+    cat2 = (await client.post("/api/categories", json={"name": "reaction"})).json()
+
+    # Assign with category 1
+    await client.post("/api/tweets/assign", json={
+        "tweet_ids": tweet_ids,
+        "topic_id": topic["id"],
+        "category_id": cat1["id"],
+    })
+
+    # Re-assign with category 2
+    await client.post("/api/tweets/assign", json={
+        "tweet_ids": tweet_ids,
+        "topic_id": topic["id"],
+        "category_id": cat2["id"],
+    })
+
+    # Should have only 1 assignment (updated, not duplicated)
+    filtered = await client.get("/api/tweets", params={"topic_id": topic["id"]})
+    assert len(filtered.json()) == 1
