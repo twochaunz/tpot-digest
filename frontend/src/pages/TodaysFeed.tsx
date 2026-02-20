@@ -10,12 +10,7 @@ export function TodaysFeed() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Today's Feed</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <ExtensionStatus />
-          <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
-            Auto-refreshes every 30s
-          </span>
-        </div>
+        <ExtensionStatus />
       </div>
 
       <UnclusteredQueue />
