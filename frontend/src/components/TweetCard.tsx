@@ -6,6 +6,7 @@ interface TweetCardProps {
   selected: boolean
   onToggle: (id: number) => void
   selectable?: boolean
+  onTweetClick?: (tweet: Tweet) => void
 }
 
 function screenshotUrl(path: string | null): string | null {
@@ -18,7 +19,7 @@ function truncate(text: string, max: number): string {
   return text.slice(0, max).trimEnd() + '...'
 }
 
-export function TweetCard({ tweet, selected, onToggle, selectable = true }: TweetCardProps) {
+export function TweetCard({ tweet, selected, onToggle, selectable = true, onTweetClick }: TweetCardProps) {
   const [imgError, setImgError] = useState(false)
   const [hovered, setHovered] = useState(false)
 
@@ -40,7 +41,13 @@ export function TweetCard({ tweet, selected, onToggle, selectable = true }: Twee
         transition: 'all 0.15s ease',
         flexShrink: 0,
       }}
-      onClick={() => selectable && onToggle(tweet.id)}
+      onClick={() => {
+        if (onTweetClick) {
+          onTweetClick(tweet)
+        } else if (selectable) {
+          onToggle(tweet.id)
+        }
+      }}
     >
       {/* Screenshot thumbnail */}
       <div
@@ -84,6 +91,10 @@ export function TweetCard({ tweet, selected, onToggle, selectable = true }: Twee
         {/* Checkbox overlay */}
         {selectable && (
           <div
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggle(tweet.id)
+            }}
             style={{
               position: 'absolute',
               top: 6,
@@ -98,6 +109,7 @@ export function TweetCard({ tweet, selected, onToggle, selectable = true }: Twee
               justifyContent: 'center',
               fontSize: 12,
               color: '#fff',
+              cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
           >

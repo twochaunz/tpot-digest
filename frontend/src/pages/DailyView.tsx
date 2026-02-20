@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTweets, useAssignTweets, useUnassignTweets } from '../api/tweets'
+import type { Tweet } from '../api/tweets'
 import { useTopics, useCreateTopic } from '../api/topics'
 import { useCategories } from '../api/categories'
 import { DatePicker } from '../components/DatePicker'
 import { UnsortedSection } from '../components/UnsortedSection'
 import { TopicSectionWithData } from '../components/TopicSection'
 import { CreateTopicForm } from '../components/CreateTopicForm'
+import { TweetDetailModal } from '../components/TweetDetailModal'
 
 function todayStr(): string {
   const d = new Date()
@@ -21,6 +23,7 @@ export function DailyView() {
   const [date, setDate] = useState(todayStr)
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
+  const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
 
   // Data fetching
   const topicsQuery = useTopics(date)
@@ -56,6 +59,10 @@ export function DailyView() {
     },
     [createTopicMutation, date],
   )
+
+  const handleTweetClick = useCallback((tweet: Tweet) => {
+    setDetailTweet(tweet)
+  }, [])
 
   const isLoading =
     topicsQuery.isLoading || categoriesQuery.isLoading || unsortedQuery.isLoading
@@ -237,6 +244,7 @@ export function DailyView() {
               topics={topics}
               categories={categories}
               onAssign={handleAssign}
+              onTweetClick={handleTweetClick}
             />
 
             {/* Topic sections — each one fetches its own tweets internally */}
@@ -249,6 +257,7 @@ export function DailyView() {
                 date={date}
                 search={search}
                 onUnassign={handleUnassign}
+                onTweetClick={handleTweetClick}
               />
             ))}
 
@@ -262,6 +271,14 @@ export function DailyView() {
           </>
         )}
       </main>
+
+      {/* Tweet detail modal */}
+      {detailTweet && (
+        <TweetDetailModal
+          tweet={detailTweet}
+          onClose={() => setDetailTweet(null)}
+        />
+      )}
     </div>
   )
 }
