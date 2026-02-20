@@ -9,11 +9,12 @@ from app.main import app
 from app.models.account import Account  # noqa: F401 — needed for FK target
 from app.models.article import Article  # noqa: F401 — needed for FK target from screenshots
 from app.models.screenshot import Screenshot  # noqa: F401 — loaded via Tweet relationship
+from app.models.topic import Topic, SubTopic, SubTopicTweet  # noqa: F401 — needed for unclustered query
 from app.models.tweet import Tweet  # noqa: F401 — registers the model with Base
 
 
 # ---------------------------------------------------------------------------
-# JSONB → JSON compilation shim for SQLite
+# Compilation shims for SQLite compatibility
 # ---------------------------------------------------------------------------
 
 from sqlalchemy.ext.compiler import compiles  # noqa: E402
@@ -22,6 +23,18 @@ from sqlalchemy.ext.compiler import compiles  # noqa: E402
 @compiles(JSONB, "sqlite")
 def _compile_jsonb_as_json(type_, compiler, **kw):
     return compiler.visit_JSON(type_, **kw)
+
+
+# pgvector's Vector type is not supported by SQLite.  We compile it as BLOB
+# so that table creation succeeds.  We never actually store/query embeddings
+# in tests.
+
+from pgvector.sqlalchemy import Vector  # noqa: E402
+
+
+@compiles(Vector, "sqlite")
+def _compile_vector_as_blob(type_, compiler, **kw):
+    return "BLOB"
 
 
 # ---------------------------------------------------------------------------
@@ -63,8 +76,14 @@ async def setup_database(tmp_path, monkeypatch):
         await conn.run_sync(Tweet.__table__.create)
         await conn.run_sync(Article.__table__.create)
         await conn.run_sync(Screenshot.__table__.create)
+        await conn.run_sync(Topic.__table__.create)
+        await conn.run_sync(SubTopic.__table__.create)
+        await conn.run_sync(SubTopicTweet.__table__.create)
     yield
     async with engine_test.begin() as conn:
+        await conn.run_sync(SubTopicTweet.__table__.drop)
+        await conn.run_sync(SubTopic.__table__.drop)
+        await conn.run_sync(Topic.__table__.drop)
         await conn.run_sync(Screenshot.__table__.drop)
         await conn.run_sync(Article.__table__.drop)
         await conn.run_sync(Tweet.__table__.drop)
@@ -194,3 +213,42 @@ async def test_ingest_batch_with_duplicates(client: AsyncClient):
     assert data["duplicate_count"] == 1
     assert data["results"][0]["status"] == "duplicate"
     assert data["results"][1]["status"] == "saved"
+
+
+@pytest.mark.asyncio
+async def test_unclustered_tweets(client: AsyncClient):
+    # Ingest two tweets
+    for tid in ["unc_1", "unc_2"]:
+        await client.post("/api/ingest", json={
+            "tweet_id": tid,
+            "author_handle": "test",
+            "text": f"Tweet {tid}",
+            "screenshot_base64": TINY_PNG_B64,
+        })
+    response = await client.get("/api/ingest/unclustered")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+
+
+@pytest.mark.asyncio
+async def test_trigger_clustering(client: AsyncClient):
+    for tid in ["cl_1", "cl_2", "cl_3"]:
+        await client.post("/api/ingest", json={
+            "tweet_id": tid,
+            "author_handle": "test",
+            "text": f"Tweet about AI {tid}",
+            "screenshot_base64": TINY_PNG_B64,
+        })
+    response = await client.post("/api/ingest/cluster")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "started"
+    assert data["unclustered_count"] == 3
+
+
+@pytest.mark.asyncio
+async def test_trigger_clustering_no_tweets(client: AsyncClient):
+    response = await client.post("/api/ingest/cluster")
+    assert response.status_code == 200
+    assert response.json()["status"] == "no_tweets"
