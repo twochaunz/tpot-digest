@@ -13,6 +13,7 @@ interface TopicSectionWithDataProps {
   date: string
   search: string
   onUnassign: (tweetIds: number[], topicId: number) => void
+  onTweetClick?: (tweet: Tweet) => void
 }
 
 export function TopicSectionWithData({
@@ -22,6 +23,7 @@ export function TopicSectionWithData({
   date,
   search,
   onUnassign,
+  onTweetClick,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
   const tweets = tweetsQuery.data ?? []
@@ -42,6 +44,7 @@ export function TopicSectionWithData({
       color={color}
       tweetsByCategory={tweetsByCategory}
       onUnassign={onUnassign}
+      onTweetClick={onTweetClick}
     />
   )
 }
@@ -54,6 +57,7 @@ interface TopicSectionProps {
   color: string | null
   tweetsByCategory: Map<number | null, { category: Category | null; tweets: Tweet[] }>
   onUnassign: (tweetIds: number[], topicId: number) => void
+  onTweetClick?: (tweet: Tweet) => void
 }
 
 function TopicSection({
@@ -62,6 +66,7 @@ function TopicSection({
   color,
   tweetsByCategory,
   onUnassign,
+  onTweetClick,
 }: TopicSectionProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [headerHovered, setHeaderHovered] = useState(false)
@@ -223,6 +228,7 @@ function TopicSection({
                     tweet={t}
                     selected={selected.has(t.id)}
                     onToggle={toggle}
+                    onTweetClick={onTweetClick}
                   />
                 ))}
               </div>

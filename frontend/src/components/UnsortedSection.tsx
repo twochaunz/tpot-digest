@@ -10,9 +10,10 @@ interface UnsortedSectionProps {
   topics: Topic[]
   categories: Category[]
   onAssign: (tweetIds: number[], topicId: number, categoryId?: number) => void
+  onTweetClick?: (tweet: Tweet) => void
 }
 
-export function UnsortedSection({ tweets, topics, categories, onAssign }: UnsortedSectionProps) {
+export function UnsortedSection({ tweets, topics, categories, onAssign, onTweetClick }: UnsortedSectionProps) {
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
   const toggle = useCallback((id: number) => {
@@ -101,6 +102,7 @@ export function UnsortedSection({ tweets, topics, categories, onAssign }: Unsort
             tweet={t}
             selected={selected.has(t.id)}
             onToggle={toggle}
+            onTweetClick={onTweetClick}
           />
         ))}
       </div>
