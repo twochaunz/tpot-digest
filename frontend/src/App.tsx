@@ -1,35 +1,38 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Sidebar } from './components/Sidebar'
+import { TodaysFeed } from './pages/TodaysFeed'
+import { TopicDetail } from './pages/TopicDetail'
+import { GraphExplorer } from './pages/GraphExplorer'
+import { AssetManager } from './pages/AssetManager'
+import { Settings } from './pages/Settings'
 
-function App() {
-  const [count, setCount] = useState(0)
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchInterval: 30000, // Auto-refresh every 30s
+      staleTime: 10000,
+    },
+  },
+})
 
+export function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
+          <Sidebar />
+          <main style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
+            <Routes>
+              <Route path="/" element={<TodaysFeed />} />
+              <Route path="/topic/:topicId" element={<TopicDetail />} />
+              <Route path="/graph" element={<GraphExplorer />} />
+              <Route path="/assets" element={<AssetManager />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </main>
+        </div>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
-
-export default App
