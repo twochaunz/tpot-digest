@@ -296,9 +296,20 @@
     btn.title = "Save to tpot-digest";
     btn.setAttribute("aria-label", "Save tweet to tpot-digest");
 
+    // Block all pointer/mouse events from reaching Twitter's handlers
+    // Twitter uses pointerdown/mousedown for navigation, not just click
+    const blockEvent = (e) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+    ["pointerdown", "pointerup", "mousedown", "mouseup"].forEach((type) => {
+      btn.addEventListener(type, blockEvent, true);
+    });
+
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       handleSave(btn, article);
     });
 

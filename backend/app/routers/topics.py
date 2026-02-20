@@ -1,8 +1,11 @@
+import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.db import get_db
 from app.models.topic import LifecycleStatus, SubTopic, SubTopicTweet, Topic
@@ -26,9 +29,13 @@ async def list_topics(
     date: date = Query(..., description="Filter topics by date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Topic).where(Topic.date == date).order_by(Topic.rank)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    try:
+        stmt = select(Topic).where(Topic.date == date).order_by(Topic.rank)
+        result = await db.execute(stmt)
+        return result.scalars().all()
+    except Exception as e:
+        logger.exception("Failed to list topics for date=%s", date)
+        raise HTTPException(500, detail=f"Database error: {e}")
 
 
 @router.get("/{topic_id}", response_model=TopicOut)
