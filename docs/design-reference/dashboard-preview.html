@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tpot-digest — Dashboard Design Reference</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  /* ═══════════════════════════════════════
+     DESIGN SYSTEM — DARK EDITORIAL DESK
+     ═══════════════════════════════════════ */
+
+  :root {
+    /* Surfaces */
+    --bg-base: #0C0B0A;
+    --bg-raised: #161514;
+    --bg-elevated: #1E1D1B;
+    --bg-hover: #252320;
+    --bg-active: #2E2B28;
+
+    /* Borders */
+    --border-subtle: #2A2725;
+    --border-strong: #3D3935;
+
+    /* Text */
+    --text-primary: #E8E4DF;
+    --text-secondary: #9B9590;
+    --text-tertiary: #6B6560;
+    --text-inverse: #0C0B0A;
+
+    /* Accent — Warm Amber */
+    --accent: #E8A838;
+    --accent-hover: #F0B84A;
+    --accent-muted: rgba(232, 168, 56, 0.12);
+
+    /* Lifecycle */
+    --emerging: #4ECDC4;
+    --emerging-bg: rgba(78, 205, 196, 0.12);
+    --trending: #E8A838;
+    --trending-bg: rgba(232, 168, 56, 0.12);
+    --peaked: #E85D3A;
+    --peaked-bg: rgba(232, 93, 58, 0.12);
+    --fading: #6B6560;
+    --fading-bg: rgba(107, 101, 96, 0.12);
+
+    /* Sentiment */
+    --positive: #5CB85C;
+    --negative: #D9534F;
+    --neutral: #9B9590;
+    --mixed: #E8A838;
+
+    /* Fonts */
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Outfit', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══════════════════════════════════════
+     APP SHELL
+     ═══════════════════════════════════════ */
+
+  .app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 56px;
+    background: var(--bg-raised);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    gap: 4px;
+    flex-shrink: 0;
+    transition: width 250ms var(--ease-out);
+    overflow: hidden;
+    z-index: 100;
+  }
+
+  .sidebar:hover {
+    width: 200px;
+  }
+
+  .sidebar-logo {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-inverse);
+    margin-bottom: 20px;
+    flex-shrink: 0;
+  }
+
+  .nav-item {
+    width: 100%;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 150ms ease;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+
+  .nav-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .nav-item.active {
+    color: var(--accent);
+    background: var(--accent-muted);
+    border-right: 2px solid var(--accent);
+  }
+
+  .nav-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .nav-label {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  .sidebar:hover .nav-label {
+    opacity: 1;
+  }
+
+  .nav-spacer { flex: 1; }
+
+  /* Main area */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    height: 56px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex-shrink: 0;
+    background: var(--bg-raised);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  .date-nav button {
+    background: none;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 150ms ease;
+  }
+
+  .date-nav button:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+
+  .extension-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    background: var(--bg-elevated);
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--positive);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .status-dot.disconnected {
+    background: var(--negative);
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .save-count {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  /* Content */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+
+  .content::-webkit-scrollbar {
+    width: 6px;
+  }
+  .content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .content::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 3px;
+  }
+  .content::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+  }
+
+  /* ═══════════════════════════════════════
+     TOPIC CARD
+     ═══════════════════════════════════════ */
+
+  .topic-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 16px;
+    animation: fadeSlideUp 400ms var(--ease-out) both;
+    transition: border-color 200ms ease;
+  }
+
+  .topic-card:hover {
+    border-color: var(--border-strong);
+  }
+
+  .topic-card:nth-child(1) { animation-delay: 0ms; }
+  .topic-card:nth-child(2) { animation-delay: 80ms; }
+  .topic-card:nth-child(3) { animation-delay: 160ms; }
+  .topic-card:nth-child(4) { animation-delay: 240ms; }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .topic-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .topic-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: color 150ms ease;
+  }
+
+  .topic-title:hover {
+    color: var(--accent);
+  }
+
+  .topic-momentum {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    margin-left: 16px;
+  }
+
+  .topic-meta {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .meta-separator {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+  }
+
+  /* Lifecycle Badge */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: var(--font-body);
+  }
+
+  .badge-emerging {
+    color: var(--emerging);
+    background: var(--emerging-bg);
+  }
+
+  .badge-trending {
+    color: var(--trending);
+    background: var(--trending-bg);
+  }
+
+  .badge-peaked {
+    color: var(--peaked);
+    background: var(--peaked-bg);
+  }
+
+  .badge-fading {
+    color: var(--fading);
+    background: var(--fading-bg);
+  }
+
+  /* ═══════════════════════════════════════
+     SUBTOPIC PANEL
+     ═══════════════════════════════════════ */
+
+  .subtopic {
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .subtopic-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .subtopic-title {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .subtopic-rank {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-right: 8px;
+  }
+
+  .sentiment {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .sentiment-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  .sentiment-dot.positive { background: var(--positive); }
+  .sentiment-dot.negative { background: var(--negative); }
+  .sentiment-dot.neutral { background: var(--neutral); }
+  .sentiment-dot.mixed { background: var(--mixed); }
+
+  /* Tweet thumbnail strip */
+  .tweet-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .tweet-strip::-webkit-scrollbar {
+    height: 4px;
+  }
+  .tweet-strip::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 2px;
+  }
+
+  .tweet-thumb {
+    width: 120px;
+    height: 90px;
+    flex-shrink: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    transition: all 200ms var(--ease-out);
+  }
+
+  .tweet-thumb:hover {
+    transform: scale(1.04);
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+  }
+
+  .tweet-thumb-content {
+    padding: 8px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .tweet-thumb-handle {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .tweet-thumb-text {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  .tweet-more {
+    width: 50px;
+    height: 90px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+
+  .tweet-more:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-muted);
+  }
+
+  /* Article links in subtopic */
+  .article-links {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .article-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 150ms ease;
+    text-decoration: none;
+  }
+
+  .article-link:hover {
+    color: var(--accent);
+  }
+
+  .article-icon {
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .article-pub {
+    color: var(--text-tertiary);
+    font-size: 11px;
+  }
+
+  /* ═══════════════════════════════════════
+     UNCLUSTERED QUEUE
+     ═══════════════════════════════════════ */
+
+  .unclustered-section {
+    background: var(--bg-raised);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    animation: fadeSlideUp 400ms var(--ease-out) both;
+    animation-delay: 300ms;
+  }
+
+  .unclustered-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .unclustered-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .unclustered-count {
+    font-family: var(--font-mono);
+    color: var(--accent);
+  }
+
+  .btn-cluster {
+    padding: 8px 16px;
+    background: var(--accent);
+    color: var(--text-inverse);
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-cluster:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(232, 168, 56, 0.3);
+  }
+
+  .btn-cluster:active {
+    transform: translateY(0);
+  }
+
+  /* ═══════════════════════════════════════
+     TWEET CARD (full size, for Topic Detail)
+     ═══════════════════════════════════════ */
+
+  .tweet-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    width: 280px;
+    flex-shrink: 0;
+    transition: all 200ms var(--ease-out);
+    cursor: pointer;
+  }
+
+  .tweet-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .tweet-card-screenshot {
+    width: 100%;
+    height: 160px;
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tweet-card-screenshot-placeholder {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* Simulated screenshot content */
+  .mock-tweet {
+    padding: 12px 16px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .mock-tweet-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .mock-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--peaked));
+  }
+
+  .mock-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .mock-handle {
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .mock-text {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+  }
+
+  .tweet-card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .tweet-card-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .tweet-card-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .btn-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 150ms ease;
+  }
+
+  .btn-icon:hover {
+    background: var(--accent-muted);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ═══════════════════════════════════════
+     SECTION HEADER
+     ═══════════════════════════════════════ */
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  /* ═══════════════════════════════════════
+     TWEET CARDS GRID (Topic Detail)
+     ═══════════════════════════════════════ */
+
+  .tweet-cards-grid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* ═══════════════════════════════════════
+     DESIGN REFERENCE PAGE LAYOUT
+     ═══════════════════════════════════════ */
+
+  .ref-section {
+    padding: 48px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .ref-title {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .ref-subtitle {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    margin-bottom: 32px;
+  }
+
+  .ref-grid {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+
+  .ref-swatch {
+    width: 80px;
+    text-align: center;
+  }
+
+  .ref-swatch-color {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    margin-bottom: 6px;
+  }
+
+  .ref-swatch-name {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .ref-swatch-hex {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  .ref-type-sample {
+    margin-bottom: 20px;
+  }
+
+  .ref-type-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    margin-bottom: 4px;
+  }
+
+  /* ═══════════════════════════════════════
+     FULL DASHBOARD PREVIEW
+     ═══════════════════════════════════════ */
+
+  .preview-frame {
+    background: var(--bg-base);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SECTION 1: DESIGN SYSTEM
+     ════════════════════════════════════════════ -->
+
+<div class="ref-section">
+  <div class="ref-title">tpot-digest</div>
+  <div class="ref-subtitle">Dashboard Design System — Dark Editorial Desk</div>
+
+  <!-- Colors -->
+  <div class="section-label">Color Palette</div>
+  <div class="ref-grid">
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #0C0B0A;"></div>
+      <div class="ref-swatch-name">Base</div>
+      <div class="ref-swatch-hex">#0C0B0A</div>
+    </div>
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #161514;"></div>
+      <div class="ref-swatch-name">Raised</div>
+      <div class="ref-swatch-hex">#161514</div>
+    </div>
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #1E1D1B;"></div>
+      <div class="ref-swatch-name">Elevated</div>
+      <div class="ref-swatch-hex">#1E1D1B</div>
+    </div>
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #E8A838;"></div>
+      <div class="ref-swatch-name">Accent</div>
+      <div class="ref-swatch-hex">#E8A838</div>
+    </div>
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #4ECDC4;"></div>
+      <div class="ref-swatch-name">Emerging</div>
+      <div class="ref-swatch-hex">#4ECDC4</div>
+    </div>
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #E8A838;"></div>
+      <div class="ref-swatch-name">Trending</div>
+      <div class="ref-swatch-hex">#E8A838</div>
+    </div>
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #E85D3A;"></div>
+      <div class="ref-swatch-name">Peaked</div>
+      <div class="ref-swatch-hex">#E85D3A</div>
+    </div>
+    <div class="ref-swatch">
+      <div class="ref-swatch-color" style="background: #6B6560;"></div>
+      <div class="ref-swatch-name">Fading</div>
+      <div class="ref-swatch-hex">#6B6560</div>
+    </div>
+  </div>
+
+  <!-- Typography -->
+  <div class="section-label">Typography</div>
+  <div class="ref-type-sample">
+    <div class="ref-type-label">Display — Fraunces 500</div>
+    <div style="font-family: var(--font-display); font-size: 32px; font-weight: 500;">Claude 4 Launch Shakes the AI Landscape</div>
+  </div>
+  <div class="ref-type-sample">
+    <div class="ref-type-label">Display — Fraunces 300 italic</div>
+    <div style="font-family: var(--font-display); font-size: 24px; font-weight: 300; font-style: italic; color: var(--text-secondary);">Benchmark skepticism grows as community digs deeper</div>
+  </div>
+  <div class="ref-type-sample">
+    <div class="ref-type-label">UI — Outfit 600</div>
+    <div style="font-family: var(--font-body); font-size: 14px; font-weight: 600;">Sub-topic title in the interface</div>
+  </div>
+  <div class="ref-type-sample">
+    <div class="ref-type-label">Body — Outfit 400</div>
+    <div style="font-family: var(--font-body); font-size: 14px; font-weight: 400; color: var(--text-secondary);">Community celebrates unprecedented benchmark scores across all major evaluations. Multiple AI researchers confirm results are reproducible.</div>
+  </div>
+  <div class="ref-type-sample">
+    <div class="ref-type-label">Mono — JetBrains Mono 400</div>
+    <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary);">tweet_1892345678 · 12.4K likes · 3.2K retweets</div>
+  </div>
+
+  <!-- Badges -->
+  <div class="section-label" style="margin-top: 32px;">Lifecycle Badges</div>
+  <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 32px;">
+    <span class="badge badge-emerging">Emerging</span>
+    <span class="badge badge-trending">Trending</span>
+    <span class="badge badge-peaked">Peaked</span>
+    <span class="badge badge-fading">Fading</span>
+  </div>
+
+  <!-- Sentiment -->
+  <div class="section-label">Sentiment Indicators</div>
+  <div style="display: flex; gap: 24px; margin-bottom: 32px;">
+    <span class="sentiment"><span class="sentiment-dot positive"></span> positive</span>
+    <span class="sentiment"><span class="sentiment-dot negative"></span> negative</span>
+    <span class="sentiment"><span class="sentiment-dot neutral"></span> neutral</span>
+    <span class="sentiment"><span class="sentiment-dot mixed"></span> mixed</span>
+  </div>
+
+  <!-- Buttons -->
+  <div class="section-label">Actions</div>
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <button class="btn-cluster">Re-cluster Now</button>
+    <button class="btn-icon" title="Annotate">&#9998;</button>
+    <button class="btn-icon" title="Download">&#8681;</button>
+    <button class="btn-icon" title="Open">&#8599;</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SECTION 2: FULL DASHBOARD PREVIEW
+     ════════════════════════════════════════════ -->
+
+<div class="ref-section">
+  <div class="ref-title">Dashboard Preview</div>
+  <div class="ref-subtitle">Today's Feed — the daily command center</div>
+
+  <div class="preview-frame">
+    <div class="app" style="height: 720px;">
+
+      <!-- Sidebar -->
+      <nav class="sidebar">
+        <div class="sidebar-logo">t</div>
+        <a class="nav-item active">
+          <span class="nav-icon">&#9783;</span>
+          <span class="nav-label">Today's Feed</span>
+        </a>
+        <a class="nav-item">
+          <span class="nav-icon">&#9633;</span>
+          <span class="nav-label">Topics</span>
+        </a>
+        <a class="nav-item">
+          <span class="nav-icon">&#9672;</span>
+          <span class="nav-label">Graph</span>
+        </a>
+        <a class="nav-item">
+          <span class="nav-icon">&#9776;</span>
+          <span class="nav-label">Assets</span>
+        </a>
+        <div class="nav-spacer"></div>
+        <a class="nav-item">
+          <span class="nav-icon">&#9881;</span>
+          <span class="nav-label">Settings</span>
+        </a>
+      </nav>
+
+      <!-- Main -->
+      <div class="main">
+        <!-- Header -->
+        <header class="header">
+          <div class="header-left">
+            <span class="page-title">Today's Feed</span>
+            <div class="date-nav">
+              <button>&#8249;</button>
+              <span>Feb 20, 2026</span>
+              <button>&#8250;</button>
+            </div>
+          </div>
+          <div class="extension-status">
+            <span class="status-dot"></span>
+            <span>Extension connected</span>
+            <span style="color: var(--border-strong);">|</span>
+            <span class="save-count">23</span>
+            <span>saved today</span>
+          </div>
+        </header>
+
+        <!-- Content -->
+        <div class="content">
+
+          <!-- Topic 1: Trending -->
+          <div class="topic-card">
+            <div class="topic-header">
+              <div>
+                <div style="margin-bottom: 8px;">
+                  <span class="badge badge-trending">Trending</span>
+                </div>
+                <div class="topic-title">Claude 4 Launch Shakes the AI Landscape</div>
+              </div>
+              <div class="topic-momentum">12&#9650;</div>
+            </div>
+            <div class="topic-meta">
+              <span>3 sub-topics</span>
+              <span class="meta-separator"></span>
+              <span>18 tweets</span>
+              <span class="meta-separator"></span>
+              <span>4 articles</span>
+            </div>
+
+            <!-- SubTopic 1 -->
+            <div class="subtopic">
+              <div class="subtopic-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="subtopic-rank">01</span>
+                  <span class="subtopic-title">Benchmark Hype & Celebration</span>
+                </div>
+                <span class="sentiment"><span class="sentiment-dot positive"></span> positive</span>
+              </div>
+              <div class="tweet-strip">
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@karpathy</div>
+                    <div class="tweet-thumb-text">Claude 4 just dropped and these benchmarks are absolutely insane. This changes everything...</div>
+                  </div>
+                </div>
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@sama</div>
+                    <div class="tweet-thumb-text">Congrats to the Anthropic team. Genuinely impressive work across the board.</div>
+                  </div>
+                </div>
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@svpino</div>
+                    <div class="tweet-thumb-text">I've been testing Claude 4 all morning. The code generation is on another level.</div>
+                  </div>
+                </div>
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@emollick</div>
+                    <div class="tweet-thumb-text">New Claude is remarkable for research tasks. Tested on several papers...</div>
+                  </div>
+                </div>
+                <div class="tweet-more">+8</div>
+              </div>
+              <div class="article-links">
+                <a class="article-link">
+                  <span class="article-icon">&#128196;</span>
+                  <span>Claude 4 sets new benchmarks across all categories</span>
+                  <span class="article-pub">TechCrunch</span>
+                </a>
+                <a class="article-link">
+                  <span class="article-icon">&#128196;</span>
+                  <span>Anthropic launches Claude 4 with breakthrough capabilities</span>
+                  <span class="article-pub">The Verge</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- SubTopic 2 -->
+            <div class="subtopic">
+              <div class="subtopic-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="subtopic-rank">02</span>
+                  <span class="subtopic-title">Benchmark Methodology Skepticism</span>
+                </div>
+                <span class="sentiment"><span class="sentiment-dot negative"></span> negative</span>
+              </div>
+              <div class="tweet-strip">
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@GaryMarcus</div>
+                    <div class="tweet-thumb-text">These benchmarks are self-reported. Until independent verification, I'm skeptical.</div>
+                  </div>
+                </div>
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@ylecun</div>
+                    <div class="tweet-thumb-text">Benchmark contamination remains an unsolved problem for the field...</div>
+                  </div>
+                </div>
+                <div class="tweet-more">+4</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Topic 2: Emerging -->
+          <div class="topic-card">
+            <div class="topic-header">
+              <div>
+                <div style="margin-bottom: 8px;">
+                  <span class="badge badge-emerging">Emerging</span>
+                </div>
+                <div class="topic-title">OpenAI Series C Closes at $300B Valuation</div>
+              </div>
+              <div class="topic-momentum">3&#9650;</div>
+            </div>
+            <div class="topic-meta">
+              <span>1 sub-topic</span>
+              <span class="meta-separator"></span>
+              <span>5 tweets</span>
+              <span class="meta-separator"></span>
+              <span>2 articles</span>
+            </div>
+
+            <div class="subtopic">
+              <div class="subtopic-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="subtopic-rank">01</span>
+                  <span class="subtopic-title">Valuation Debate</span>
+                </div>
+                <span class="sentiment"><span class="sentiment-dot mixed"></span> mixed</span>
+              </div>
+              <div class="tweet-strip">
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@chaaboris</div>
+                    <div class="tweet-thumb-text">$300B for a company doing $4B rev? This is dot-com energy.</div>
+                  </div>
+                </div>
+                <div class="tweet-thumb">
+                  <div class="tweet-thumb-content">
+                    <div class="tweet-thumb-handle">@jason</div>
+                    <div class="tweet-thumb-text">Actually, if you model the TAM correctly, $300B might be *cheap*...</div>
+                  </div>
+                </div>
+                <div class="tweet-more">+3</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unclustered Queue -->
+          <div class="unclustered-section">
+            <div class="unclustered-header">
+              <div class="unclustered-title">
+                <span class="unclustered-count">5</span> tweets awaiting clustering
+              </div>
+              <button class="btn-cluster">
+                <span>&#8634;</span>
+                Re-cluster Now
+              </button>
+            </div>
+            <div class="tweet-strip">
+              <div class="tweet-thumb">
+                <div class="tweet-thumb-content">
+                  <div class="tweet-thumb-handle">@pcmonk</div>
+                  <div class="tweet-thumb-text">Just published my deep dive on the new Apple M5 chip architecture...</div>
+                </div>
+              </div>
+              <div class="tweet-thumb">
+                <div class="tweet-thumb-content">
+                  <div class="tweet-thumb-handle">@levelsio</div>
+                  <div class="tweet-thumb-text">$100K MRR with AI wrappers is the new $10K MRR with SaaS...</div>
+                </div>
+              </div>
+              <div class="tweet-thumb">
+                <div class="tweet-thumb-content">
+                  <div class="tweet-thumb-handle">@swyx</div>
+                  <div class="tweet-thumb-text">The AI Engineering stack is converging. Here's what's winning...</div>
+                </div>
+              </div>
+              <div class="tweet-thumb">
+                <div class="tweet-thumb-content">
+                  <div class="tweet-thumb-handle">@thekitze</div>
+                  <div class="tweet-thumb-text">Frontend devs in 2026: "Should I learn React or just vibe code?"</div>
+                </div>
+              </div>
+              <div class="tweet-thumb">
+                <div class="tweet-thumb-content">
+                  <div class="tweet-thumb-handle">@raaboris</div>
+                  <div class="tweet-thumb-text">Google DeepMind paper on multi-agent reasoning is mind-blowing...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SECTION 3: TOPIC DETAIL VIEW
+     ════════════════════════════════════════════ -->
+
+<div class="ref-section">
+  <div class="ref-title">Topic Detail View</div>
+  <div class="ref-subtitle">Deep dive into a single topic with full tweet cards</div>
+
+  <div class="preview-frame" style="padding: 24px;">
+    <!-- Back nav -->
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+      <button class="btn-icon" style="color: var(--text-secondary);">&#8249;</button>
+      <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+          <span class="badge badge-trending">Trending</span>
+          <span style="font-family: var(--font-display); font-size: 24px; font-weight: 500;">Claude 4 Launch Shakes the AI Landscape</span>
+        </div>
+        <div class="topic-meta">
+          <span>Feb 20, 2026</span>
+          <span class="meta-separator"></span>
+          <span>18 tweets</span>
+          <span class="meta-separator"></span>
+          <span>4 articles</span>
+          <span class="meta-separator"></span>
+          <span>3 sub-topics</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SubTopic with full tweet cards -->
+    <div class="section-label">01 — Benchmark Hype & Celebration <span class="sentiment" style="float: right; text-transform: none; letter-spacing: 0; font-weight: 400;"><span class="sentiment-dot positive"></span> positive</span></div>
+
+    <div class="tweet-cards-grid" style="margin-bottom: 32px;">
+      <div class="tweet-card">
+        <div class="tweet-card-screenshot">
+          <div class="mock-tweet">
+            <div class="mock-tweet-header">
+              <div class="mock-avatar"></div>
+              <div>
+                <div class="mock-name">Andrej Karpathy</div>
+                <div class="mock-handle">@karpathy</div>
+              </div>
+            </div>
+            <div class="mock-text">Claude 4 just dropped and these benchmarks are absolutely insane. This changes everything for AI-assisted development. The reasoning capabilities are a genuine step change.</div>
+          </div>
+        </div>
+        <div class="tweet-card-footer">
+          <span class="tweet-card-author">@karpathy</span>
+          <div class="tweet-card-actions">
+            <button class="btn-icon" title="Annotate">&#9998;</button>
+            <button class="btn-icon" title="Download">&#8681;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tweet-card">
+        <div class="tweet-card-screenshot">
+          <div class="mock-tweet">
+            <div class="mock-tweet-header">
+              <div class="mock-avatar" style="background: linear-gradient(135deg, #4ECDC4, #556270);"></div>
+              <div>
+                <div class="mock-name">Sam Altman</div>
+                <div class="mock-handle">@sama</div>
+              </div>
+            </div>
+            <div class="mock-text">Congrats to the Anthropic team. Genuinely impressive work across the board. Competition makes everyone better.</div>
+          </div>
+        </div>
+        <div class="tweet-card-footer">
+          <span class="tweet-card-author">@sama</span>
+          <div class="tweet-card-actions">
+            <button class="btn-icon" title="Annotate">&#9998;</button>
+            <button class="btn-icon" title="Download">&#8681;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tweet-card">
+        <div class="tweet-card-screenshot">
+          <div class="mock-tweet">
+            <div class="mock-tweet-header">
+              <div class="mock-avatar" style="background: linear-gradient(135deg, #E85D3A, #E8A838);"></div>
+              <div>
+                <div class="mock-name">Santiago</div>
+                <div class="mock-handle">@svpino</div>
+              </div>
+            </div>
+            <div class="mock-text">I've been testing Claude 4 all morning. The code generation is on another level. Just built an entire microservice architecture in 20 minutes.</div>
+          </div>
+        </div>
+        <div class="tweet-card-footer">
+          <span class="tweet-card-author">@svpino</span>
+          <div class="tweet-card-actions">
+            <button class="btn-icon" title="Annotate">&#9998;</button>
+            <button class="btn-icon" title="Download">&#8681;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">02 — Benchmark Methodology Skepticism <span class="sentiment" style="float: right; text-transform: none; letter-spacing: 0; font-weight: 400;"><span class="sentiment-dot negative"></span> negative</span></div>
+
+    <div class="tweet-cards-grid">
+      <div class="tweet-card">
+        <div class="tweet-card-screenshot">
+          <div class="mock-tweet">
+            <div class="mock-tweet-header">
+              <div class="mock-avatar" style="background: linear-gradient(135deg, #9B9590, #6B6560);"></div>
+              <div>
+                <div class="mock-name">Gary Marcus</div>
+                <div class="mock-handle">@GaryMarcus</div>
+              </div>
+            </div>
+            <div class="mock-text">These benchmarks are self-reported. Until independent verification from neutral third parties, I remain deeply skeptical of these claims.</div>
+          </div>
+        </div>
+        <div class="tweet-card-footer">
+          <span class="tweet-card-author">@GaryMarcus</span>
+          <div class="tweet-card-actions">
+            <button class="btn-icon" title="Annotate">&#9998;</button>
+            <button class="btn-icon" title="Download">&#8681;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
