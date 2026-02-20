@@ -35,7 +35,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         out.status = "duplicate"
         return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
 
-    screenshot_path = _save_screenshot(body.tweet_id, body.screenshot_base64)
+    screenshot_path = _save_screenshot(body.tweet_id, body.screenshot_base64) if body.screenshot_base64 else None
 
     tweet = Tweet(
         tweet_id=body.tweet_id,

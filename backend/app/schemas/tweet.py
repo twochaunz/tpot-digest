@@ -17,7 +17,7 @@ class TweetSave(BaseModel):
     reply_to_handle: str | None = None
     thread_id: str | None = None
     thread_position: int | None = None
-    screenshot_base64: str
+    screenshot_base64: str | None = None
     feed_source: str | None = None
     topic_id: int | None = None
     category_id: int | None = None
