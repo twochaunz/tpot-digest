@@ -189,6 +189,19 @@ async function handleAssignTweet(message) {
   }
 }
 
+async function handleDeleteTweet(message) {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/" + message.tweetDbId;
+  const headers = authHeaders(config);
+  try {
+    const resp = await fetch(url, { method: "DELETE", headers });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return { deleted: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 async function handleUpdateTweet(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/" + message.tweetDbId;
@@ -211,6 +224,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "CREATE_TOPIC") { handleCreateTopic(message).then(sendResponse); return true; }
   if (message.type === "CREATE_CATEGORY") { handleCreateCategory(message).then(sendResponse); return true; }
   if (message.type === "ASSIGN_TWEET") { handleAssignTweet(message).then(sendResponse); return true; }
+  if (message.type === "DELETE_TWEET") { handleDeleteTweet(message).then(sendResponse); return true; }
   if (message.type === "UPDATE_TWEET") { handleUpdateTweet(message).then(sendResponse); return true; }
 });
 

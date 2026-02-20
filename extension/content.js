@@ -221,14 +221,24 @@
     const actions = document.createElement("div");
     actions.className = "tpot-ac-actions";
 
-    const dismissBtn = document.createElement("button");
-    dismissBtn.className = "tpot-ac-btn secondary";
-    dismissBtn.textContent = "Dismiss";
-    dismissBtn.addEventListener("click", () => {
-      card.remove();
-      document.removeEventListener("mousedown", onClickOutside, true);
+    const unsaveBtn = document.createElement("button");
+    unsaveBtn.className = "tpot-ac-btn secondary";
+    unsaveBtn.textContent = "Unsave";
+    unsaveBtn.addEventListener("click", async () => {
+      unsaveBtn.disabled = true;
+      unsaveBtn.textContent = "Removing\u2026";
+      try {
+        await sendMessage({ type: "DELETE_TWEET", tweetDbId: tweetDbId });
+        header.textContent = "\u2717 Removed";
+        document.removeEventListener("mousedown", onClickOutside, true);
+        setTimeout(() => { if (card.parentNode) card.remove(); }, 800);
+      } catch (err) {
+        unsaveBtn.textContent = "Error";
+        unsaveBtn.disabled = false;
+        setTimeout(() => { unsaveBtn.textContent = "Unsave"; }, 1500);
+      }
     });
-    actions.appendChild(dismissBtn);
+    actions.appendChild(unsaveBtn);
 
     const assignBtn = document.createElement("button");
     assignBtn.className = "tpot-ac-btn primary";
