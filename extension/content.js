@@ -368,10 +368,24 @@
   async function handleSave(button, article) {
     if (button.classList.contains("saving")) return;
 
-    // If already saved, show action card for existing tweet
+    // If already saved, unsave directly
     if (button.classList.contains("saved") && button.dataset.tpotDbId) {
-      const tweetData = extractTweetData(article);
-      showActionCard(Number(button.dataset.tpotDbId), tweetData.author_handle);
+      const dbId = Number(button.dataset.tpotDbId);
+      button.classList.add("saving");
+      button.classList.remove("saved");
+      try {
+        await sendMessage({ type: "DELETE_TWEET", tweetDbId: dbId });
+        for (const [tid, id] of savedTweets) {
+          if (id === dbId) { savedTweets.delete(tid); break; }
+        }
+        delete button.dataset.tpotDbId;
+        delete button.dataset.tpotChecked;
+        button.classList.remove("saving");
+      } catch (err) {
+        button.classList.remove("saving");
+        button.classList.add("saved");
+        showToast("Unsave failed: " + err.message, true);
+      }
       return;
     }
 
