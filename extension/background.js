@@ -58,6 +58,7 @@ async function handleScreenshot(message, sender) {
 async function handleSaveTweet(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets";
+  console.log("[tpot] Saving tweet to:", url);
   const headers = { "Content-Type": "application/json" };
   if (config.authUser && config.authPass) {
     headers["Authorization"] = "Basic " + btoa(config.authUser + ":" + config.authPass);
@@ -66,12 +67,15 @@ async function handleSaveTweet(message) {
     const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.tweet) });
     if (!resp.ok) {
       const text = await resp.text();
+      console.error("[tpot] Save failed:", resp.status, text.slice(0, 200));
       throw new Error("HTTP " + resp.status + ": " + text.slice(0, 200));
     }
     const data = await resp.json();
+    console.log("[tpot] Tweet saved:", data.tweet_id);
     await incrementCount();
     return data;
   } catch (err) {
+    console.error("[tpot] Save error:", err.message, "Backend URL:", url);
     await queueRetry(message.tweet);
     return { error: err.message, queued: true };
   }

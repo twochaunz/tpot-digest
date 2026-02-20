@@ -141,6 +141,18 @@
   function injectSaveButton(article) {
     if (article.querySelector(".tpot-save-btn")) return;
 
+    // Find the action bar (reply, retweet, like, bookmark, share)
+    const actionBar = article.querySelector('div[role="group"]');
+    if (!actionBar) return;
+
+    // Find bookmark or share button to insert before
+    const bookmarkBtn = actionBar.querySelector('button[data-testid="bookmark"]');
+    const shareBtn = actionBar.querySelector('button[aria-label*="Share"]');
+    const insertBefore = bookmarkBtn || shareBtn || null;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "tpot-save-wrapper";
+
     const btn = document.createElement("button");
     btn.className = "tpot-save-btn";
     btn.title = "Save to tpot-digest";
@@ -149,6 +161,7 @@
     const block = (e) => { e.stopPropagation(); e.stopImmediatePropagation(); };
     ["pointerdown", "pointerup", "mousedown", "mouseup"].forEach((type) => {
       btn.addEventListener(type, block, true);
+      wrapper.addEventListener(type, block, true);
     });
 
     btn.addEventListener("click", (e) => {
@@ -158,7 +171,13 @@
       handleSave(btn, article);
     });
 
-    article.appendChild(btn);
+    wrapper.appendChild(btn);
+
+    if (insertBefore) {
+      insertBefore.parentElement.insertBefore(wrapper, insertBefore);
+    } else {
+      actionBar.appendChild(wrapper);
+    }
   }
 
   // ── Observer ───────────────────────────────────────────────────────
