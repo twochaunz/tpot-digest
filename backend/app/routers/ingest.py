@@ -9,14 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import get_db
+from app.models.topic import SubTopicTweet
 from app.models.tweet import Tweet
 from app.models.screenshot import Screenshot
 from app.schemas.ingest import (
     BatchIngestRequest,
     BatchIngestResponse,
+    ClusterTriggerResponse,
     IngestResponse,
     TweetIngest,
 )
+from app.schemas.tweet import TweetOut
 
 router = APIRouter(prefix="/api/ingest", tags=["ingest"])
 
@@ -95,4 +98,35 @@ async def ingest_batch(body: BatchIngestRequest, db: AsyncSession = Depends(get_
         results=results,
         saved_count=sum(1 for r in results if r.status == "saved"),
         duplicate_count=sum(1 for r in results if r.status == "duplicate"),
+    )
+
+
+@router.get("/unclustered", response_model=list[TweetOut])
+async def get_unclustered_tweets(db: AsyncSession = Depends(get_db)):
+    """Return tweets not assigned to any subtopic (awaiting clustering)."""
+    assigned_ids = select(SubTopicTweet.tweet_id).subquery()
+    stmt = (
+        select(Tweet)
+        .where(Tweet.id.not_in(select(assigned_ids)))
+        .order_by(Tweet.scraped_at.desc())
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.post("/cluster", response_model=ClusterTriggerResponse)
+async def trigger_clustering(db: AsyncSession = Depends(get_db)):
+    """Trigger clustering of unclustered tweets."""
+    assigned_ids = select(SubTopicTweet.tweet_id).subquery()
+    stmt = select(Tweet).where(Tweet.id.not_in(select(assigned_ids)))
+    result = await db.execute(stmt)
+    unclustered = result.scalars().all()
+
+    if not unclustered:
+        return ClusterTriggerResponse(status="no_tweets", unclustered_count=0)
+
+    # Pipeline integration comes later — for now just return status
+    return ClusterTriggerResponse(
+        status="started",
+        unclustered_count=len(unclustered),
     )
