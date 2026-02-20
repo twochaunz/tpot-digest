@@ -59,10 +59,7 @@ async function handleSaveTweet(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets";
   console.log("[tpot] Saving tweet to:", url);
-  const headers = { "Content-Type": "application/json" };
-  if (config.authUser && config.authPass) {
-    headers["Authorization"] = "Basic " + btoa(config.authUser + ":" + config.authPass);
-  }
+  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
   try {
     const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.tweet) });
     if (!resp.ok) {
@@ -81,11 +78,20 @@ async function handleSaveTweet(message) {
   }
 }
 
+function authHeaders(config) {
+  const headers = {};
+  if (config.authUser && config.authPass) {
+    headers["Authorization"] = "Basic " + btoa(config.authUser + ":" + config.authPass);
+  }
+  return headers;
+}
+
 async function handleGetStatus() {
   const config = await getConfig();
   const count = await getCount();
   try {
     const resp = await fetch(config.backendUrl.replace(/\/+$/, "") + "/api/health", {
+      headers: authHeaders(config),
       signal: AbortSignal.timeout(5000),
     });
     return { connected: resp.ok, dailyCount: count, backendUrl: config.backendUrl };
