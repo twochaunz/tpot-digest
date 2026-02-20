@@ -81,7 +81,7 @@ async def list_tweets(
     thread_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Tweet).order_by(Tweet.saved_at.desc())
+    stmt = select(Tweet)
 
     if date:
         from sqlalchemy import cast, Date as SQLDate
@@ -102,6 +102,8 @@ async def list_tweets(
 
     if thread_id:
         stmt = stmt.where(Tweet.thread_id == thread_id).order_by(Tweet.thread_position)
+    else:
+        stmt = stmt.order_by(Tweet.saved_at.desc())
 
     result = await db.execute(stmt)
     return result.scalars().all()
