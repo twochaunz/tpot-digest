@@ -78,7 +78,7 @@ async def _ingest_one(body: TweetIngest, db: AsyncSession) -> IngestResponse:
     )
 
 
-@router.post("")
+@router.post("", response_model=IngestResponse)
 async def ingest_tweet(body: TweetIngest, db: AsyncSession = Depends(get_db)):
     result = await _ingest_one(body, db)
     status_code = 201 if result.status == "saved" else 200

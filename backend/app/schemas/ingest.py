@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, field_validator
 
 
 class TweetIngest(BaseModel):
@@ -15,12 +17,19 @@ class TweetIngest(BaseModel):
     screenshot_base64: str
     feed_source: str | None = None
 
+    @field_validator("screenshot_base64")
+    @classmethod
+    def strip_data_url_prefix(cls, v: str) -> str:
+        if "," in v[:64]:
+            return v.split(",", 1)[1]
+        return v
+
 
 class IngestResponse(BaseModel):
     id: int
     tweet_id: str
     author_handle: str
-    status: str  # "saved" | "duplicate"
+    status: Literal["saved", "duplicate"]
 
     model_config = {"from_attributes": True}
 
@@ -36,5 +45,5 @@ class BatchIngestResponse(BaseModel):
 
 
 class ClusterTriggerResponse(BaseModel):
-    status: str  # "started" | "no_tweets"
+    status: Literal["started", "no_tweets"]
     unclustered_count: int
