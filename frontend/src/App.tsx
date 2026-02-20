@@ -11,8 +11,8 @@ import { Settings } from './pages/Settings'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchInterval: 30000, // Auto-refresh every 30s
       staleTime: 10000,
+      retry: 1,
     },
   },
 })
