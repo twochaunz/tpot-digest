@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tpot-digest</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <img src="icons/icon48.png" alt="tpot-digest" width="24" height="24" />
+        <span class="title">tpot-digest</span>
+      </div>
+      <div class="status-bar">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-text" id="statusText">Checking...</span>
+      </div>
+    </div>
+
+    <!-- Daily count -->
+    <div class="count-section">
+      <div class="count-number" id="dailyCount">0</div>
+      <div class="count-label">tweets saved today</div>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings">
+      <div class="field">
+        <label for="backendUrl">Backend URL</label>
+        <input
+          type="url"
+          id="backendUrl"
+          placeholder="http://localhost:8000"
+        />
+      </div>
+      <div class="field">
+        <label for="authUser">Username</label>
+        <input
+          type="text"
+          id="authUser"
+          placeholder="(optional)"
+          autocomplete="username"
+        />
+      </div>
+      <div class="field">
+        <label for="authPass">Password</label>
+        <input
+          type="password"
+          id="authPass"
+          placeholder="(optional)"
+          autocomplete="current-password"
+        />
+      </div>
+      <button class="save-btn" id="saveSettings">Save Settings</button>
+      <div class="save-feedback" id="saveFeedback"></div>
+    </div>
+  </body>
+  <script src="popup.js"></script>
+</html>
