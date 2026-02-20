@@ -95,12 +95,16 @@
       const tweetData = extractTweetData(article);
       if (!tweetData.tweet_id) throw new Error("Could not extract tweet ID");
 
-      // Request screenshot from service worker
+      // Request screenshot from service worker (exclude action bar with engagement icons)
       const rect = article.getBoundingClientRect();
+      const actionBar = article.querySelector('div[role="group"]');
+      const cropHeight = actionBar
+        ? actionBar.getBoundingClientRect().top - rect.top
+        : rect.height;
       const screenshotResp = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
           type: "CAPTURE_SCREENSHOT",
-          rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          rect: { x: rect.x, y: rect.y, width: rect.width, height: cropHeight },
           dpr: window.devicePixelRatio || 1,
         }, (resp) => {
           if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
