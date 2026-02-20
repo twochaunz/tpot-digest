@@ -189,6 +189,19 @@ async function handleAssignTweet(message) {
   }
 }
 
+async function handleCheckSaved(message) {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/check";
+  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
+  try {
+    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify({ tweet_ids: message.tweetIds }) });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return await resp.json();
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 async function handleDeleteTweet(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/" + message.tweetDbId;
@@ -226,6 +239,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "ASSIGN_TWEET") { handleAssignTweet(message).then(sendResponse); return true; }
   if (message.type === "DELETE_TWEET") { handleDeleteTweet(message).then(sendResponse); return true; }
   if (message.type === "UPDATE_TWEET") { handleUpdateTweet(message).then(sendResponse); return true; }
+  if (message.type === "CHECK_SAVED") { handleCheckSaved(message).then(sendResponse); return true; }
 });
 
 getCount().then((c) => { if (c > 0) { chrome.action.setBadgeText({ text: String(c) }); chrome.action.setBadgeBackgroundColor({ color: "#6366f1" }); } });
