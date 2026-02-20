@@ -42,13 +42,17 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    entrypoint: /scripts/caddy-entrypoint.sh
     ports:
       - "80:80"
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN:-localhost}
+      AUTH_USER: ${AUTH_USER:-admin}
+      AUTH_PASS: ${AUTH_PASS:-changeme}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./scripts/caddy-entrypoint.sh:/scripts/caddy-entrypoint.sh
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
