@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
+from app.config import settings
 from app.routers.tweets import router as tweets_router
 
 app = FastAPI(title="tpot-digest", version="2.0.0")
@@ -25,3 +27,5 @@ app.include_router(categories_router)
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+app.mount("/api/screenshots", StaticFiles(directory=settings.data_dir), name="screenshots")

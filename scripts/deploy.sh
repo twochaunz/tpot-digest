@@ -29,7 +29,7 @@ ssh "${SSH_OPTS[@]}" "$SERVER" bash <<EOF
   cd $REMOTE_DIR
 
   echo "Pulling latest..."
-  git pull origin feat/tpot-digest
+  git pull origin master
 
   echo "Building and starting..."
   docker compose -f docker-compose.prod.yml up --build -d
