@@ -62,11 +62,16 @@
     const threadMatch = window.location.pathname.match(/\/status\/(\d+)/);
     const threadId = threadMatch && detectFeedSource() === "thread" ? threadMatch[1] : null;
 
+    const tweetUrl = tweetId && authorHandle
+      ? "https://x.com/" + authorHandle + "/status/" + tweetId
+      : null;
+
     return {
       tweet_id: tweetId,
       author_handle: authorHandle,
       author_display_name: authorDisplayName,
       text: text,
+      url: tweetUrl,
       media_urls: mediaUrls.length > 0 ? mediaUrls : null,
       engagement: {
         likes: parseCount(likesEl ? likesEl.textContent : "0"),
@@ -229,6 +234,18 @@
       unsaveBtn.textContent = "Removing\u2026";
       try {
         await sendMessage({ type: "DELETE_TWEET", tweetDbId: tweetDbId });
+        // Reset save button back to "+"
+        document.querySelectorAll(".tpot-save-btn").forEach((b) => {
+          if (b.dataset.tpotDbId === String(tweetDbId)) {
+            b.classList.remove("saved");
+            delete b.dataset.tpotDbId;
+            delete b.dataset.tpotChecked;
+          }
+        });
+        // Remove from saved cache
+        for (const [tid, dbId] of savedTweets) {
+          if (dbId === tweetDbId) { savedTweets.delete(tid); break; }
+        }
         header.textContent = "\u2717 Removed";
         document.removeEventListener("mousedown", onClickOutside, true);
         setTimeout(() => { if (card.parentNode) card.remove(); }, 800);
@@ -299,10 +316,65 @@
     document.body.appendChild(card);
   }
 
+  // ── Saved Tweet Tracking ───────────────────────────────────────────
+
+  // Map of twitter tweet_id -> backend db id for tweets already saved
+  const savedTweets = new Map();
+  let checkPending = false;
+
+  async function checkSavedStatus() {
+    if (checkPending) return;
+    const articles = document.querySelectorAll('article[data-testid="tweet"]');
+    const unchecked = [];
+    articles.forEach((article) => {
+      const btn = article.querySelector(".tpot-save-btn");
+      if (btn && btn.dataset.tpotChecked) return;
+      const link = article.querySelector('a[href*="/status/"]');
+      if (!link) return;
+      const m = link.getAttribute("href").match(/status\/(\d+)/);
+      if (m && !savedTweets.has(m[1])) unchecked.push(m[1]);
+    });
+    if (unchecked.length === 0) return;
+
+    checkPending = true;
+    try {
+      const resp = await sendMessage({ type: "CHECK_SAVED", tweetIds: unchecked });
+      if (resp && resp.saved) {
+        for (const [tid, dbId] of Object.entries(resp.saved)) {
+          savedTweets.set(tid, dbId);
+        }
+      }
+      // Update buttons that are now known to be saved
+      articles.forEach((article) => {
+        const btn = article.querySelector(".tpot-save-btn");
+        if (!btn) return;
+        btn.dataset.tpotChecked = "1";
+        const link = article.querySelector('a[href*="/status/"]');
+        if (!link) return;
+        const m = link.getAttribute("href").match(/status\/(\d+)/);
+        if (m && savedTweets.has(m[1])) {
+          btn.classList.add("saved");
+          btn.dataset.tpotDbId = savedTweets.get(m[1]);
+        }
+      });
+    } catch (err) {
+      // Silently ignore check failures
+    }
+    checkPending = false;
+  }
+
   // ── Save Handler ───────────────────────────────────────────────────
 
   async function handleSave(button, article) {
-    if (button.classList.contains("saved") || button.classList.contains("saving")) return;
+    if (button.classList.contains("saving")) return;
+
+    // If already saved, show action card for existing tweet
+    if (button.classList.contains("saved") && button.dataset.tpotDbId) {
+      const tweetData = extractTweetData(article);
+      showActionCard(Number(button.dataset.tpotDbId), tweetData.author_handle);
+      return;
+    }
+
     button.classList.add("saving");
 
     try {
@@ -351,6 +423,8 @@
 
       button.classList.remove("saving");
       button.classList.add("saved");
+      button.dataset.tpotDbId = saveResp.id;
+      savedTweets.set(tweetData.tweet_id, saveResp.id);
 
       if (saveResp && saveResp.status === "duplicate") {
         showToast("Tweet already saved — @" + tweetData.author_handle, false);
@@ -414,8 +488,13 @@
 
   function scan() {
     document.querySelectorAll('article[data-testid="tweet"]').forEach(injectSaveButton);
+    checkSavedStatus();
   }
 
-  new MutationObserver(() => scan()).observe(document.body, { childList: true, subtree: true });
+  let scanTimer = null;
+  new MutationObserver(() => {
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(scan, 150);
+  }).observe(document.body, { childList: true, subtree: true });
   scan();
 })();

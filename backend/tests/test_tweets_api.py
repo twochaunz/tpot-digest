@@ -200,6 +200,39 @@ async def test_patch_tweet_saved_at(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_save_tweet_with_url(client: AsyncClient):
+    payload = {
+        "tweet_id": "url1",
+        "author_handle": "test",
+        "text": "test tweet",
+        "screenshot_base64": TINY_PNG,
+        "url": "https://x.com/test/status/url1",
+    }
+    resp = await client.post("/api/tweets", json=payload)
+    assert resp.status_code == 201
+    assert resp.json()["url"] == "https://x.com/test/status/url1"
+
+
+@pytest.mark.asyncio
+async def test_check_saved_tweets(client: AsyncClient):
+    for i in range(3):
+        await client.post("/api/tweets", json={
+            "tweet_id": f"check_{i}",
+            "author_handle": "test",
+            "text": f"Tweet {i}",
+            "screenshot_base64": TINY_PNG,
+        })
+    resp = await client.post("/api/tweets/check", json={
+        "tweet_ids": ["check_0", "check_2", "not_saved"],
+    })
+    assert resp.status_code == 200
+    saved = resp.json()["saved"]
+    assert "check_0" in saved
+    assert "check_2" in saved
+    assert "not_saved" not in saved
+
+
+@pytest.mark.asyncio
 async def test_list_thread_tweets(client: AsyncClient):
     for i in range(3):
         await client.post("/api/tweets", json={

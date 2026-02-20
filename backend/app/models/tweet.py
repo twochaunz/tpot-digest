@@ -26,6 +26,7 @@ class Tweet(Base):
     thread_position: Mapped[int | None] = mapped_column(Integer)
     screenshot_path: Mapped[str | None] = mapped_column(String(512))
     feed_source: Mapped[str | None] = mapped_column(String(32))
+    url: Mapped[str | None] = mapped_column(String(512))
     memo: Mapped[str | None] = mapped_column(Text)
     saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

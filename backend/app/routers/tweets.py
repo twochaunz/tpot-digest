@@ -11,7 +11,7 @@ from app.config import settings
 from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.tweet import Tweet
-from app.schemas.tweet import TweetAssignRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
+from app.schemas.tweet import TweetAssignRequest, TweetCheckRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
 
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 
@@ -56,6 +56,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         thread_position=body.thread_position,
         screenshot_path=screenshot_path,
         feed_source=body.feed_source,
+        url=body.url,
         memo=body.memo,
     )
     db.add(tweet)
@@ -132,6 +133,17 @@ async def update_tweet(tweet_id: int, body: TweetUpdate, db: AsyncSession = Depe
     await db.commit()
     await db.refresh(tweet)
     return tweet
+
+
+@router.post("/check", status_code=200)
+async def check_saved(body: TweetCheckRequest, db: AsyncSession = Depends(get_db)):
+    if not body.tweet_ids:
+        return {"saved": {}}
+    result = await db.execute(
+        select(Tweet.tweet_id, Tweet.id).where(Tweet.tweet_id.in_(body.tweet_ids))
+    )
+    saved = {row[0]: row[1] for row in result.all()}
+    return {"saved": saved}
 
 
 @router.post("/assign", status_code=200)
