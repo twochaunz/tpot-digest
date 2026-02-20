@@ -66,7 +66,7 @@
 
 .tpot-toast {
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   right: 24px;
   padding: 12px 20px;
   border-radius: 8px;
@@ -76,14 +76,112 @@
   font-size: 14px;
   z-index: 100000;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  animation: tpot-slide-up 0.3s ease-out;
+  animation: tpot-slide-down 0.3s ease-out;
   max-width: 320px;
 }
 
 .tpot-toast.error { border-left: 3px solid #ef4444; }
 .tpot-toast.success { border-left: 3px solid #22c55e; }
 
-@keyframes tpot-slide-up {
-  from { transform: translateY(20px); opacity: 0; }
+.tpot-action-card {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 280px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #1a1a2e;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  z-index: 100000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-left: 3px solid #22c55e;
+  animation: tpot-slide-down 0.25s ease-out;
+}
+
+.tpot-action-card .tpot-ac-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #22c55e;
+  margin-bottom: 10px;
+}
+
+.tpot-action-card label {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 3px;
+  margin-top: 8px;
+}
+
+.tpot-action-card label:first-of-type {
+  margin-top: 0;
+}
+
+.tpot-action-card select,
+.tpot-action-card input[type="date"],
+.tpot-action-card input[type="text"],
+.tpot-action-card textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.tpot-action-card select:focus,
+.tpot-action-card input:focus,
+.tpot-action-card textarea:focus {
+  border-color: #6366f1;
+}
+
+.tpot-action-card textarea {
+  resize: none;
+  height: 48px;
+}
+
+.tpot-action-card .tpot-ac-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tpot-action-card .tpot-ac-btn {
+  padding: 5px 14px;
+  border-radius: 5px;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tpot-action-card .tpot-ac-btn.primary {
+  background: #6366f1;
+  color: #fff;
+}
+
+.tpot-action-card .tpot-ac-btn.primary:hover {
+  background: #818cf8;
+}
+
+.tpot-action-card .tpot-ac-btn.secondary {
+  background: transparent;
+  color: #94a3b8;
+}
+
+.tpot-action-card .tpot-ac-btn.secondary:hover {
+  color: #e2e8f0;
+}
+
+@keyframes tpot-slide-down {
+  from { transform: translateY(-20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
