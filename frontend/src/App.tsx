@@ -1,12 +1,8 @@
 import './styles/design-system.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Sidebar } from './components/Sidebar'
-import { TodaysFeed } from './pages/TodaysFeed'
-import { TopicDetail } from './pages/TopicDetail'
-import { GraphExplorer } from './pages/GraphExplorer'
-import { AssetManager } from './pages/AssetManager'
-import { Settings } from './pages/Settings'
+import { DailyView } from './pages/DailyView'
+import { SettingsPage } from './pages/SettingsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,18 +17,10 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-          <Sidebar />
-          <main style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
-            <Routes>
-              <Route path="/" element={<TodaysFeed />} />
-              <Route path="/topic/:topicId" element={<TopicDetail />} />
-              <Route path="/graph" element={<GraphExplorer />} />
-              <Route path="/assets" element={<AssetManager />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </main>
-        </div>
+        <Routes>
+          <Route path="/" element={<DailyView />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   )
