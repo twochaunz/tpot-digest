@@ -35,6 +35,9 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         out.status = "duplicate"
         return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
 
+    if body.screenshot_error:
+        import logging
+        logging.getLogger("tpot").warning("Screenshot capture failed for %s: %s", body.tweet_id, body.screenshot_error)
     screenshot_path = _save_screenshot(body.tweet_id, body.screenshot_base64) if body.screenshot_base64 else None
 
     tweet = Tweet(
