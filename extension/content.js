@@ -145,10 +145,8 @@
     const actionBar = article.querySelector('div[role="group"]');
     if (!actionBar) return;
 
-    // Find bookmark or share button to insert before
+    // Find bookmark button to insert our save button before it
     const bookmarkBtn = actionBar.querySelector('button[data-testid="bookmark"]');
-    const shareBtn = actionBar.querySelector('button[aria-label*="Share"]');
-    const insertBefore = bookmarkBtn || shareBtn || null;
 
     const wrapper = document.createElement("div");
     wrapper.className = "tpot-save-wrapper";
@@ -173,8 +171,13 @@
 
     wrapper.appendChild(btn);
 
-    if (insertBefore) {
-      insertBefore.parentElement.insertBefore(wrapper, insertBefore);
+    if (bookmarkBtn) {
+      // Walk up from the bookmark button to find the direct child of the action bar
+      let container = bookmarkBtn;
+      while (container.parentElement && container.parentElement !== actionBar) {
+        container = container.parentElement;
+      }
+      actionBar.insertBefore(wrapper, container);
     } else {
       actionBar.appendChild(wrapper);
     }
