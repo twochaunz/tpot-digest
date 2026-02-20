@@ -18,6 +18,9 @@ app.include_router(tweets_router)
 from app.routers.topics import router as topics_router
 app.include_router(topics_router)
 
+from app.routers.categories import router as categories_router
+app.include_router(categories_router)
+
 
 @app.get("/api/health")
 async def health():
