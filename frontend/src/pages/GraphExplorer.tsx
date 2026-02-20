@@ -37,9 +37,9 @@ export function GraphExplorer() {
           marginBottom: '20px',
         }}
       >
-        <h2 style={{ margin: 0 }}>Graph Explorer</h2>
+        <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Graph Explorer</h2>
         {graphData && !isSearchActive && (
-          <span style={{ fontSize: '13px', color: '#999' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
             {graphData.nodes.length} node{graphData.nodes.length !== 1 ? 's' : ''},&nbsp;
             {graphData.edges.length} edge{graphData.edges.length !== 1 ? 's' : ''}
           </span>
@@ -57,12 +57,12 @@ export function GraphExplorer() {
       ) : (
         <>
           {graphLoading && (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#999', fontSize: '14px' }}>
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>
               Loading graph…
             </div>
           )}
           {graphError && (
-            <p style={{ color: 'red', fontSize: '14px' }}>
+            <p style={{ color: 'var(--negative)', fontSize: '14px' }}>
               Error loading graph: {String(graphError)}
             </p>
           )}

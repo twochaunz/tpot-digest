@@ -11,13 +11,14 @@ export function Sidebar() {
   return (
     <nav style={{
       width: '220px',
-      backgroundColor: '#1a1a2e',
-      color: '#eee',
+      backgroundColor: 'var(--bg-raised)',
+      color: 'var(--text-primary)',
       padding: '20px 0',
       display: 'flex',
       flexDirection: 'column',
+      borderRight: '1px solid var(--border-subtle)',
     }}>
-      <h1 style={{ padding: '0 20px', fontSize: '18px', marginBottom: '24px' }}>
+      <h1 style={{ padding: '0 20px', fontSize: '18px', marginBottom: '24px', fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>
         tpot digest
       </h1>
       {navItems.map(item => (
@@ -29,10 +30,13 @@ export function Sidebar() {
             alignItems: 'center',
             gap: '10px',
             padding: '12px 20px',
-            color: isActive ? '#fff' : '#aaa',
-            backgroundColor: isActive ? '#16213e' : 'transparent',
+            color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+            backgroundColor: isActive ? 'var(--bg-active)' : 'transparent',
             textDecoration: 'none',
             fontSize: '14px',
+            fontFamily: 'var(--font-body)',
+            borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
+            transition: 'all 0.15s var(--ease-out)',
           })}
         >
           <span>{item.icon}</span>

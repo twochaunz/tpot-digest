@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import type { GraphNode, GraphEdge } from '../api/graph'
 
 const STATUS_COLORS: Record<string, string> = {
-  emerging: '#2e7d32',
-  trending: '#e65100',
-  peaked: '#c62828',
-  fading: '#546e7a',
+  emerging: '#4ECDC4',
+  trending: '#E8A838',
+  peaked: '#E85D3A',
+  fading: '#6B6560',
 }
 
 interface NodePosition {
@@ -165,13 +165,13 @@ export function GraphCanvas({ nodes, edges }: GraphCanvasProps) {
       ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2)
       ctx.fillStyle = color
       ctx.fill()
-      ctx.strokeStyle = '#fff'
+      ctx.strokeStyle = '#1E1D1B'
       ctx.lineWidth = 1.5
       ctx.stroke()
 
       // Label
-      ctx.font = '10px system-ui, sans-serif'
-      ctx.fillStyle = '#333'
+      ctx.font = "10px 'Outfit', system-ui, sans-serif"
+      ctx.fillStyle = '#9B9590'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       ctx.fillText(truncate(node.title, 20), pos.x, pos.y + radius + 3)
@@ -287,10 +287,11 @@ export function GraphCanvas({ nodes, edges }: GraphCanvasProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#f9f9f9',
-          borderRadius: '8px',
-          color: '#999',
+          background: 'var(--bg-raised)',
+          borderRadius: 'var(--radius-md)',
+          color: 'var(--text-tertiary)',
           fontSize: '14px',
+          border: '1px solid var(--border-subtle)',
         }}
       >
         No graph data available. Try adjusting filters.
@@ -308,9 +309,9 @@ export function GraphCanvas({ nodes, edges }: GraphCanvasProps) {
           width: '100%',
           height: '600px',
           display: 'block',
-          background: '#fafafa',
-          borderRadius: '8px',
-          border: '1px solid #e0e0e0',
+          background: 'var(--bg-raised)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-subtle)',
           cursor: 'pointer',
         }}
         onMouseMove={handleMouseMove}
