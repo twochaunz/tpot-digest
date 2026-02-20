@@ -13,26 +13,26 @@ export function FolderBrowser({ dates, selectedDate, onDateChange, topics, onSel
   return (
     <div style={{
       width: '280px',
-      borderRight: '1px solid #e0e0e0',
-      backgroundColor: '#fafafa',
+      borderRight: '1px solid var(--border-subtle)',
+      backgroundColor: 'var(--bg-raised)',
       overflowY: 'auto',
       padding: '16px',
     }}>
-      <h3 style={{ fontSize: '14px', marginBottom: '12px' }}>Browse Dates</h3>
+      <h3 style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--text-primary)' }}>Browse Dates</h3>
       <select
         value={selectedDate}
         onChange={(e) => onDateChange(e.target.value)}
-        style={{ width: '100%', padding: '8px', marginBottom: '16px', border: '1px solid #ddd', borderRadius: '4px' }}
+        style={{ width: '100%', padding: '8px', marginBottom: '16px', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
       >
         {dates.map(d => (
           <option key={d} value={d}>{d}</option>
         ))}
       </select>
 
-      <h3 style={{ fontSize: '14px', marginBottom: '8px' }}>Topics</h3>
+      <h3 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-primary)' }}>Topics</h3>
       {topics.map(topic => (
         <div key={topic.dir_name} style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-primary)' }}>
             {topic.title}
           </div>
           {topic.subtopics_detail.map(st => (
@@ -43,14 +43,15 @@ export function FolderBrowser({ dates, selectedDate, onDateChange, topics, onSel
                 padding: '6px 12px',
                 fontSize: '12px',
                 cursor: 'pointer',
-                backgroundColor: selectedSubTopic === st.path ? '#e3f2fd' : 'transparent',
-                borderRadius: '4px',
+                backgroundColor: selectedSubTopic === st.path ? 'var(--accent-muted)' : 'transparent',
+                borderRadius: 'var(--radius-sm)',
                 marginLeft: '12px',
-                color: '#555',
+                color: selectedSubTopic === st.path ? 'var(--accent)' : 'var(--text-secondary)',
+                transition: 'all 0.15s var(--ease-out)',
               }}
             >
               {st.name}
-              <span style={{ color: '#999', marginLeft: '4px' }}>
+              <span style={{ color: 'var(--text-tertiary)', marginLeft: '4px' }}>
                 ({st.tweets.length + st.articles.length})
               </span>
             </div>

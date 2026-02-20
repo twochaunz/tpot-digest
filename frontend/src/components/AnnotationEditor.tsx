@@ -119,7 +119,7 @@ export function AnnotationEditor({ imageUrl, onSave, onClose }: Props) {
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', backgroundColor: '#fff' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', backgroundColor: 'var(--bg-raised)' }}>
         <Toolbar
           activeTool={activeTool}
           onToolChange={setActiveTool}
@@ -135,7 +135,7 @@ export function AnnotationEditor({ imageUrl, onSave, onClose }: Props) {
           onExport={handleExport}
         />
         {onClose && (
-          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '24px', cursor: 'pointer', padding: '8px', color: '#666' }}>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '24px', cursor: 'pointer', padding: '8px', color: 'var(--text-secondary)' }}>
             x
           </button>
         )}

@@ -34,8 +34,8 @@ export function Toolbar({
       alignItems: 'center',
       gap: '12px',
       padding: '8px 16px',
-      backgroundColor: '#fff',
-      borderBottom: '1px solid #e0e0e0',
+      backgroundColor: 'var(--bg-raised)',
+      borderBottom: '1px solid var(--border-subtle)',
       flexWrap: 'wrap',
     }}>
       {tools.map(t => (
@@ -45,24 +45,26 @@ export function Toolbar({
           style={{
             padding: '6px 12px',
             fontSize: '13px',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            backgroundColor: activeTool === t.type ? '#e3f2fd' : '#fff',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: activeTool === t.type ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+            color: activeTool === t.type ? 'var(--accent)' : 'var(--text-secondary)',
             fontWeight: activeTool === t.type ? 600 : 400,
             cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
           }}
         >
           {t.label}
         </button>
       ))}
 
-      <div style={{ width: '1px', height: '24px', backgroundColor: '#ddd' }} />
+      <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-strong)' }} />
 
       <ColorPicker color={color} onChange={onColorChange} />
 
-      <div style={{ width: '1px', height: '24px', backgroundColor: '#ddd' }} />
+      <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-strong)' }} />
 
-      <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
         Opacity
         <input
           type="range"
@@ -75,15 +77,15 @@ export function Toolbar({
         />
       </label>
 
-      <div style={{ width: '1px', height: '24px', backgroundColor: '#ddd' }} />
+      <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-strong)' }} />
 
-      <button onClick={onUndo} disabled={!canUndo} style={{ padding: '4px 8px', fontSize: '13px', cursor: canUndo ? 'pointer' : 'default', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#fff' }}>
+      <button onClick={onUndo} disabled={!canUndo} style={{ padding: '4px 8px', fontSize: '13px', cursor: canUndo ? 'pointer' : 'default', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
         Undo
       </button>
-      <button onClick={onRedo} disabled={!canRedo} style={{ padding: '4px 8px', fontSize: '13px', cursor: canRedo ? 'pointer' : 'default', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#fff' }}>
+      <button onClick={onRedo} disabled={!canRedo} style={{ padding: '4px 8px', fontSize: '13px', cursor: canRedo ? 'pointer' : 'default', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
         Redo
       </button>
-      <button onClick={onClear} style={{ padding: '4px 8px', fontSize: '13px', cursor: 'pointer', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#fff' }}>
+      <button onClick={onClear} style={{ padding: '4px 8px', fontSize: '13px', cursor: 'pointer', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
         Clear
       </button>
 
@@ -93,11 +95,12 @@ export function Toolbar({
         padding: '6px 16px',
         fontSize: '13px',
         border: 'none',
-        borderRadius: '4px',
-        backgroundColor: '#1a73e8',
-        color: '#fff',
+        borderRadius: 'var(--radius-sm)',
+        backgroundColor: 'var(--accent)',
+        color: 'var(--text-inverse)',
         cursor: 'pointer',
         fontWeight: 600,
+        fontFamily: 'var(--font-body)',
       }}>
         Export PNG
       </button>

@@ -29,20 +29,21 @@ export function ArticleSplitView({ tweet, article, onClose }: Props) {
         gap: '20px',
         maxWidth: '1400px',
         width: '100%',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '12px',
+        backgroundColor: 'var(--bg-base)',
+        borderRadius: 'var(--radius-lg)',
         overflow: 'hidden',
+        border: '1px solid var(--border-subtle)',
       }}>
         {/* Left: Tweet */}
         <div style={{
           width: '400px',
           padding: '24px',
           overflowY: 'auto',
-          backgroundColor: '#fafafa',
-          borderRight: '1px solid #e0e0e0',
+          backgroundColor: 'var(--bg-raised)',
+          borderRight: '1px solid var(--border-subtle)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '14px', margin: 0 }}>Source Tweet</h3>
+            <h3 style={{ fontSize: '14px', margin: 0, color: 'var(--text-primary)' }}>Source Tweet</h3>
             <button
               onClick={onClose}
               style={{
@@ -50,7 +51,7 @@ export function ArticleSplitView({ tweet, article, onClose }: Props) {
                 background: 'none',
                 fontSize: '20px',
                 cursor: 'pointer',
-                color: '#666',
+                color: 'var(--text-secondary)',
               }}
             >
               x

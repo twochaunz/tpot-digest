@@ -13,7 +13,7 @@ export function GraphSearchResults({ results, isLoading, query }: GraphSearchRes
 
   if (isLoading) {
     return (
-      <div style={{ padding: '12px', color: '#999', fontSize: '13px' }}>
+      <div style={{ padding: '12px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
         Searching for "{query}"…
       </div>
     )
@@ -21,7 +21,7 @@ export function GraphSearchResults({ results, isLoading, query }: GraphSearchRes
 
   if (results.length === 0) {
     return (
-      <div style={{ padding: '12px', color: '#999', fontSize: '13px' }}>
+      <div style={{ padding: '12px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
         No results found for "{query}".
       </div>
     )
@@ -30,8 +30,8 @@ export function GraphSearchResults({ results, isLoading, query }: GraphSearchRes
   return (
     <div
       style={{
-        border: '1px solid #e0e0e0',
-        borderRadius: '8px',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
         marginBottom: '16px',
       }}
@@ -39,11 +39,11 @@ export function GraphSearchResults({ results, isLoading, query }: GraphSearchRes
       <div
         style={{
           padding: '10px 16px',
-          background: '#f5f5f5',
+          background: 'var(--bg-elevated)',
           fontSize: '12px',
-          color: '#666',
+          color: 'var(--text-secondary)',
           fontWeight: 600,
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: '1px solid var(--border-subtle)',
         }}
       >
         {results.length} result{results.length !== 1 ? 's' : ''} for "{query}"
@@ -57,12 +57,12 @@ export function GraphSearchResults({ results, isLoading, query }: GraphSearchRes
             alignItems: 'center',
             gap: '12px',
             padding: '10px 16px',
-            borderBottom: '1px solid #f0f0f0',
+            borderBottom: '1px solid var(--border-subtle)',
             cursor: 'pointer',
             transition: 'background 0.1s',
           }}
           onMouseEnter={e => {
-            ;(e.currentTarget as HTMLDivElement).style.background = '#f9f9f9'
+            ;(e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)'
           }}
           onMouseLeave={e => {
             ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
@@ -73,7 +73,7 @@ export function GraphSearchResults({ results, isLoading, query }: GraphSearchRes
               style={{
                 fontSize: '14px',
                 fontWeight: 500,
-                color: '#1976d2',
+                color: 'var(--accent)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -81,7 +81,7 @@ export function GraphSearchResults({ results, isLoading, query }: GraphSearchRes
             >
               {node.title}
             </div>
-            <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
               {node.date}
             </div>
           </div>

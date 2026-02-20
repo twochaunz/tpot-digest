@@ -51,15 +51,18 @@ export function AssetManager() {
         selectedSubTopic={selectedSubTopic}
       />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #e0e0e0' }}>
-          <h2 style={{ fontSize: '16px', margin: 0 }}>Assets</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
+          <h2 style={{ fontSize: '16px', margin: 0, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Assets</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: '#666' }}>{selectedPaths.size} selected</span>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{selectedPaths.size} selected</span>
             <button onClick={handleDownload} disabled={selectedPaths.size === 0}
               style={{
-                padding: '6px 16px', fontSize: '13px', border: 'none', borderRadius: '4px',
-                backgroundColor: selectedPaths.size > 0 ? '#1a73e8' : '#ccc',
-                color: '#fff', cursor: selectedPaths.size > 0 ? 'pointer' : 'default',
+                padding: '6px 16px', fontSize: '13px', border: 'none', borderRadius: 'var(--radius-sm)',
+                backgroundColor: selectedPaths.size > 0 ? 'var(--accent)' : 'var(--bg-active)',
+                color: selectedPaths.size > 0 ? 'var(--text-inverse)' : 'var(--text-tertiary)',
+                cursor: selectedPaths.size > 0 ? 'pointer' : 'default',
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
               }}>
               Download ZIP
             </button>

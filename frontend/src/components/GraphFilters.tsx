@@ -36,12 +36,13 @@ export function GraphFilters({ onApply }: GraphFiltersProps) {
 
   const inputStyle: React.CSSProperties = {
     padding: '6px 10px',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 'var(--radius-sm)',
     fontSize: '13px',
-    background: '#fff',
-    color: '#333',
+    background: 'var(--bg-base)',
+    color: 'var(--text-primary)',
     outline: 'none',
+    fontFamily: 'var(--font-body)',
   }
 
   const labelStyle: React.CSSProperties = {
@@ -49,7 +50,7 @@ export function GraphFilters({ onApply }: GraphFiltersProps) {
     flexDirection: 'column',
     gap: '4px',
     fontSize: '12px',
-    color: '#666',
+    color: 'var(--text-secondary)',
     fontWeight: 500,
   }
 
@@ -61,9 +62,10 @@ export function GraphFilters({ onApply }: GraphFiltersProps) {
         gap: '16px',
         alignItems: 'flex-end',
         padding: '16px',
-        background: '#f5f5f5',
-        borderRadius: '8px',
+        background: 'var(--bg-elevated)',
+        borderRadius: 'var(--radius-md)',
         marginBottom: '16px',
+        border: '1px solid var(--border-subtle)',
       }}
     >
       <label style={labelStyle}>
@@ -113,13 +115,14 @@ export function GraphFilters({ onApply }: GraphFiltersProps) {
           onClick={handleApply}
           style={{
             padding: '6px 16px',
-            background: '#1976d2',
-            color: '#fff',
+            background: 'var(--accent)',
+            color: 'var(--text-inverse)',
             border: 'none',
-            borderRadius: '6px',
+            borderRadius: 'var(--radius-sm)',
             fontSize: '13px',
             fontWeight: 600,
             cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
           }}
         >
           Apply
@@ -128,13 +131,14 @@ export function GraphFilters({ onApply }: GraphFiltersProps) {
           onClick={handleReset}
           style={{
             padding: '6px 16px',
-            background: '#fff',
-            color: '#666',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
+            background: 'var(--bg-raised)',
+            color: 'var(--text-secondary)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-sm)',
             fontSize: '13px',
             fontWeight: 600,
             cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
           }}
         >
           Reset
