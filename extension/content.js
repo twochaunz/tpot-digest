@@ -115,19 +115,14 @@
     const card = document.createElement("div");
     card.className = "tpot-action-card";
 
-    // Auto-dismiss timer
-    let timer = null;
-    function startTimer() {
-      clearTimeout(timer);
-      timer = setTimeout(() => { if (card.parentNode) card.remove(); }, 3000);
+    // Dismiss on click outside
+    function onClickOutside(e) {
+      if (!card.contains(e.target)) {
+        card.remove();
+        document.removeEventListener("mousedown", onClickOutside, true);
+      }
     }
-    function pauseTimer() { clearTimeout(timer); }
-    card.addEventListener("mouseenter", pauseTimer);
-    card.addEventListener("mouseleave", startTimer);
-    card.addEventListener("focusin", pauseTimer);
-    card.addEventListener("focusout", (e) => {
-      if (!card.contains(e.relatedTarget)) startTimer();
-    });
+    setTimeout(() => document.addEventListener("mousedown", onClickOutside, true), 0);
 
     // Header
     const header = document.createElement("div");
@@ -174,6 +169,8 @@
     const catLabel = document.createElement("label");
     catLabel.textContent = "Category";
     card.appendChild(catLabel);
+
+    const catContainer = document.createElement("div");
     const catSelect = document.createElement("select");
     catSelect.innerHTML = '<option value="">—</option>';
     categories.forEach((c) => {
@@ -182,7 +179,26 @@
       opt.textContent = c.name;
       catSelect.appendChild(opt);
     });
-    card.appendChild(catSelect);
+    const newCatOpt = document.createElement("option");
+    newCatOpt.value = "__new__";
+    newCatOpt.textContent = "+ New category\u2026";
+    catSelect.appendChild(newCatOpt);
+    catContainer.appendChild(catSelect);
+
+    const newCatInput = document.createElement("input");
+    newCatInput.type = "text";
+    newCatInput.placeholder = "Category name";
+    newCatInput.style.display = "none";
+    catContainer.appendChild(newCatInput);
+
+    catSelect.addEventListener("change", () => {
+      if (catSelect.value === "__new__") {
+        catSelect.style.display = "none";
+        newCatInput.style.display = "";
+        newCatInput.focus();
+      }
+    });
+    card.appendChild(catContainer);
 
     // Date
     const dateLabel = document.createElement("label");
@@ -208,7 +224,10 @@
     const dismissBtn = document.createElement("button");
     dismissBtn.className = "tpot-ac-btn secondary";
     dismissBtn.textContent = "Dismiss";
-    dismissBtn.addEventListener("click", () => card.remove());
+    dismissBtn.addEventListener("click", () => {
+      card.remove();
+      document.removeEventListener("mousedown", onClickOutside, true);
+    });
     actions.appendChild(dismissBtn);
 
     const assignBtn = document.createElement("button");
@@ -217,7 +236,6 @@
     assignBtn.addEventListener("click", async () => {
       assignBtn.disabled = true;
       assignBtn.textContent = "Saving\u2026";
-      pauseTimer();
 
       try {
         let topicId = topicSelect.value;
@@ -231,6 +249,17 @@
           topicId = String(createResp.topic.id);
         }
 
+        let catId = catSelect.value ? Number(catSelect.value) : null;
+
+        if (catSelect.style.display === "none" && newCatInput.value.trim()) {
+          const createResp = await sendMessage({
+            type: "CREATE_CATEGORY",
+            category: { name: newCatInput.value.trim() },
+          });
+          if (createResp.error) throw new Error(createResp.error);
+          catId = createResp.category.id;
+        }
+
         const updates = {};
         if (memoInput.value.trim()) updates.memo = memoInput.value.trim();
         if (dateInput.value !== today) updates.saved_at = dateInput.value + "T00:00:00Z";
@@ -239,7 +268,6 @@
         }
 
         if (topicId && topicId !== "" && topicId !== "__new__") {
-          const catId = catSelect.value ? Number(catSelect.value) : null;
           await sendMessage({
             type: "ASSIGN_TWEET",
             assignment: { tweet_ids: [tweetDbId], topic_id: Number(topicId), category_id: catId },
@@ -247,6 +275,7 @@
         }
 
         header.textContent = "\u2713 Assigned!";
+        document.removeEventListener("mousedown", onClickOutside, true);
         setTimeout(() => { if (card.parentNode) card.remove(); }, 800);
       } catch (err) {
         assignBtn.textContent = "Error";
@@ -258,7 +287,6 @@
     card.appendChild(actions);
 
     document.body.appendChild(card);
-    startTimer();
   }
 
   // ── Save Handler ───────────────────────────────────────────────────

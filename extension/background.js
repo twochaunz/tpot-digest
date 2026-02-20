@@ -163,6 +163,19 @@ async function handleCreateTopic(message) {
   }
 }
 
+async function handleCreateCategory(message) {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/categories";
+  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
+  try {
+    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.category) });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return { category: await resp.json() };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 async function handleAssignTweet(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/assign";
@@ -196,6 +209,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_TOPICS") { handleGetTopics(message).then(sendResponse); return true; }
   if (message.type === "GET_CATEGORIES") { handleGetCategories().then(sendResponse); return true; }
   if (message.type === "CREATE_TOPIC") { handleCreateTopic(message).then(sendResponse); return true; }
+  if (message.type === "CREATE_CATEGORY") { handleCreateCategory(message).then(sendResponse); return true; }
   if (message.type === "ASSIGN_TWEET") { handleAssignTweet(message).then(sendResponse); return true; }
   if (message.type === "UPDATE_TWEET") { handleUpdateTweet(message).then(sendResponse); return true; }
 });
