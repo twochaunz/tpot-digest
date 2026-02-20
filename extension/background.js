@@ -125,10 +125,79 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "retryQueue") processRetryQueue();
 });
 
+async function handleGetTopics(message) {
+  const config = await getConfig();
+  const dateStr = message.date || new Date().toISOString().slice(0, 10);
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/topics?date=" + dateStr;
+  try {
+    const resp = await fetch(url, { headers: authHeaders(config) });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return { topics: await resp.json() };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function handleGetCategories() {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/categories";
+  try {
+    const resp = await fetch(url, { headers: authHeaders(config) });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return { categories: await resp.json() };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function handleCreateTopic(message) {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/topics";
+  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
+  try {
+    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.topic) });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return { topic: await resp.json() };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function handleAssignTweet(message) {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/assign";
+  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
+  try {
+    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.assignment) });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return await resp.json();
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function handleUpdateTweet(message) {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/" + message.tweetDbId;
+  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
+  try {
+    const resp = await fetch(url, { method: "PATCH", headers, body: JSON.stringify(message.updates) });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return await resp.json();
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "CAPTURE_SCREENSHOT") { handleScreenshot(message, sender).then(sendResponse); return true; }
   if (message.type === "SAVE_TWEET") { handleSaveTweet(message).then(sendResponse); return true; }
   if (message.type === "GET_STATUS") { handleGetStatus().then(sendResponse); return true; }
+  if (message.type === "GET_TOPICS") { handleGetTopics(message).then(sendResponse); return true; }
+  if (message.type === "GET_CATEGORIES") { handleGetCategories().then(sendResponse); return true; }
+  if (message.type === "CREATE_TOPIC") { handleCreateTopic(message).then(sendResponse); return true; }
+  if (message.type === "ASSIGN_TWEET") { handleAssignTweet(message).then(sendResponse); return true; }
+  if (message.type === "UPDATE_TWEET") { handleUpdateTweet(message).then(sendResponse); return true; }
 });
 
 getCount().then((c) => { if (c > 0) { chrome.action.setBadgeText({ text: String(c) }); chrome.action.setBadgeBackgroundColor({ color: "#6366f1" }); } });
