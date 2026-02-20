@@ -114,13 +114,15 @@
 
       const screenshot = screenshotResp && screenshotResp.screenshot
         ? screenshotResp.screenshot
-        : "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+        : null;
 
       // Save tweet via service worker
+      const tweetPayload = { ...tweetData };
+      if (screenshot) tweetPayload.screenshot_base64 = screenshot;
       const saveResp = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
           type: "SAVE_TWEET",
-          tweet: { ...tweetData, screenshot_base64: screenshot },
+          tweet: tweetPayload,
         }, (resp) => {
           if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
           resolve(resp);
