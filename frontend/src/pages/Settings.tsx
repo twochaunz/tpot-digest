@@ -1,8 +1,17 @@
+import { AccountManager } from '../components/AccountManager'
+import { FilterControls } from '../components/FilterControls'
+import { ManualTweetInput } from '../components/ManualTweetInput'
+
 export function Settings() {
   return (
-    <div>
-      <h2>Settings</h2>
-      <p>Configuration options will appear here.</p>
+    <div style={{ maxWidth: '800px' }}>
+      <h2 style={{ marginBottom: '24px' }}>Settings</h2>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        <AccountManager />
+        <FilterControls />
+        <ManualTweetInput />
+      </div>
     </div>
   )
 }
