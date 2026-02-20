@@ -168,6 +168,38 @@ async def test_save_tweet_with_memo(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_patch_tweet_memo(client: AsyncClient):
+    await client.post("/api/tweets", json={
+        "tweet_id": "patch1",
+        "author_handle": "test",
+        "text": "test",
+        "screenshot_base64": TINY_PNG,
+    })
+    tweets = (await client.get("/api/tweets")).json()
+    tid = tweets[0]["id"]
+
+    resp = await client.patch(f"/api/tweets/{tid}", json={"memo": "use as opener"})
+    assert resp.status_code == 200
+    assert resp.json()["memo"] == "use as opener"
+
+
+@pytest.mark.asyncio
+async def test_patch_tweet_saved_at(client: AsyncClient):
+    await client.post("/api/tweets", json={
+        "tweet_id": "patch2",
+        "author_handle": "test",
+        "text": "test",
+        "screenshot_base64": TINY_PNG,
+    })
+    tweets = (await client.get("/api/tweets")).json()
+    tid = tweets[0]["id"]
+
+    resp = await client.patch(f"/api/tweets/{tid}", json={"saved_at": "2026-02-18T12:00:00Z"})
+    assert resp.status_code == 200
+    assert "2026-02-18" in resp.json()["saved_at"]
+
+
+@pytest.mark.asyncio
 async def test_list_thread_tweets(client: AsyncClient):
     for i in range(3):
         await client.post("/api/tweets", json={
