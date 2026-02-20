@@ -1,7 +1,6 @@
 import pytest
 import pytest_asyncio
-from datetime import date, datetime, timezone
-from sqlalchemy import JSON
+from datetime import date
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
