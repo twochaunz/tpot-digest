@@ -22,8 +22,6 @@ services:
       DATA_DIR: /app/data
       AUTH_USER: ${AUTH_USER}
       AUTH_PASS: ${AUTH_PASS}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     volumes:
       - app_data:/app/data
     depends_on:
