@@ -11,7 +11,7 @@ from app.config import settings
 from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.tweet import Tweet
-from app.schemas.tweet import TweetAssignRequest, TweetOut, TweetSave, TweetUnassignRequest
+from app.schemas.tweet import TweetAssignRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
 
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 
@@ -120,6 +120,18 @@ async def delete_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Tweet not found")
     await db.delete(tweet)
     await db.commit()
+
+
+@router.patch("/{tweet_id}", response_model=TweetOut)
+async def update_tweet(tweet_id: int, body: TweetUpdate, db: AsyncSession = Depends(get_db)):
+    tweet = await db.get(Tweet, tweet_id)
+    if not tweet:
+        raise HTTPException(404, "Tweet not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(tweet, field, value)
+    await db.commit()
+    await db.refresh(tweet)
+    return tweet
 
 
 @router.post("/assign", status_code=200)

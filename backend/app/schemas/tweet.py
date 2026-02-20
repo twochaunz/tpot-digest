@@ -49,6 +49,11 @@ class TweetOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TweetUpdate(BaseModel):
+    memo: str | None = None
+    saved_at: datetime | None = None
+
+
 class TweetAssignRequest(BaseModel):
     tweet_ids: list[int]
     topic_id: int
