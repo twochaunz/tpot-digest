@@ -1,4 +1,8 @@
 {$DOMAIN:localhost} {
+	basicauth * {
+		{$AUTH_USER} {$AUTH_PASS_HASH}
+	}
+
 	# API routes (must be before frontend catch-all)
 	handle /api/* {
 		reverse_proxy backend:8000
