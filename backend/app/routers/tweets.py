@@ -56,6 +56,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         thread_position=body.thread_position,
         screenshot_path=screenshot_path,
         feed_source=body.feed_source,
+        memo=body.memo,
     )
     db.add(tweet)
     await db.flush()
