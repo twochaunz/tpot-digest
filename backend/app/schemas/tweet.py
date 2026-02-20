@@ -20,6 +20,7 @@ class TweetSave(BaseModel):
     screenshot_base64: str | None = None
     screenshot_error: str | None = None
     feed_source: str | None = None
+    memo: str | None = None
     topic_id: int | None = None
     category_id: int | None = None
 
@@ -41,6 +42,7 @@ class TweetOut(BaseModel):
     thread_position: int | None
     screenshot_path: str | None
     feed_source: str | None
+    memo: str | None
     saved_at: datetime
     status: str = "saved"
 

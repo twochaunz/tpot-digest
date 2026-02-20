@@ -153,6 +153,21 @@ async def test_search_tweets(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_save_tweet_with_memo(client: AsyncClient):
+    payload = {
+        "tweet_id": "memo1",
+        "author_handle": "test",
+        "text": "test tweet",
+        "screenshot_base64": TINY_PNG,
+        "memo": "great example of AI hype",
+    }
+    resp = await client.post("/api/tweets", json=payload)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["memo"] == "great example of AI hype"
+
+
+@pytest.mark.asyncio
 async def test_list_thread_tweets(client: AsyncClient):
     for i in range(3):
         await client.post("/api/tweets", json={
