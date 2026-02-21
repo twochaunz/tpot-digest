@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { useTweets } from '../api/tweets'
 import type { Tweet } from '../api/tweets'
 import type { Category } from '../api/categories'
@@ -13,6 +13,7 @@ interface TopicSectionWithDataProps {
   search: string
   onUnassign: (tweetIds: number[], topicId: number) => void
   onDelete: (topicId: number) => void
+  onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
 }
 
@@ -24,6 +25,7 @@ export function TopicSectionWithData({
   search,
   onUnassign,
   onDelete,
+  onUpdateTitle,
   onTweetClick,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
@@ -46,6 +48,7 @@ export function TopicSectionWithData({
       tweetsByCategory={tweetsByCategory}
       onUnassign={onUnassign}
       onDelete={onDelete}
+      onUpdateTitle={onUpdateTitle}
       onTweetClick={onTweetClick}
     />
   )
@@ -60,6 +63,7 @@ interface TopicSectionProps {
   tweetsByCategory: Map<number | null, { category: Category | null; tweets: Tweet[] }>
   onUnassign: (tweetIds: number[], topicId: number) => void
   onDelete: (topicId: number) => void
+  onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
 }
 
@@ -70,10 +74,24 @@ function TopicSection({
   tweetsByCategory,
   onUnassign,
   onDelete,
+  onUpdateTitle,
   onTweetClick,
 }: TopicSectionProps) {
   const [headerHovered, setHeaderHovered] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState(title)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const commitEdit = useCallback(() => {
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed !== title) {
+      onUpdateTitle(topicId, trimmed)
+    } else {
+      setEditValue(title)
+    }
+    setEditing(false)
+  }, [editValue, title, topicId, onUpdateTitle])
 
   const toggle = useCallback((id: number) => {
     setSelected((prev) => {
@@ -128,19 +146,55 @@ function TopicSection({
         />
 
         {/* Title */}
-        <span
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            flex: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {title}
-        </span>
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitEdit()
+              if (e.key === 'Escape') {
+                setEditValue(title)
+                setEditing(false)
+              }
+            }}
+            onBlur={commitEdit}
+            autoFocus
+            style={{
+              flex: 1,
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              background: 'var(--bg-base)',
+              border: '1px solid var(--accent)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '1px 6px',
+              outline: 'none',
+              fontFamily: 'var(--font-body)',
+              minWidth: 0,
+            }}
+          />
+        ) : (
+          <span
+            onClick={() => {
+              setEditValue(title)
+              setEditing(true)
+            }}
+            title={title}
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              flex: 1,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: 'text',
+            }}
+          >
+            {title}
+          </span>
+        )}
 
         {/* Count */}
         <span
