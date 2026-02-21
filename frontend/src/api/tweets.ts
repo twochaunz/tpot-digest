@@ -15,6 +15,7 @@ export interface Tweet {
   thread_position: number | null
   screenshot_path: string | null
   feed_source: string | null
+  url: string | null
   saved_at: string
 }
 
