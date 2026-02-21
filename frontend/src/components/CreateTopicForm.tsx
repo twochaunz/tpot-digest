@@ -3,6 +3,7 @@ import { useState } from 'react'
 interface CreateTopicFormProps {
   onSubmit: (title: string, color: string) => void
   loading?: boolean
+  topicCount: number
 }
 
 const PRESET_COLORS = [
@@ -18,10 +19,10 @@ const PRESET_COLORS = [
   '#a855f7', // purple
 ]
 
-export function CreateTopicForm({ onSubmit, loading }: CreateTopicFormProps) {
+export function CreateTopicForm({ onSubmit, loading, topicCount }: CreateTopicFormProps) {
   const [expanded, setExpanded] = useState(false)
   const [title, setTitle] = useState('')
-  const [color, setColor] = useState(PRESET_COLORS[0])
+  const [color, setColor] = useState(PRESET_COLORS[topicCount % PRESET_COLORS.length])
   const [btnHovered, setBtnHovered] = useState(false)
 
   const handleSubmit = () => {
@@ -29,7 +30,7 @@ export function CreateTopicForm({ onSubmit, loading }: CreateTopicFormProps) {
     if (!trimmed) return
     onSubmit(trimmed, color)
     setTitle('')
-    setColor(PRESET_COLORS[0])
+    setColor(PRESET_COLORS[(topicCount + 1) % PRESET_COLORS.length])
     setExpanded(false)
   }
 
