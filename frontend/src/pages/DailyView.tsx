@@ -13,7 +13,7 @@ import { TweetDetailModal } from '../components/TweetDetailModal'
 import { UndoToast } from '../components/UndoToast'
 
 function todayStr(): string {
-  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+  const d = new Date()
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')

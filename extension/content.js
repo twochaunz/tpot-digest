@@ -109,7 +109,8 @@
     const existingToast = document.querySelector(".tpot-toast");
     if (existingToast) existingToast.remove();
 
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" })).toISOString().slice(0, 10);
+    const d = new Date();
+    const today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     const [topicsResp, catsResp] = await Promise.all([
       sendMessage({ type: "GET_TOPICS", date: today }),
       sendMessage({ type: "GET_CATEGORIES" }),
@@ -170,48 +171,81 @@
     });
     card.appendChild(topicContainer);
 
-    // Category select / input
+    // Category combobox
     const catLabel = document.createElement("label");
     catLabel.textContent = "Category";
     card.appendChild(catLabel);
 
     const catContainer = document.createElement("div");
-    const catSelect = document.createElement("select");
-    const newCatInput = document.createElement("input");
-    newCatInput.type = "text";
-    newCatInput.placeholder = "Type a category name\u2026";
+    catContainer.style.position = "relative";
 
-    if (categories.length > 0) {
-      // Show dropdown with existing categories
-      catSelect.innerHTML = '<option value="">None</option>';
-      categories.forEach((c) => {
-        const opt = document.createElement("option");
-        opt.value = c.id;
-        opt.textContent = c.name;
-        catSelect.appendChild(opt);
+    // Hidden fields to track selection
+    let selectedCatId = null;
+    let selectedCatName = "";
+
+    const catInput = document.createElement("input");
+    catInput.type = "text";
+    catInput.placeholder = categories.length > 0 ? "Search or create category\u2026" : "Type a category name\u2026";
+    catInput.autocomplete = "off";
+    catContainer.appendChild(catInput);
+
+    const catDropdown = document.createElement("div");
+    catDropdown.className = "tpot-cat-dropdown";
+    catDropdown.style.cssText = "display:none;position:absolute;left:0;right:0;top:100%;background:#1a1a2e;border:1px solid #3a3a5c;border-radius:6px;max-height:160px;overflow-y:auto;z-index:999;margin-top:2px;";
+    catContainer.appendChild(catDropdown);
+
+    function renderCatDropdown(query) {
+      catDropdown.innerHTML = "";
+      const q = (query || "").trim().toLowerCase();
+      const matches = categories.filter((c) => !q || c.name.toLowerCase().includes(q));
+      const exactMatch = categories.some((c) => c.name.toLowerCase() === q);
+
+      matches.forEach((c) => {
+        const item = document.createElement("div");
+        item.textContent = c.name;
+        item.style.cssText = "padding:6px 10px;cursor:pointer;font-size:13px;color:#e0e0e0;";
+        item.addEventListener("mouseenter", () => { item.style.background = "#2a2a4a"; });
+        item.addEventListener("mouseleave", () => { item.style.background = ""; });
+        item.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          selectedCatId = c.id;
+          selectedCatName = c.name;
+          catInput.value = c.name;
+          catDropdown.style.display = "none";
+        });
+        catDropdown.appendChild(item);
       });
-      const newCatOpt = document.createElement("option");
-      newCatOpt.value = "__new__";
-      newCatOpt.textContent = "+ New category\u2026";
-      catSelect.appendChild(newCatOpt);
-      catContainer.appendChild(catSelect);
 
-      newCatInput.style.display = "none";
-      catContainer.appendChild(newCatInput);
+      // Show "Create X" option if typed text doesn't exactly match an existing category
+      if (q && !exactMatch) {
+        const createItem = document.createElement("div");
+        createItem.textContent = "Create \u201c" + query.trim() + "\u201d";
+        createItem.style.cssText = "padding:6px 10px;cursor:pointer;font-size:13px;color:#8b8bff;font-style:italic;border-top:1px solid #3a3a5c;";
+        createItem.addEventListener("mouseenter", () => { createItem.style.background = "#2a2a4a"; });
+        createItem.addEventListener("mouseleave", () => { createItem.style.background = ""; });
+        createItem.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          selectedCatId = "__create__";
+          selectedCatName = query.trim();
+          catInput.value = query.trim();
+          catDropdown.style.display = "none";
+        });
+        catDropdown.appendChild(createItem);
+      }
 
-      catSelect.addEventListener("change", () => {
-        if (catSelect.value === "__new__") {
-          catSelect.style.display = "none";
-          newCatInput.style.display = "";
-          newCatInput.focus();
-        }
-      });
-    } else {
-      // No categories exist -- show text input directly
-      catSelect.style.display = "none";
-      catContainer.appendChild(catSelect);
-      catContainer.appendChild(newCatInput);
+      catDropdown.style.display = catDropdown.children.length > 0 ? "" : "none";
     }
+
+    catInput.addEventListener("focus", () => renderCatDropdown(catInput.value));
+    catInput.addEventListener("input", () => {
+      selectedCatId = null;
+      selectedCatName = "";
+      renderCatDropdown(catInput.value);
+    });
+    catInput.addEventListener("blur", () => {
+      setTimeout(() => { catDropdown.style.display = "none"; }, 150);
+    });
+
     card.appendChild(catContainer);
 
     // Date
@@ -285,12 +319,23 @@
           topicId = String(createResp.topic.id);
         }
 
-        let catId = catSelect.value ? Number(catSelect.value) : null;
+        let catId = null;
 
-        if (catSelect.style.display === "none" && newCatInput.value.trim()) {
+        if (selectedCatId === "__create__" && selectedCatName) {
+          // Create new category
           const createResp = await sendMessage({
             type: "CREATE_CATEGORY",
-            category: { name: newCatInput.value.trim() },
+            category: { name: selectedCatName },
+          });
+          if (createResp.error) throw new Error(createResp.error);
+          catId = createResp.category.id;
+        } else if (selectedCatId && selectedCatId !== "__create__") {
+          catId = Number(selectedCatId);
+        } else if (catInput.value.trim() && !selectedCatId) {
+          // User typed something but didn't select -- create it
+          const createResp = await sendMessage({
+            type: "CREATE_CATEGORY",
+            category: { name: catInput.value.trim() },
           });
           if (createResp.error) throw new Error(createResp.error);
           catId = createResp.category.id;
