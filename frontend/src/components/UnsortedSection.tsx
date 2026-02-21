@@ -222,6 +222,8 @@ export function UnsortedSection({
   onAssign,
   onDelete,
   onTweetClick,
+  onCreateCategory,
+  onDeleteCategory,
 }: UnsortedSectionProps) {
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
@@ -333,6 +335,8 @@ export function UnsortedSection({
             topics={topics}
             categories={categories}
             onAssign={handleAssign}
+            onCreateCategory={onCreateCategory}
+            onDeleteCategory={onDeleteCategory}
           />
           <button
             onClick={handleDeleteSelected}

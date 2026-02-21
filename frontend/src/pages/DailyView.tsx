@@ -1,14 +1,16 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTweets, useAssignTweets, useUnassignTweets } from '../api/tweets'
+import { useTweets, useAssignTweets, useUnassignTweets, useDeleteTweet } from '../api/tweets'
 import type { Tweet } from '../api/tweets'
-import { useTopics, useCreateTopic } from '../api/topics'
-import { useCategories } from '../api/categories'
+import { useTopics, useCreateTopic, useDeleteTopic } from '../api/topics'
+import { useCategories, useCreateCategory, useDeleteCategory } from '../api/categories'
+import { useUndo } from '../hooks/useUndo'
 import { DatePicker } from '../components/DatePicker'
 import { UnsortedSection } from '../components/UnsortedSection'
 import { TopicSectionWithData } from '../components/TopicSection'
 import { CreateTopicForm } from '../components/CreateTopicForm'
 import { TweetDetailModal } from '../components/TweetDetailModal'
+import { UndoToast } from '../components/UndoToast'
 
 function todayStr(): string {
   const d = new Date()
@@ -38,19 +40,34 @@ export function DailyView() {
   const assignMutation = useAssignTweets()
   const unassignMutation = useUnassignTweets()
   const createTopicMutation = useCreateTopic()
+  const deleteTweetMutation = useDeleteTweet()
+  const deleteTopicMutation = useDeleteTopic()
+  const createCategoryMutation = useCreateCategory()
+  const deleteCategoryMutation = useDeleteCategory()
+
+  // Undo
+  const undo = useUndo(date)
 
   const handleAssign = useCallback(
     (tweetIds: number[], topicId: number, categoryId?: number) => {
       assignMutation.mutate({ tweet_ids: tweetIds, topic_id: topicId, category_id: categoryId })
+      undo.push({
+        label: `${tweetIds.length} tweet${tweetIds.length > 1 ? 's' : ''} assigned`,
+        undo: () => unassignMutation.mutate({ tweet_ids: tweetIds, topic_id: topicId }),
+      })
     },
-    [assignMutation],
+    [assignMutation, unassignMutation, undo],
   )
 
   const handleUnassign = useCallback(
     (tweetIds: number[], topicId: number) => {
       unassignMutation.mutate({ tweet_ids: tweetIds, topic_id: topicId })
+      undo.push({
+        label: `${tweetIds.length} tweet${tweetIds.length > 1 ? 's' : ''} unassigned`,
+        undo: () => assignMutation.mutate({ tweet_ids: tweetIds, topic_id: topicId }),
+      })
     },
-    [unassignMutation],
+    [unassignMutation, assignMutation, undo],
   )
 
   const handleCreateTopic = useCallback(
@@ -58,6 +75,34 @@ export function DailyView() {
       createTopicMutation.mutate({ title, date, color })
     },
     [createTopicMutation, date],
+  )
+
+  const handleDeleteTweet = useCallback(
+    (tweetId: number) => {
+      deleteTweetMutation.mutate(tweetId)
+    },
+    [deleteTweetMutation],
+  )
+
+  const handleDeleteTopic = useCallback(
+    (topicId: number) => {
+      deleteTopicMutation.mutate(topicId)
+    },
+    [deleteTopicMutation],
+  )
+
+  const handleCreateCategory = useCallback(
+    (name: string, color: string) => {
+      createCategoryMutation.mutate({ name, color })
+    },
+    [createCategoryMutation],
+  )
+
+  const handleDeleteCategory = useCallback(
+    (id: number) => {
+      deleteCategoryMutation.mutate(id)
+    },
+    [deleteCategoryMutation],
   )
 
   const handleTweetClick = useCallback((tweet: Tweet) => {
@@ -86,7 +131,7 @@ export function DailyView() {
       >
         <div
           style={{
-            maxWidth: 960,
+            maxWidth: 1400,
             margin: '0 auto',
             padding: '16px 24px',
             display: 'flex',
@@ -162,7 +207,7 @@ export function DailyView() {
       {/* Main content */}
       <main
         style={{
-          maxWidth: 960,
+          maxWidth: 1400,
           margin: '0 auto',
           padding: '24px 24px 80px',
         }}
@@ -244,30 +289,58 @@ export function DailyView() {
               topics={topics}
               categories={categories}
               onAssign={handleAssign}
+              onDelete={handleDeleteTweet}
               onTweetClick={handleTweetClick}
+              onCreateCategory={handleCreateCategory}
+              onDeleteCategory={handleDeleteCategory}
             />
 
-            {/* Topic sections — each one fetches its own tweets internally */}
-            {topics.map((topic) => (
-              <TopicSectionWithData
-                key={topic.id}
-                topicId={topic.id}
-                title={topic.title}
-                color={topic.color}
-                date={date}
-                search={search}
-                onUnassign={handleUnassign}
-                onTweetClick={handleTweetClick}
-              />
-            ))}
+            {/* Kanban topic columns */}
+            {topics.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 16,
+                  overflowX: 'auto',
+                  paddingBottom: 16,
+                  minHeight: 300,
+                }}
+              >
+                {topics.map((topic) => (
+                  <TopicSectionWithData
+                    key={topic.id}
+                    topicId={topic.id}
+                    title={topic.title}
+                    color={topic.color}
+                    date={date}
+                    search={search}
+                    onUnassign={handleUnassign}
+                    onDelete={handleDeleteTopic}
+                    onTweetClick={handleTweetClick}
+                  />
+                ))}
 
-            {/* Create topic form */}
-            <div style={{ marginTop: topics.length > 0 ? 8 : 24 }}>
-              <CreateTopicForm
-                onSubmit={handleCreateTopic}
-                loading={createTopicMutation.isPending}
-              />
-            </div>
+                {/* Create topic card at end of row */}
+                <div style={{ width: 280, flexShrink: 0 }}>
+                  <CreateTopicForm
+                    onSubmit={handleCreateTopic}
+                    loading={createTopicMutation.isPending}
+                    topicCount={topics.length}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* If no topics yet, show create form standalone */}
+            {topics.length === 0 && (
+              <div style={{ marginTop: 24 }}>
+                <CreateTopicForm
+                  onSubmit={handleCreateTopic}
+                  loading={createTopicMutation.isPending}
+                  topicCount={0}
+                />
+              </div>
+            )}
           </>
         )}
       </main>
@@ -279,6 +352,13 @@ export function DailyView() {
           onClose={() => setDetailTweet(null)}
         />
       )}
+
+      {/* Undo toast */}
+      <UndoToast
+        action={undo.toast}
+        onUndo={undo.undoLast}
+        onDismiss={undo.dismissToast}
+      />
     </div>
   )
 }
