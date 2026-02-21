@@ -11,7 +11,7 @@ const TOAST_DURATION = 5000
 export function useUndo(clearKey?: string) {
   const [stack, setStack] = useState<UndoAction[]>([])
   const [toast, setToast] = useState<UndoAction | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Clear stack when clearKey changes (e.g. date changes)
   useEffect(() => {
