@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTweets, useAssignTweets, useUnassignTweets, useDeleteTweet } from '../api/tweets'
 import type { Tweet } from '../api/tweets'
-import { useTopics, useCreateTopic, useDeleteTopic } from '../api/topics'
+import { useTopics, useCreateTopic, useDeleteTopic, useUpdateTopic } from '../api/topics'
 import { useCategories, useCreateCategory, useDeleteCategory } from '../api/categories'
 import { useUndo } from '../hooks/useUndo'
 import { DatePicker } from '../components/DatePicker'
@@ -42,6 +42,7 @@ export function DailyView() {
   const createTopicMutation = useCreateTopic()
   const deleteTweetMutation = useDeleteTweet()
   const deleteTopicMutation = useDeleteTopic()
+  const updateTopicMutation = useUpdateTopic()
   const createCategoryMutation = useCreateCategory()
   const deleteCategoryMutation = useDeleteCategory()
 
@@ -89,6 +90,13 @@ export function DailyView() {
       deleteTopicMutation.mutate(topicId)
     },
     [deleteTopicMutation],
+  )
+
+  const handleUpdateTopicTitle = useCallback(
+    (topicId: number, title: string) => {
+      updateTopicMutation.mutate({ id: topicId, title })
+    },
+    [updateTopicMutation],
   )
 
   const handleCreateCategory = useCallback(
@@ -316,6 +324,7 @@ export function DailyView() {
                     search={search}
                     onUnassign={handleUnassign}
                     onDelete={handleDeleteTopic}
+                    onUpdateTitle={handleUpdateTopicTitle}
                     onTweetClick={handleTweetClick}
                   />
                 ))}

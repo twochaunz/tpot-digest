@@ -10,10 +10,20 @@ from app.schemas.topic import TopicCreate, TopicOut, TopicUpdate
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
 
+TOPIC_COLORS = [
+    '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
+    '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7',
+]
+
 
 @router.post("", response_model=TopicOut, status_code=201)
 async def create_topic(body: TopicCreate, db: AsyncSession = Depends(get_db)):
-    topic = Topic(title=body.title, date=body.date, color=body.color)
+    color = body.color
+    if not color:
+        count_result = await db.execute(select(Topic).where(Topic.date == body.date))
+        count = len(count_result.scalars().all())
+        color = TOPIC_COLORS[count % len(TOPIC_COLORS)]
+    topic = Topic(title=body.title, date=body.date, color=color)
     db.add(topic)
     await db.commit()
     await db.refresh(topic)
