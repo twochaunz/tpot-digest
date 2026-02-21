@@ -24,6 +24,7 @@ class TweetSave(BaseModel):
     memo: str | None = None
     topic_id: int | None = None
     category_id: int | None = None
+    saved_at: datetime | None = None
 
 
 class TweetOut(BaseModel):
