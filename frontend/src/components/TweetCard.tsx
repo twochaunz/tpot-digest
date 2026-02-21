@@ -122,16 +122,43 @@ export function TweetCard({ tweet, selected, onToggle, selectable = true, onTwee
       <div style={{ padding: '8px 10px' }}>
         <div
           style={{
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--text-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
             marginBottom: 2,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
           }}
         >
-          @{tweet.author_handle}
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+            }}
+          >
+            @{tweet.author_handle}
+          </span>
+          {tweet.url && (
+            <a
+              href={tweet.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                color: 'var(--text-tertiary)',
+                fontSize: 11,
+                lineHeight: 1,
+                flexShrink: 0,
+                textDecoration: 'none',
+              }}
+              title="Open on X"
+            >
+              &#8599;
+            </a>
+          )}
         </div>
         <div
           style={{
