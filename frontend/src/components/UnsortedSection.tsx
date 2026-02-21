@@ -1,18 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
+import { useDroppable, useDraggable } from '@dnd-kit/core'
 import type { Tweet } from '../api/tweets'
-import type { Topic } from '../api/topics'
-import type { Category } from '../api/categories'
-import { AssignDropdown } from './AssignDropdown'
 
 interface UnsortedSectionProps {
   tweets: Tweet[]
-  topics: Topic[]
-  categories: Category[]
-  onAssign: (tweetIds: number[], topicId: number, categoryId?: number) => void
   onDelete: (tweetId: number) => void
   onTweetClick?: (tweet: Tweet) => void
-  onCreateCategory?: (name: string, color: string) => void
-  onDeleteCategory?: (id: number) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }
 
 function screenshotUrl(path: string | null): string | null {
@@ -20,43 +14,81 @@ function screenshotUrl(path: string | null): string | null {
   return `/api/screenshots/${path}`
 }
 
-function FeedTweetCard({
+// Grip handle SVG (6 dots, 2x3)
+function GripHandle() {
+  return (
+    <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
+      <circle cx="3" cy="3" r="1.5" />
+      <circle cx="7" cy="3" r="1.5" />
+      <circle cx="3" cy="8" r="1.5" />
+      <circle cx="7" cy="8" r="1.5" />
+      <circle cx="3" cy="13" r="1.5" />
+      <circle cx="7" cy="13" r="1.5" />
+    </svg>
+  )
+}
+
+function DraggableFeedTweetCard({
   tweet,
-  selected,
-  onToggle,
   onDelete,
   onTweetClick,
+  onContextMenu,
 }: {
   tweet: Tweet
-  selected: boolean
-  onToggle: (id: number) => void
   onDelete: (id: number) => void
   onTweetClick?: (tweet: Tweet) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const [imgError, setImgError] = useState(false)
+
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `draggable-tweet-${tweet.id}`,
+    data: { tweet, sourceTopicId: null },
+  })
 
   const ssUrl = screenshotUrl(tweet.screenshot_path)
 
   return (
     <div
+      ref={setNodeRef}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => onTweetClick?.(tweet)}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu?.(e, tweet)
+      }}
       style={{
         display: 'flex',
-        gap: 12,
+        gap: 8,
         padding: '10px 12px',
         background: hovered ? 'var(--bg-hover)' : 'var(--bg-raised)',
-        border: selected
-          ? '1.5px solid var(--accent)'
-          : `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border)'}`,
+        border: `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border)'}`,
         borderRadius: 'var(--radius-md)',
         cursor: 'pointer',
         transition: 'all 0.15s ease',
         alignItems: 'center',
+        opacity: isDragging ? 0.3 : 1,
       }}
     >
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          cursor: 'grab',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '4px 2px',
+          flexShrink: 0,
+          touchAction: 'none',
+        }}
+      >
+        <GripHandle />
+      </div>
+
       {/* Screenshot thumbnail */}
       <div
         style={{
@@ -154,103 +186,41 @@ function FeedTweetCard({
         </div>
       </div>
 
-      {/* Right: checkbox + delete */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          flexShrink: 0,
-        }}
-      >
-        {/* Checkbox */}
-        <div
+      {/* Delete button (hover only) */}
+      {hovered && (
+        <button
           onClick={(e) => {
             e.stopPropagation()
-            onToggle(tweet.id)
+            onDelete(tweet.id)
           }}
           style={{
-            width: 18,
-            height: 18,
-            borderRadius: 'var(--radius-sm)',
-            border: selected ? 'none' : '1.5px solid var(--border-strong)',
-            background: selected ? 'var(--accent)' : 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            color: '#fff',
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-tertiary)',
+            fontSize: 16,
             cursor: 'pointer',
-            transition: 'all 0.15s ease',
+            padding: '2px 4px',
+            lineHeight: 1,
             flexShrink: 0,
           }}
+          title="Remove tweet"
         >
-          {selected && '\u2713'}
-        </div>
-
-        {/* Delete button (hover only) */}
-        {hovered && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(tweet.id)
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-tertiary)',
-              fontSize: 16,
-              cursor: 'pointer',
-              padding: '2px 4px',
-              lineHeight: 1,
-              flexShrink: 0,
-            }}
-            title="Remove tweet"
-          >
-            &times;
-          </button>
-        )}
-      </div>
+          &times;
+        </button>
+      )}
     </div>
   )
 }
 
 export function UnsortedSection({
   tweets,
-  topics,
-  categories,
-  onAssign,
   onDelete,
   onTweetClick,
-  onCreateCategory,
-  onDeleteCategory,
+  onContextMenu,
 }: UnsortedSectionProps) {
-  const [selected, setSelected] = useState<Set<number>>(new Set())
-
-  const toggle = useCallback((id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const handleAssign = useCallback(
-    (topicId: number, categoryId?: number) => {
-      if (selected.size === 0) return
-      onAssign(Array.from(selected), topicId, categoryId)
-      setSelected(new Set())
-    },
-    [selected, onAssign],
-  )
-
-  const handleDeleteSelected = useCallback(() => {
-    for (const id of selected) {
-      onDelete(id)
-    }
-    setSelected(new Set())
-  }, [selected, onDelete])
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'droppable-unsorted',
+  })
 
   if (tweets.length === 0) return null
 
@@ -258,10 +228,12 @@ export function UnsortedSection({
     <div
       style={{
         background: 'var(--bg-raised)',
-        border: '1px solid var(--border)',
+        border: isOver ? '2px dashed var(--accent)' : '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
         padding: 20,
         marginBottom: 24,
+        transition: 'all 0.15s ease',
+        backgroundColor: isOver ? 'color-mix(in srgb, var(--accent) 6%, var(--bg-raised))' : 'var(--bg-raised)',
       }}
     >
       {/* Header */}
@@ -297,78 +269,29 @@ export function UnsortedSection({
             {tweets.length}
           </span>
         </div>
-
-        {selected.size > 0 && (
-          <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 500 }}>
-            {selected.size} selected
-          </span>
-        )}
       </div>
 
       {/* Tweet list (scrollable) */}
       <div
+        ref={setNodeRef}
         style={{
           maxHeight: 400,
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
-          marginBottom: selected.size > 0 ? 16 : 0,
         }}
       >
         {tweets.map((t) => (
-          <FeedTweetCard
+          <DraggableFeedTweetCard
             key={t.id}
             tweet={t}
-            selected={selected.has(t.id)}
-            onToggle={toggle}
             onDelete={onDelete}
             onTweetClick={onTweetClick}
+            onContextMenu={onContextMenu}
           />
         ))}
       </div>
-
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <AssignDropdown
-            topics={topics}
-            categories={categories}
-            onAssign={handleAssign}
-            onCreateCategory={onCreateCategory}
-            onDeleteCategory={onDeleteCategory}
-          />
-          <button
-            onClick={handleDeleteSelected}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--danger, #e53e3e)',
-              fontSize: 12,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              fontWeight: 500,
-              fontFamily: 'var(--font-body)',
-            }}
-          >
-            Delete selected
-          </button>
-          <button
-            onClick={() => setSelected(new Set())}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-tertiary)',
-              fontSize: 12,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              fontFamily: 'var(--font-body)',
-            }}
-          >
-            Clear selection
-          </button>
-        </div>
-      )}
     </div>
   )
 }

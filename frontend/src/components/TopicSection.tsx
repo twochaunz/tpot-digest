@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
+import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets } from '../api/tweets'
 import type { Tweet } from '../api/tweets'
 import type { Category } from '../api/categories'
@@ -11,10 +12,10 @@ interface TopicSectionWithDataProps {
   color: string | null
   date: string
   search: string
-  onUnassign: (tweetIds: number[], topicId: number) => void
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }
 
 export function TopicSectionWithData({
@@ -23,10 +24,10 @@ export function TopicSectionWithData({
   color,
   date,
   search,
-  onUnassign,
   onDelete,
   onUpdateTitle,
   onTweetClick,
+  onContextMenu,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
   const tweets = tweetsQuery.data ?? []
@@ -46,11 +47,108 @@ export function TopicSectionWithData({
       title={title}
       color={color}
       tweetsByCategory={tweetsByCategory}
-      onUnassign={onUnassign}
       onDelete={onDelete}
       onUpdateTitle={onUpdateTitle}
       onTweetClick={onTweetClick}
+      onContextMenu={onContextMenu}
     />
+  )
+}
+
+// --- Grip handle SVG (4 dots, 2x2) ---
+function GripHandleSmall() {
+  return (
+    <svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
+      <circle cx="2.5" cy="3" r="1.2" />
+      <circle cx="5.5" cy="3" r="1.2" />
+      <circle cx="2.5" cy="7" r="1.2" />
+      <circle cx="5.5" cy="7" r="1.2" />
+    </svg>
+  )
+}
+
+// --- Draggable tweet row within a topic ---
+function DraggableTweetRow({
+  tweet,
+  topicId,
+  onTweetClick,
+  onContextMenu,
+}: {
+  tweet: Tweet
+  topicId: number
+  onTweetClick?: (tweet: Tweet) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `draggable-tweet-${tweet.id}`,
+    data: { tweet, sourceTopicId: topicId },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => onTweetClick?.(tweet)}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu?.(e, tweet)
+      }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 8px',
+        background: hovered ? 'var(--bg-hover)' : 'transparent',
+        border: '1px solid transparent',
+        borderRadius: 'var(--radius-sm)',
+        cursor: 'pointer',
+        transition: 'all 0.1s ease',
+        opacity: isDragging ? 0.3 : 1,
+      }}
+    >
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          cursor: 'grab',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '2px 1px',
+          flexShrink: 0,
+          touchAction: 'none',
+        }}
+      >
+        <GripHandleSmall />
+      </div>
+
+      <span
+        style={{
+          fontSize: 12,
+          color: 'var(--text-primary)',
+          fontWeight: 500,
+          flexShrink: 0,
+        }}
+      >
+        @{tweet.author_handle}
+      </span>
+      <span
+        style={{
+          fontSize: 11,
+          color: 'var(--text-tertiary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          flex: 1,
+        }}
+      >
+        {tweet.text.slice(0, 60)}
+      </span>
+    </div>
   )
 }
 
@@ -61,10 +159,10 @@ interface TopicSectionProps {
   title: string
   color: string | null
   tweetsByCategory: Map<number | null, { category: Category | null; tweets: Tweet[] }>
-  onUnassign: (tweetIds: number[], topicId: number) => void
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }
 
 function TopicSection({
@@ -72,16 +170,20 @@ function TopicSection({
   title,
   color,
   tweetsByCategory,
-  onUnassign,
   onDelete,
   onUpdateTitle,
   onTweetClick,
+  onContextMenu,
 }: TopicSectionProps) {
   const [headerHovered, setHeaderHovered] = useState(false)
-  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const { setNodeRef, isOver } = useDroppable({
+    id: `droppable-topic-${topicId}`,
+    data: { topicId },
+  })
 
   const commitEdit = useCallback(() => {
     const trimmed = editValue.trim()
@@ -92,15 +194,6 @@ function TopicSection({
     }
     setEditing(false)
   }, [editValue, title, topicId, onUpdateTitle])
-
-  const toggle = useCallback((id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
 
   const totalTweets = Array.from(tweetsByCategory.values()).reduce(
     (sum, g) => sum + g.tweets.length,
@@ -117,9 +210,10 @@ function TopicSection({
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--bg-raised)',
-        border: '1px solid var(--border)',
+        border: isOver ? `2px solid ${accentColor}` : '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
         overflow: 'hidden',
+        transition: 'border 0.15s ease',
       }}
     >
       {/* Header */}
@@ -231,18 +325,19 @@ function TopicSection({
         </button>
       </div>
 
-      {/* Body */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
+      {/* Body (droppable) */}
+      <div ref={setNodeRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', minHeight: 60 }}>
         {totalTweets === 0 && (
           <div
             style={{
               padding: '20px 0',
               fontSize: 12,
-              color: 'var(--text-tertiary)',
+              color: isOver ? 'var(--accent)' : 'var(--text-tertiary)',
               textAlign: 'center',
+              transition: 'color 0.15s ease',
             }}
           >
-            No tweets yet
+            {isOver ? 'Drop here' : 'No tweets yet'}
           </div>
         )}
 
@@ -282,119 +377,18 @@ function TopicSection({
             {/* Tweet rows */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {group.tweets.map((t) => (
-                <div
+                <DraggableTweetRow
                   key={t.id}
-                  onClick={() => onTweetClick?.(t)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '6px 8px',
-                    background: selected.has(t.id) ? 'var(--bg-hover)' : 'transparent',
-                    border: selected.has(t.id)
-                      ? '1px solid var(--accent)'
-                      : '1px solid transparent',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    transition: 'all 0.1s ease',
-                  }}
-                >
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggle(t.id)
-                    }}
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: 'var(--radius-sm)',
-                      border: selected.has(t.id) ? 'none' : '1.5px solid var(--border-strong)',
-                      background: selected.has(t.id) ? 'var(--accent)' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 10,
-                      color: '#fff',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {selected.has(t.id) && '\u2713'}
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--text-primary)',
-                      fontWeight: 500,
-                      flexShrink: 0,
-                    }}
-                  >
-                    @{t.author_handle}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--text-tertiary)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      flex: 1,
-                    }}
-                  >
-                    {t.text.slice(0, 60)}
-                  </span>
-                </div>
+                  tweet={t}
+                  topicId={topicId}
+                  onTweetClick={onTweetClick}
+                  onContextMenu={onContextMenu}
+                />
               ))}
             </div>
           </div>
         ))}
       </div>
-
-      {/* Unassign bar */}
-      {selected.size > 0 && (
-        <div
-          style={{
-            padding: '8px 10px',
-            borderTop: '1px solid var(--border)',
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-          }}
-        >
-          <button
-            onClick={() => {
-              onUnassign(Array.from(selected), topicId)
-              setSelected(new Set())
-            }}
-            style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-secondary)',
-              padding: '5px 10px',
-              fontSize: 11,
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontFamily: 'var(--font-body)',
-            }}
-          >
-            Unassign {selected.size}
-          </button>
-          <button
-            onClick={() => setSelected(new Set())}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-tertiary)',
-              fontSize: 11,
-              cursor: 'pointer',
-              fontFamily: 'var(--font-body)',
-            }}
-          >
-            Clear
-          </button>
-        </div>
-      )}
     </div>
   )
 }

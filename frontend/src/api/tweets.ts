@@ -58,6 +58,17 @@ export function useUnassignTweets() {
   })
 }
 
+export function usePatchTweet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: number; saved_at?: string }) => {
+      const { data } = await api.patch(`/tweets/${id}`, body)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
+  })
+}
+
 export function useDeleteTweet() {
   const qc = useQueryClient()
   return useMutation({
