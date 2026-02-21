@@ -89,8 +89,9 @@ async def list_tweets(
     stmt = select(Tweet)
 
     if date:
-        from sqlalchemy import cast, Date as SQLDate
-        stmt = stmt.where(cast(Tweet.saved_at, SQLDate) == date)
+        from sqlalchemy import func, text
+        local_date = func.date(func.timezone(text("'America/Los_Angeles'"), Tweet.saved_at))
+        stmt = stmt.where(local_date == date)
 
     if topic_id:
         assigned_ids = select(TweetAssignment.tweet_id).where(TweetAssignment.topic_id == topic_id)
