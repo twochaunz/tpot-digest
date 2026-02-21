@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react'
 import { useTweets } from '../api/tweets'
 import type { Tweet } from '../api/tweets'
 import type { Category } from '../api/categories'
-import { TweetCard } from './TweetCard'
 
 // --- Data wrapper component (calls hooks at top level) ---
 
@@ -13,6 +12,7 @@ interface TopicSectionWithDataProps {
   date: string
   search: string
   onUnassign: (tweetIds: number[], topicId: number) => void
+  onDelete: (topicId: number) => void
   onTweetClick?: (tweet: Tweet) => void
 }
 
@@ -23,6 +23,7 @@ export function TopicSectionWithData({
   date,
   search,
   onUnassign,
+  onDelete,
   onTweetClick,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
@@ -44,6 +45,7 @@ export function TopicSectionWithData({
       color={color}
       tweetsByCategory={tweetsByCategory}
       onUnassign={onUnassign}
+      onDelete={onDelete}
       onTweetClick={onTweetClick}
     />
   )
@@ -57,6 +59,7 @@ interface TopicSectionProps {
   color: string | null
   tweetsByCategory: Map<number | null, { category: Category | null; tweets: Tweet[] }>
   onUnassign: (tweetIds: number[], topicId: number) => void
+  onDelete: (topicId: number) => void
   onTweetClick?: (tweet: Tweet) => void
 }
 
@@ -66,9 +69,9 @@ function TopicSection({
   color,
   tweetsByCategory,
   onUnassign,
+  onDelete,
   onTweetClick,
 }: TopicSectionProps) {
-  const [collapsed, setCollapsed] = useState(false)
   const [headerHovered, setHeaderHovered] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
@@ -91,30 +94,26 @@ function TopicSection({
   return (
     <div
       style={{
+        width: 280,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
         background: 'var(--bg-raised)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
-        marginBottom: 16,
         overflow: 'hidden',
-        transition: 'border-color 0.15s ease',
       }}
     >
       {/* Header */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
+      <div
         onMouseEnter={() => setHeaderHovered(true)}
         onMouseLeave={() => setHeaderHovered(false)}
         style={{
-          width: '100%',
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          padding: '14px 20px',
-          background: headerHovered ? 'var(--bg-hover)' : 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'background 0.1s ease',
-          fontFamily: 'var(--font-body)',
+          gap: 8,
+          padding: '12px 14px',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         {/* Color dot */}
@@ -131,11 +130,13 @@ function TopicSection({
         {/* Title */}
         <span
           style={{
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: 600,
             color: 'var(--text-primary)',
             flex: 1,
-            textAlign: 'left',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {title}
@@ -144,145 +145,200 @@ function TopicSection({
         {/* Count */}
         <span
           style={{
-            fontSize: 12,
+            fontSize: 11,
             color: 'var(--text-tertiary)',
             fontWeight: 500,
           }}
         >
-          {totalTweets} tweet{totalTweets !== 1 ? 's' : ''}
+          {totalTweets}
         </span>
 
-        {/* Chevron */}
-        <span
-          style={{
-            fontSize: 14,
-            color: 'var(--text-tertiary)',
-            transition: 'transform 0.2s ease',
-            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+        {/* Delete button - shows on hover */}
+        <button
+          onClick={() => {
+            if (window.confirm(`Delete topic "${title}"? Tweets will be unassigned.`)) {
+              onDelete(topicId)
+            }
           }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-tertiary)',
+            fontSize: 13,
+            cursor: 'pointer',
+            padding: '2px 4px',
+            opacity: headerHovered ? 1 : 0,
+            transition: 'opacity 0.15s ease',
+            lineHeight: 1,
+          }}
+          title="Delete topic"
         >
-          &#9662;
-        </span>
-      </button>
+          &#128465;
+        </button>
+      </div>
 
       {/* Body */}
-      {!collapsed && (
-        <div style={{ padding: '0 20px 16px' }}>
-          {totalTweets === 0 && (
-            <div
-              style={{
-                padding: '12px 0',
-                fontSize: 12,
-                color: 'var(--text-tertiary)',
-              }}
-            >
-              No tweets in this topic yet. Assign tweets from the Unsorted section above.
-            </div>
-          )}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
+        {totalTweets === 0 && (
+          <div
+            style={{
+              padding: '20px 0',
+              fontSize: 12,
+              color: 'var(--text-tertiary)',
+              textAlign: 'center',
+            }}
+          >
+            No tweets yet
+          </div>
+        )}
 
-          {Array.from(tweetsByCategory.entries()).map(([catId, group]) => (
-            <div key={catId ?? 'uncategorized'} style={{ marginTop: 12 }}>
-              {/* Category label */}
+        {Array.from(tweetsByCategory.entries()).map(([catId, group]) => (
+          <div key={catId ?? 'uncategorized'} style={{ marginBottom: 8 }}>
+            {/* Category label if applicable */}
+            {group.category && (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  marginBottom: 10,
+                  gap: 6,
+                  marginBottom: 6,
+                  padding: '0 2px',
                 }}
               >
-                {group.category?.color && (
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      background: group.category.color,
-                    }}
-                  />
-                )}
                 <span
                   style={{
-                    fontSize: 12,
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: group.category.color || 'var(--text-tertiary)',
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
                     fontWeight: 500,
                     color: 'var(--text-secondary)',
                   }}
                 >
-                  {group.category?.name ?? 'Tweets'}
+                  {group.category.name}
                 </span>
-                <span
+              </div>
+            )}
+
+            {/* Tweet rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {group.tweets.map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => onTweetClick?.(t)}
                   style={{
-                    fontSize: 11,
-                    color: 'var(--text-tertiary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 8px',
+                    background: selected.has(t.id) ? 'var(--bg-hover)' : 'transparent',
+                    border: selected.has(t.id)
+                      ? '1px solid var(--accent)'
+                      : '1px solid transparent',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s ease',
                   }}
                 >
-                  ({group.tweets.length})
-                </span>
-              </div>
-
-              {/* Tweets */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {group.tweets.map((t) => (
-                  <TweetCard
-                    key={t.id}
-                    tweet={t}
-                    selected={selected.has(t.id)}
-                    onToggle={toggle}
-                    onTweetClick={onTweetClick}
-                  />
-                ))}
-              </div>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggle(t.id)
+                    }}
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 'var(--radius-sm)',
+                      border: selected.has(t.id) ? 'none' : '1.5px solid var(--border-strong)',
+                      background: selected.has(t.id) ? 'var(--accent)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      color: '#fff',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {selected.has(t.id) && '\u2713'}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--text-primary)',
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}
+                  >
+                    @{t.author_handle}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--text-tertiary)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      flex: 1,
+                    }}
+                  >
+                    {t.text.slice(0, 60)}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        ))}
+      </div>
 
-          {/* Unassign bar */}
-          {selected.size > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                marginTop: 16,
-                paddingTop: 12,
-                borderTop: '1px solid var(--border)',
-              }}
-            >
-              <button
-                onClick={() => {
-                  onUnassign(Array.from(selected), topicId)
-                  setSelected(new Set())
-                }}
-                style={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-secondary)',
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  fontFamily: 'var(--font-body)',
-                }}
-              >
-                Unassign {selected.size} tweet{selected.size !== 1 ? 's' : ''}
-              </button>
-              <button
-                onClick={() => setSelected(new Set())}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  fontFamily: 'var(--font-body)',
-                }}
-              >
-                Clear
-              </button>
-            </div>
-          )}
+      {/* Unassign bar */}
+      {selected.size > 0 && (
+        <div
+          style={{
+            padding: '8px 10px',
+            borderTop: '1px solid var(--border)',
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+          }}
+        >
+          <button
+            onClick={() => {
+              onUnassign(Array.from(selected), topicId)
+              setSelected(new Set())
+            }}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-secondary)',
+              padding: '5px 10px',
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Unassign {selected.size}
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-tertiary)',
+              fontSize: 11,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Clear
+          </button>
         </div>
       )}
     </div>
