@@ -1,9 +1,17 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTweets, useAssignTweets, useUnassignTweets, useDeleteTweet } from '../api/tweets'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  pointerWithin,
+} from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
+import { useTweets, useAssignTweets, useUnassignTweets, useDeleteTweet, usePatchTweet } from '../api/tweets'
 import type { Tweet } from '../api/tweets'
 import { useTopics, useCreateTopic, useDeleteTopic, useUpdateTopic } from '../api/topics'
-import { useCategories, useCreateCategory, useDeleteCategory } from '../api/categories'
 import { useUndo } from '../hooks/useUndo'
 import { DatePicker } from '../components/DatePicker'
 import { UnsortedSection } from '../components/UnsortedSection'
@@ -11,6 +19,8 @@ import { TopicSectionWithData } from '../components/TopicSection'
 import { CreateTopicForm } from '../components/CreateTopicForm'
 import { TweetDetailModal } from '../components/TweetDetailModal'
 import { UndoToast } from '../components/UndoToast'
+import { DragOverlayCard } from '../components/DragOverlayCard'
+import { ContextMenu } from '../components/ContextMenu'
 
 function todayStr(): string {
   const d = new Date()
@@ -27,13 +37,17 @@ export function DailyView() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
 
+  // Drag state
+  const [activeDragTweet, setActiveDragTweet] = useState<Tweet | null>(null)
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet } | null>(null)
+
   // Data fetching
   const topicsQuery = useTopics(date)
-  const categoriesQuery = useCategories()
   const unsortedQuery = useTweets({ date, unassigned: true, q: search || undefined })
 
   const topics = topicsQuery.data ?? []
-  const categories = categoriesQuery.data ?? []
   const unsortedTweets = unsortedQuery.data ?? []
 
   // Mutations
@@ -43,11 +57,17 @@ export function DailyView() {
   const deleteTweetMutation = useDeleteTweet()
   const deleteTopicMutation = useDeleteTopic()
   const updateTopicMutation = useUpdateTopic()
-  const createCategoryMutation = useCreateCategory()
-  const deleteCategoryMutation = useDeleteCategory()
+  const patchTweetMutation = usePatchTweet()
 
   // Undo
   const undo = useUndo(date)
+
+  // DnD sensors: 8px activation distance so clicks still work
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  )
 
   const handleAssign = useCallback(
     (tweetIds: number[], topicId: number, categoryId?: number) => {
@@ -99,26 +119,79 @@ export function DailyView() {
     [updateTopicMutation],
   )
 
-  const handleCreateCategory = useCallback(
-    (name: string, color: string) => {
-      createCategoryMutation.mutate({ name, color })
-    },
-    [createCategoryMutation],
-  )
-
-  const handleDeleteCategory = useCallback(
-    (id: number) => {
-      deleteCategoryMutation.mutate(id)
-    },
-    [deleteCategoryMutation],
-  )
-
   const handleTweetClick = useCallback((tweet: Tweet) => {
     setDetailTweet(tweet)
   }, [])
 
-  const isLoading =
-    topicsQuery.isLoading || categoriesQuery.isLoading || unsortedQuery.isLoading
+  const handleContextMenu = useCallback((e: React.MouseEvent, tweet: Tweet) => {
+    setContextMenu({ x: e.clientX, y: e.clientY, tweet })
+  }, [])
+
+  const handleMoveToDate = useCallback(
+    (tweetId: number, targetDate: string) => {
+      const originalDate = date
+      // Set saved_at to noon on target date
+      patchTweetMutation.mutate({ id: tweetId, saved_at: `${targetDate}T12:00:00` })
+      undo.push({
+        label: 'Tweet moved to ' + targetDate,
+        undo: () => patchTweetMutation.mutate({ id: tweetId, saved_at: `${originalDate}T12:00:00` }),
+      })
+    },
+    [patchTweetMutation, undo, date],
+  )
+
+  // Drag handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const tweet = event.active.data.current?.tweet as Tweet | undefined
+    if (tweet) setActiveDragTweet(tweet)
+  }, [])
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDragTweet(null)
+
+      const { active, over } = event
+      if (!over) return
+
+      const tweet = active.data.current?.tweet as Tweet | undefined
+      const sourceTopicId = active.data.current?.sourceTopicId as number | null
+      if (!tweet) return
+
+      const overId = over.id as string
+
+      // Determine target
+      if (overId === 'droppable-unsorted') {
+        // Dropping into unsorted
+        if (sourceTopicId === null) return // already unsorted, no-op
+        // Topic -> Unsorted: unassign
+        handleUnassign([tweet.id], sourceTopicId)
+      } else if (overId.startsWith('droppable-topic-')) {
+        const targetTopicId = parseInt(overId.replace('droppable-topic-', ''), 10)
+
+        if (sourceTopicId === null) {
+          // Unsorted -> Topic: assign
+          handleAssign([tweet.id], targetTopicId)
+        } else if (sourceTopicId === targetTopicId) {
+          // Same topic, no-op
+          return
+        } else {
+          // Topic A -> Topic B: unassign from A, assign to B
+          unassignMutation.mutate({ tweet_ids: [tweet.id], topic_id: sourceTopicId })
+          assignMutation.mutate({ tweet_ids: [tweet.id], topic_id: targetTopicId })
+          undo.push({
+            label: 'Tweet reassigned',
+            undo: () => {
+              unassignMutation.mutate({ tweet_ids: [tweet.id], topic_id: targetTopicId })
+              assignMutation.mutate({ tweet_ids: [tweet.id], topic_id: sourceTopicId })
+            },
+          })
+        }
+      }
+    },
+    [handleAssign, handleUnassign, assignMutation, unassignMutation, undo],
+  )
+
+  const isLoading = topicsQuery.isLoading || unsortedQuery.isLoading
 
   return (
     <div
@@ -257,7 +330,12 @@ export function DailyView() {
 
         {/* Content when loaded */}
         {!isLoading && (
-          <>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={pointerWithin}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
             {/* Empty state */}
             {unsortedTweets.length === 0 && topics.length === 0 && !search && (
               <div
@@ -294,13 +372,9 @@ export function DailyView() {
             {/* Unsorted section */}
             <UnsortedSection
               tweets={unsortedTweets}
-              topics={topics}
-              categories={categories}
-              onAssign={handleAssign}
               onDelete={handleDeleteTweet}
               onTweetClick={handleTweetClick}
-              onCreateCategory={handleCreateCategory}
-              onDeleteCategory={handleDeleteCategory}
+              onContextMenu={handleContextMenu}
             />
 
             {/* Kanban topic columns */}
@@ -322,10 +396,10 @@ export function DailyView() {
                     color={topic.color}
                     date={date}
                     search={search}
-                    onUnassign={handleUnassign}
                     onDelete={handleDeleteTopic}
                     onUpdateTitle={handleUpdateTopicTitle}
                     onTweetClick={handleTweetClick}
+                    onContextMenu={handleContextMenu}
                   />
                 ))}
 
@@ -350,9 +424,26 @@ export function DailyView() {
                 />
               </div>
             )}
-          </>
+
+            {/* Drag overlay */}
+            <DragOverlay>
+              {activeDragTweet ? <DragOverlayCard tweet={activeDragTweet} /> : null}
+            </DragOverlay>
+          </DndContext>
         )}
       </main>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          tweet={contextMenu.tweet}
+          onClose={() => setContextMenu(null)}
+          onDelete={handleDeleteTweet}
+          onMoveToDate={handleMoveToDate}
+        />
+      )}
 
       {/* Tweet detail modal */}
       {detailTweet && (
