@@ -103,19 +103,63 @@
 
   // ── Action Card ────────────────────────────────────────────────────
 
-  async function showActionCard(tweetDbId, authorHandle) {
+  function extractPostedDate(article) {
+    const timeEl = article ? article.querySelector("time[datetime]") : null;
+    if (!timeEl) return null;
+    const dt = new Date(timeEl.getAttribute("datetime"));
+    if (isNaN(dt.getTime())) return null;
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return yyyy + "-" + mm + "-" + dd;
+  }
+
+  function toLocalDateStr(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  async function loadTopicsForDate(dateStr, topicSelect, newTopicInput) {
+    // Reset select, keep "—" and "+ New topic"
+    const prevValue = topicSelect.value;
+    topicSelect.innerHTML = '<option value="">\u2014</option>';
+    const resp = await sendMessage({ type: "GET_TOPICS", date: dateStr });
+    const topics = (resp && resp.topics) || [];
+    topics.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = t.title;
+      topicSelect.appendChild(opt);
+    });
+    const newOpt = document.createElement("option");
+    newOpt.value = "__new__";
+    newOpt.textContent = "+ New topic\u2026";
+    topicSelect.appendChild(newOpt);
+    // Restore previous selection if it still exists, else reset
+    if (prevValue && topicSelect.querySelector('option[value="' + prevValue + '"]')) {
+      topicSelect.value = prevValue;
+    } else {
+      topicSelect.value = "";
+      topicSelect.style.display = "";
+      newTopicInput.style.display = "none";
+    }
+  }
+
+  async function showActionCard(tweetDbId, authorHandle, article) {
     const existing = document.querySelector(".tpot-action-card");
     if (existing) existing.remove();
     const existingToast = document.querySelector(".tpot-toast");
     if (existingToast) existingToast.remove();
 
-    const d = new Date();
-    const today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const today = toLocalDateStr(new Date());
+    const postedDate = extractPostedDate(article);
+    let usePostedDate = !!postedDate && postedDate !== today;
+    const activeDate = usePostedDate ? postedDate : today;
+
     const [topicsResp, catsResp] = await Promise.all([
-      sendMessage({ type: "GET_TOPICS", date: today }),
+      sendMessage({ type: "GET_TOPICS", date: activeDate }),
       sendMessage({ type: "GET_CATEGORIES" }),
     ]);
-    const topics = (topicsResp && topicsResp.topics) || [];
+    let topics = (topicsResp && topicsResp.topics) || [];
     const categories = (catsResp && catsResp.categories) || [];
 
     const card = document.createElement("div");
@@ -143,7 +187,7 @@
 
     const topicContainer = document.createElement("div");
     const topicSelect = document.createElement("select");
-    topicSelect.innerHTML = '<option value="">—</option>';
+    topicSelect.innerHTML = '<option value="">\u2014</option>';
     topics.forEach((t) => {
       const opt = document.createElement("option");
       opt.value = t.id;
@@ -248,14 +292,62 @@
 
     card.appendChild(catContainer);
 
-    // Date
+    // Date — toggle + date input
     const dateLabel = document.createElement("label");
     dateLabel.textContent = "Date";
     card.appendChild(dateLabel);
+
+    const dateRow = document.createElement("div");
+    dateRow.style.cssText = "display:flex;gap:6px;align-items:center;";
+
     const dateInput = document.createElement("input");
     dateInput.type = "date";
-    dateInput.value = today;
-    card.appendChild(dateInput);
+    dateInput.value = activeDate;
+    dateInput.style.flex = "1";
+
+    // Toggle button: posted date vs today
+    const dateToggle = document.createElement("button");
+    dateToggle.style.cssText = "background:#2a2a4a;border:1px solid #3a3a5c;border-radius:6px;color:#a0a0c0;font-size:11px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-family:inherit;";
+    function updateToggleLabel() {
+      if (usePostedDate) {
+        dateToggle.textContent = "Posted";
+        dateToggle.title = "Using tweet's posted date. Click for today.";
+      } else {
+        dateToggle.textContent = "Today";
+        dateToggle.title = "Using today's date. Click for posted date.";
+      }
+    }
+    updateToggleLabel();
+
+    // Only show toggle if posted date differs from today
+    if (postedDate && postedDate !== today) {
+      dateToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        usePostedDate = !usePostedDate;
+        dateInput.value = usePostedDate ? postedDate : today;
+        updateToggleLabel();
+        // Re-fetch topics for the new date
+        loadTopicsForDate(dateInput.value, topicSelect, newTopicInput);
+      });
+    } else {
+      dateToggle.style.display = "none";
+    }
+
+    dateRow.appendChild(dateInput);
+    dateRow.appendChild(dateToggle);
+    card.appendChild(dateRow);
+
+    // Re-fetch topics when date input changes manually
+    dateInput.addEventListener("change", () => {
+      // Update toggle state to reflect manual override
+      if (dateInput.value === today) {
+        usePostedDate = false;
+      } else if (dateInput.value === postedDate) {
+        usePostedDate = true;
+      }
+      updateToggleLabel();
+      loadTopicsForDate(dateInput.value, topicSelect, newTopicInput);
+    });
 
     // Memo
     const memoLabel = document.createElement("label");
@@ -343,7 +435,7 @@
 
         const updates = {};
         if (memoInput.value.trim()) updates.memo = memoInput.value.trim();
-        if (dateInput.value !== today) updates.saved_at = dateInput.value + "T00:00:00Z";
+        if (dateInput.value !== today) updates.saved_at = dateInput.value + "T12:00:00";
         if (Object.keys(updates).length > 0) {
           await sendMessage({ type: "UPDATE_TWEET", tweetDbId: tweetDbId, updates });
         }
@@ -477,6 +569,9 @@
       const tweetPayload = { ...tweetData };
       if (screenshot) tweetPayload.screenshot_base64 = screenshot;
       if (screenshotError) tweetPayload.screenshot_error = screenshotError;
+      // Default saved_at to the tweet's posted date if available
+      const postedDate = extractPostedDate(article);
+      if (postedDate) tweetPayload.saved_at = postedDate + "T12:00:00";
       const saveResp = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
           type: "SAVE_TWEET",
@@ -497,7 +592,7 @@
       if (saveResp && saveResp.status === "duplicate") {
         showToast("Tweet already saved — @" + tweetData.author_handle, false);
       } else {
-        showActionCard(saveResp.id, tweetData.author_handle);
+        showActionCard(saveResp.id, tweetData.author_handle, article);
       }
     } catch (err) {
       button.classList.remove("saving");

@@ -40,7 +40,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         logging.getLogger("tpot").warning("Screenshot capture failed for %s: %s", body.tweet_id, body.screenshot_error)
     screenshot_path = _save_screenshot(body.tweet_id, body.screenshot_base64) if body.screenshot_base64 else None
 
-    tweet = Tweet(
+    kwargs = dict(
         tweet_id=body.tweet_id,
         author_handle=body.author_handle,
         author_display_name=body.author_display_name,
@@ -59,6 +59,9 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         url=body.url,
         memo=body.memo,
     )
+    if body.saved_at:
+        kwargs["saved_at"] = body.saved_at
+    tweet = Tweet(**kwargs)
     db.add(tweet)
     await db.flush()
 
