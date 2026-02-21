@@ -4,9 +4,12 @@ async function getConfig() {
   return chrome.storage.sync.get(DEFAULT_CONFIG);
 }
 
+function pstDate() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" })).toISOString().slice(0, 10);
+}
+
 function todayKey() {
-  const d = new Date();
-  return "count_" + d.toISOString().slice(0, 10);
+  return "count_" + pstDate();
 }
 
 async function incrementCount() {
@@ -127,7 +130,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 async function handleGetTopics(message) {
   const config = await getConfig();
-  const dateStr = message.date || new Date().toISOString().slice(0, 10);
+  const dateStr = message.date || pstDate();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/topics?date=" + dateStr;
   try {
     const resp = await fetch(url, { headers: authHeaders(config) });

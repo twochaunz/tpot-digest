@@ -109,7 +109,7 @@
     const existingToast = document.querySelector(".tpot-toast");
     if (existingToast) existingToast.remove();
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" })).toISOString().slice(0, 10);
     const [topicsResp, catsResp] = await Promise.all([
       sendMessage({ type: "GET_TOPICS", date: today }),
       sendMessage({ type: "GET_CATEGORIES" }),
@@ -170,39 +170,48 @@
     });
     card.appendChild(topicContainer);
 
-    // Category select
+    // Category select / input
     const catLabel = document.createElement("label");
     catLabel.textContent = "Category";
     card.appendChild(catLabel);
 
     const catContainer = document.createElement("div");
     const catSelect = document.createElement("select");
-    catSelect.innerHTML = '<option value="">—</option>';
-    categories.forEach((c) => {
-      const opt = document.createElement("option");
-      opt.value = c.id;
-      opt.textContent = c.name;
-      catSelect.appendChild(opt);
-    });
-    const newCatOpt = document.createElement("option");
-    newCatOpt.value = "__new__";
-    newCatOpt.textContent = "+ New category\u2026";
-    catSelect.appendChild(newCatOpt);
-    catContainer.appendChild(catSelect);
-
     const newCatInput = document.createElement("input");
     newCatInput.type = "text";
-    newCatInput.placeholder = "Category name";
-    newCatInput.style.display = "none";
-    catContainer.appendChild(newCatInput);
+    newCatInput.placeholder = "Type a category name\u2026";
 
-    catSelect.addEventListener("change", () => {
-      if (catSelect.value === "__new__") {
-        catSelect.style.display = "none";
-        newCatInput.style.display = "";
-        newCatInput.focus();
-      }
-    });
+    if (categories.length > 0) {
+      // Show dropdown with existing categories
+      catSelect.innerHTML = '<option value="">None</option>';
+      categories.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name;
+        catSelect.appendChild(opt);
+      });
+      const newCatOpt = document.createElement("option");
+      newCatOpt.value = "__new__";
+      newCatOpt.textContent = "+ New category\u2026";
+      catSelect.appendChild(newCatOpt);
+      catContainer.appendChild(catSelect);
+
+      newCatInput.style.display = "none";
+      catContainer.appendChild(newCatInput);
+
+      catSelect.addEventListener("change", () => {
+        if (catSelect.value === "__new__") {
+          catSelect.style.display = "none";
+          newCatInput.style.display = "";
+          newCatInput.focus();
+        }
+      });
+    } else {
+      // No categories exist -- show text input directly
+      catSelect.style.display = "none";
+      catContainer.appendChild(catSelect);
+      catContainer.appendChild(newCatInput);
+    }
     card.appendChild(catContainer);
 
     // Date
