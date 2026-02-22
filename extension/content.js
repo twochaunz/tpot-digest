@@ -114,6 +114,13 @@
     return yyyy + "-" + mm + "-" + dd;
   }
 
+  function shiftDateStr(dateStr, days) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
+  }
+
   function toLocalDateStr(d) {
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
@@ -204,6 +211,60 @@
     header.textContent = "\u2713 Saved @" + authorHandle;
     card.appendChild(header);
 
+    // Date — rotating preset button + date input (above topic/category)
+    const dateLabel = document.createElement("label");
+    dateLabel.textContent = "Date";
+    card.appendChild(dateLabel);
+
+    const dateRow = document.createElement("div");
+    dateRow.style.cssText = "display:flex;gap:6px;align-items:center;";
+
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.value = activeDate;
+    dateInput.style.flex = "1";
+
+    // Rotating preset button: posted -> post-1 -> post+1 -> posted ...
+    const datePresets = [];
+    if (postedDate) {
+      datePresets.push({ label: "Posted", date: postedDate });
+      datePresets.push({ label: "\u22121 day", date: shiftDateStr(postedDate, -1) });
+      datePresets.push({ label: "+1 day", date: shiftDateStr(postedDate, 1) });
+    }
+    let presetIndex = 0;
+
+    const dateToggle = document.createElement("button");
+    dateToggle.style.cssText = "background:#2a2a4a;border:1px solid #3a3a5c;border-radius:6px;color:#a0a0c0;font-size:11px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-family:inherit;";
+
+    function updateToggleLabel() {
+      if (datePresets.length > 0) {
+        dateToggle.textContent = datePresets[presetIndex].label;
+        dateToggle.title = datePresets[presetIndex].date;
+      }
+    }
+
+    if (datePresets.length > 0) {
+      updateToggleLabel();
+      dateToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        presetIndex = (presetIndex + 1) % datePresets.length;
+        dateInput.value = datePresets[presetIndex].date;
+        updateToggleLabel();
+        loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown);
+      });
+    } else {
+      dateToggle.style.display = "none";
+    }
+
+    dateRow.appendChild(dateInput);
+    dateRow.appendChild(dateToggle);
+    card.appendChild(dateRow);
+
+    // Re-fetch topics when date input changes manually
+    dateInput.addEventListener("change", () => {
+      loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown);
+    });
+
     // Topic combobox
     const topicLabel = document.createElement("label");
     topicLabel.textContent = "Topic";
@@ -245,7 +306,6 @@
     const catContainer = document.createElement("div");
     catContainer.style.position = "relative";
 
-    // Hidden fields to track selection
     let selectedCatId = null;
     let selectedCatName = "";
 
@@ -282,7 +342,6 @@
         catDropdown.appendChild(item);
       });
 
-      // Show "Create X" option if typed text doesn't exactly match an existing category
       if (q && !exactMatch) {
         const createItem = document.createElement("div");
         createItem.textContent = "Create \u201c" + query.trim() + "\u201d";
@@ -313,63 +372,6 @@
     });
 
     card.appendChild(catContainer);
-
-    // Date — toggle + date input
-    const dateLabel = document.createElement("label");
-    dateLabel.textContent = "Date";
-    card.appendChild(dateLabel);
-
-    const dateRow = document.createElement("div");
-    dateRow.style.cssText = "display:flex;gap:6px;align-items:center;";
-
-    const dateInput = document.createElement("input");
-    dateInput.type = "date";
-    dateInput.value = activeDate;
-    dateInput.style.flex = "1";
-
-    // Toggle button: posted date vs today
-    const dateToggle = document.createElement("button");
-    dateToggle.style.cssText = "background:#2a2a4a;border:1px solid #3a3a5c;border-radius:6px;color:#a0a0c0;font-size:11px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-family:inherit;";
-    function updateToggleLabel() {
-      if (usePostedDate) {
-        dateToggle.textContent = "Posted";
-        dateToggle.title = "Using tweet's posted date. Click for today.";
-      } else {
-        dateToggle.textContent = "Today";
-        dateToggle.title = "Using today's date. Click for posted date.";
-      }
-    }
-    updateToggleLabel();
-
-    // Only show toggle if posted date differs from today
-    if (postedDate && postedDate !== today) {
-      dateToggle.addEventListener("click", (e) => {
-        e.preventDefault();
-        usePostedDate = !usePostedDate;
-        dateInput.value = usePostedDate ? postedDate : today;
-        updateToggleLabel();
-        // Re-fetch topics for the new date
-        loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown);
-      });
-    } else {
-      dateToggle.style.display = "none";
-    }
-
-    dateRow.appendChild(dateInput);
-    dateRow.appendChild(dateToggle);
-    card.appendChild(dateRow);
-
-    // Re-fetch topics when date input changes manually
-    dateInput.addEventListener("change", () => {
-      // Update toggle state to reflect manual override
-      if (dateInput.value === today) {
-        usePostedDate = false;
-      } else if (dateInput.value === postedDate) {
-        usePostedDate = true;
-      }
-      updateToggleLabel();
-      loadTopicsForDate(dateInput.value, topicSelect, newTopicInput);
-    });
 
     // Memo
     const memoLabel = document.createElement("label");
@@ -467,7 +469,7 @@
 
         const updates = {};
         if (memoInput.value.trim()) updates.memo = memoInput.value.trim();
-        if (dateInput.value !== today) updates.saved_at = dateInput.value + "T12:00:00";
+        if (dateInput.value !== activeDate) updates.saved_at = dateInput.value + "T12:00:00";
         if (Object.keys(updates).length > 0) {
           await sendMessage({ type: "UPDATE_TWEET", tweetDbId: tweetDbId, updates });
         }
