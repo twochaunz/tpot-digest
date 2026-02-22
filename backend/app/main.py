@@ -23,6 +23,9 @@ app.include_router(topics_router)
 from app.routers.categories import router as categories_router
 app.include_router(categories_router)
 
+from app.routers.waitlist import router as waitlist_router
+app.include_router(waitlist_router)
+
 
 @app.get("/api/health")
 async def health():
