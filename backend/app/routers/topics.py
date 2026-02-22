@@ -1,10 +1,11 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.models.assignment import TweetAssignment
 from app.models.topic import Topic
 from app.schemas.topic import TopicCreate, TopicOut, TopicUpdate
 
@@ -35,9 +36,22 @@ async def list_topics(
     date: date = Query(..., description="Filter by date"),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Topic).where(Topic.date == date).order_by(Topic.position)
+    tweet_count = func.count(TweetAssignment.tweet_id).label("tweet_count")
+    stmt = (
+        select(Topic, tweet_count)
+        .outerjoin(TweetAssignment, TweetAssignment.topic_id == Topic.id)
+        .where(Topic.date == date)
+        .group_by(Topic.id)
+        .order_by(tweet_count.desc(), Topic.position)
+    )
     result = await db.execute(stmt)
-    return result.scalars().all()
+    rows = result.all()
+    topics = []
+    for topic, count in rows:
+        out = TopicOut.model_validate(topic)
+        out.tweet_count = count
+        topics.append(out)
+    return topics
 
 
 @router.patch("/{topic_id}", response_model=TopicOut)
