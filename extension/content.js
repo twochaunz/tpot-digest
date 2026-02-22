@@ -118,30 +118,54 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
-  async function loadTopicsForDate(dateStr, topicSelect, newTopicInput) {
-    // Reset select, keep "—" and "+ New topic"
-    const prevValue = topicSelect.value;
-    topicSelect.innerHTML = '<option value="">\u2014</option>';
+  async function loadTopicsForDate(dateStr, topicState, topicInput, topicDropdown) {
     const resp = await sendMessage({ type: "GET_TOPICS", date: dateStr });
-    const topics = (resp && resp.topics) || [];
-    topics.forEach((t) => {
-      const opt = document.createElement("option");
-      opt.value = t.id;
-      opt.textContent = t.title;
-      topicSelect.appendChild(opt);
+    topicState.topics = (resp && resp.topics) || [];
+    topicState.selectedId = null;
+    topicState.selectedName = "";
+    topicInput.value = "";
+    renderTopicDropdown(topicState, topicInput, topicDropdown, "");
+  }
+
+  function renderTopicDropdown(topicState, topicInput, topicDropdown, query) {
+    topicDropdown.innerHTML = "";
+    const q = (query || "").trim().toLowerCase();
+    const matches = topicState.topics.filter((t) => !q || t.title.toLowerCase().includes(q));
+    const exactMatch = topicState.topics.some((t) => t.title.toLowerCase() === q);
+
+    matches.forEach((t) => {
+      const item = document.createElement("div");
+      item.textContent = t.title;
+      item.style.cssText = "padding:6px 10px;cursor:pointer;font-size:13px;color:#e0e0e0;";
+      item.addEventListener("mouseenter", () => { item.style.background = "#2a2a4a"; });
+      item.addEventListener("mouseleave", () => { item.style.background = ""; });
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        topicState.selectedId = t.id;
+        topicState.selectedName = t.title;
+        topicInput.value = t.title;
+        topicDropdown.style.display = "none";
+      });
+      topicDropdown.appendChild(item);
     });
-    const newOpt = document.createElement("option");
-    newOpt.value = "__new__";
-    newOpt.textContent = "+ New topic\u2026";
-    topicSelect.appendChild(newOpt);
-    // Restore previous selection if it still exists, else reset
-    if (prevValue && topicSelect.querySelector('option[value="' + prevValue + '"]')) {
-      topicSelect.value = prevValue;
-    } else {
-      topicSelect.value = "";
-      topicSelect.style.display = "";
-      newTopicInput.style.display = "none";
+
+    if (q && !exactMatch) {
+      const createItem = document.createElement("div");
+      createItem.textContent = "Create \u201c" + query.trim() + "\u201d";
+      createItem.style.cssText = "padding:6px 10px;cursor:pointer;font-size:13px;color:#8b8bff;font-style:italic;border-top:1px solid #3a3a5c;";
+      createItem.addEventListener("mouseenter", () => { createItem.style.background = "#2a2a4a"; });
+      createItem.addEventListener("mouseleave", () => { createItem.style.background = ""; });
+      createItem.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        topicState.selectedId = "__create__";
+        topicState.selectedName = query.trim();
+        topicInput.value = query.trim();
+        topicDropdown.style.display = "none";
+      });
+      topicDropdown.appendChild(createItem);
     }
+
+    topicDropdown.style.display = topicDropdown.children.length > 0 ? "" : "none";
   }
 
   async function showActionCard(tweetDbId, authorHandle, article) {
@@ -180,39 +204,37 @@
     header.textContent = "\u2713 Saved @" + authorHandle;
     card.appendChild(header);
 
-    // Topic select
+    // Topic combobox
     const topicLabel = document.createElement("label");
     topicLabel.textContent = "Topic";
     card.appendChild(topicLabel);
 
+    const topicState = { topics: topics, selectedId: null, selectedName: "" };
+
     const topicContainer = document.createElement("div");
-    const topicSelect = document.createElement("select");
-    topicSelect.innerHTML = '<option value="">\u2014</option>';
-    topics.forEach((t) => {
-      const opt = document.createElement("option");
-      opt.value = t.id;
-      opt.textContent = t.title;
-      topicSelect.appendChild(opt);
-    });
-    const newOpt = document.createElement("option");
-    newOpt.value = "__new__";
-    newOpt.textContent = "+ New topic\u2026";
-    topicSelect.appendChild(newOpt);
-    topicContainer.appendChild(topicSelect);
+    topicContainer.style.position = "relative";
 
-    const newTopicInput = document.createElement("input");
-    newTopicInput.type = "text";
-    newTopicInput.placeholder = "Topic name";
-    newTopicInput.style.display = "none";
-    topicContainer.appendChild(newTopicInput);
+    const topicInput = document.createElement("input");
+    topicInput.type = "text";
+    topicInput.placeholder = topics.length > 0 ? "Search or create topic\u2026" : "Type a topic name\u2026";
+    topicInput.autocomplete = "off";
+    topicContainer.appendChild(topicInput);
 
-    topicSelect.addEventListener("change", () => {
-      if (topicSelect.value === "__new__") {
-        topicSelect.style.display = "none";
-        newTopicInput.style.display = "";
-        newTopicInput.focus();
-      }
+    const topicDropdown = document.createElement("div");
+    topicDropdown.className = "tpot-topic-dropdown";
+    topicDropdown.style.cssText = "display:none;position:absolute;left:0;right:0;top:100%;background:#1a1a2e;border:1px solid #3a3a5c;border-radius:6px;max-height:160px;overflow-y:auto;z-index:999;margin-top:2px;";
+    topicContainer.appendChild(topicDropdown);
+
+    topicInput.addEventListener("focus", () => renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value));
+    topicInput.addEventListener("input", () => {
+      topicState.selectedId = null;
+      topicState.selectedName = "";
+      renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value);
     });
+    topicInput.addEventListener("blur", () => {
+      setTimeout(() => { topicDropdown.style.display = "none"; }, 150);
+    });
+
     card.appendChild(topicContainer);
 
     // Category combobox
@@ -327,7 +349,7 @@
         dateInput.value = usePostedDate ? postedDate : today;
         updateToggleLabel();
         // Re-fetch topics for the new date
-        loadTopicsForDate(dateInput.value, topicSelect, newTopicInput);
+        loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown);
       });
     } else {
       dateToggle.style.display = "none";
@@ -400,12 +422,22 @@
       assignBtn.textContent = "Saving\u2026";
 
       try {
-        let topicId = topicSelect.value;
+        let topicId = null;
 
-        if (topicSelect.style.display === "none" && newTopicInput.value.trim()) {
+        if (topicState.selectedId === "__create__" && topicState.selectedName) {
           const createResp = await sendMessage({
             type: "CREATE_TOPIC",
-            topic: { title: newTopicInput.value.trim(), date: dateInput.value },
+            topic: { title: topicState.selectedName, date: dateInput.value },
+          });
+          if (createResp.error) throw new Error(createResp.error);
+          topicId = String(createResp.topic.id);
+        } else if (topicState.selectedId && topicState.selectedId !== "__create__") {
+          topicId = String(topicState.selectedId);
+        } else if (topicInput.value.trim() && !topicState.selectedId) {
+          // User typed something but didn't select -- create it
+          const createResp = await sendMessage({
+            type: "CREATE_TOPIC",
+            topic: { title: topicInput.value.trim(), date: dateInput.value },
           });
           if (createResp.error) throw new Error(createResp.error);
           topicId = String(createResp.topic.id);
@@ -440,7 +472,7 @@
           await sendMessage({ type: "UPDATE_TWEET", tweetDbId: tweetDbId, updates });
         }
 
-        if (topicId && topicId !== "" && topicId !== "__new__") {
+        if (topicId) {
           await sendMessage({
             type: "ASSIGN_TWEET",
             assignment: { tweet_ids: [tweetDbId], topic_id: Number(topicId), category_id: catId },
