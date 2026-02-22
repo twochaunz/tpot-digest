@@ -1,6 +1,7 @@
 import './styles/design-system.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { LandingPage } from './pages/LandingPage'
 import { DailyView } from './pages/DailyView'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -18,8 +19,9 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<DailyView />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/app" element={<DailyView />} />
+          <Route path="/app/settings" element={<SettingsPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

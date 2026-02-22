@@ -32,7 +32,7 @@ export function SettingsPage() {
           }}
         >
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/app')}
             style={{
               background: 'none',
               border: '1px solid var(--border)',
