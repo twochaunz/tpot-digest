@@ -263,7 +263,7 @@ export function DailyView() {
 
           {/* Settings */}
           <button
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate('/app/settings')}
             style={{
               background: 'none',
               border: '1px solid var(--border)',
