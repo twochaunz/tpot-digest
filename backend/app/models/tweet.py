@@ -28,6 +28,7 @@ class Tweet(Base):
     feed_source: Mapped[str | None] = mapped_column(String(32))
     url: Mapped[str | None] = mapped_column(String(512))
     memo: Mapped[str | None] = mapped_column(Text)
+    grok_context: Mapped[str | None] = mapped_column(Text)
     author_avatar_url: Mapped[str | None] = mapped_column(String(1024))
     author_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -100,7 +100,6 @@ function DraggableTweetInTopic({
           onTweetClick={onTweetClick}
           onContextMenu={onContextMenu}
           showEngagement={showEngagement}
-          width="100%"
         />
       </div>
     </div>
@@ -135,6 +134,7 @@ function TopicSection({
   const [headerHovered, setHeaderHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
+  const [collapsed, setCollapsed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const { setNodeRef, isOver } = useDroppable({
@@ -162,8 +162,7 @@ function TopicSection({
   return (
     <div
       style={{
-        width: 300,
-        flexShrink: 0,
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--bg-raised)',
@@ -181,10 +180,25 @@ function TopicSection({
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '12px 14px',
-          borderBottom: '1px solid var(--border)',
+          padding: '12px 16px',
+          borderBottom: collapsed ? 'none' : '1px solid var(--border)',
+          cursor: 'pointer',
         }}
+        onClick={() => setCollapsed((v) => !v)}
       >
+        {/* Collapse arrow */}
+        <span
+          style={{
+            fontSize: 10,
+            color: 'var(--text-tertiary)',
+            transition: 'transform 0.15s ease',
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            flexShrink: 0,
+          }}
+        >
+          &#9660;
+        </span>
+
         {/* Color dot */}
         <span
           style={{
@@ -210,6 +224,7 @@ function TopicSection({
               }
             }}
             onBlur={commitEdit}
+            onClick={(e) => e.stopPropagation()}
             autoFocus
             style={{
               flex: 1,
@@ -227,7 +242,8 @@ function TopicSection({
           />
         ) : (
           <span
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               setEditValue(title)
               setEditing(true)
             }}
@@ -260,7 +276,8 @@ function TopicSection({
 
         {/* Delete button - shows on hover */}
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation()
             if (window.confirm(`Delete topic "${title}"? Tweets will be unassigned.`)) {
               onDelete(topicId)
             }
@@ -282,71 +299,73 @@ function TopicSection({
         </button>
       </div>
 
-      {/* Body (droppable) */}
-      <div ref={setNodeRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', minHeight: 60 }}>
-        {totalTweets === 0 && (
-          <div
-            style={{
-              padding: '20px 0',
-              fontSize: 12,
-              color: isOver ? 'var(--accent)' : 'var(--text-tertiary)',
-              textAlign: 'center',
-              transition: 'color 0.15s ease',
-            }}
-          >
-            {isOver ? 'Drop here' : 'No tweets yet'}
-          </div>
-        )}
+      {/* Body (droppable) - collapsible */}
+      {!collapsed && (
+        <div ref={setNodeRef} style={{ padding: '12px 16px', minHeight: 60 }}>
+          {totalTweets === 0 && (
+            <div
+              style={{
+                padding: '20px 0',
+                fontSize: 12,
+                color: isOver ? 'var(--accent)' : 'var(--text-tertiary)',
+                textAlign: 'center',
+                transition: 'color 0.15s ease',
+              }}
+            >
+              {isOver ? 'Drop here' : 'No tweets yet'}
+            </div>
+          )}
 
-        {Array.from(tweetsByCategory.entries()).map(([catId, group]) => (
-          <div key={catId ?? 'uncategorized'} style={{ marginBottom: 8 }}>
-            {/* Category label if applicable */}
-            {group.category && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  marginBottom: 6,
-                  padding: '0 2px',
-                }}
-              >
-                <span
+          {Array.from(tweetsByCategory.entries()).map(([catId, group]) => (
+            <div key={catId ?? 'uncategorized'} style={{ marginBottom: 8 }}>
+              {/* Category label if applicable */}
+              {group.category && (
+                <div
                   style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: group.category.color || 'var(--text-tertiary)',
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginBottom: 6,
+                    padding: '0 2px',
                   }}
                 >
-                  {group.category.name}
-                </span>
-              </div>
-            )}
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: group.category.color || 'var(--text-tertiary)',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    {group.category.name}
+                  </span>
+                </div>
+              )}
 
-            {/* Tweet cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {group.tweets.map((t) => (
-                <DraggableTweetInTopic
-                  key={t.id}
-                  tweet={t}
-                  topicId={topicId}
-                  onTweetClick={onTweetClick}
-                  onContextMenu={onContextMenu}
-                  showEngagement={showEngagement}
-                />
-              ))}
+              {/* Tweet cards - vertical feed, max-width 600px */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 600 }}>
+                {group.tweets.map((t) => (
+                  <DraggableTweetInTopic
+                    key={t.id}
+                    tweet={t}
+                    topicId={topicId}
+                    onTweetClick={onTweetClick}
+                    onContextMenu={onContextMenu}
+                    showEngagement={showEngagement}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -400,15 +400,13 @@ export function DailyView() {
               showEngagement={showEngagement}
             />
 
-            {/* Kanban topic columns */}
+            {/* Topic sections (vertical feed) */}
             {topics.length > 0 && (
               <div
                 style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   gap: 16,
-                  overflowX: 'auto',
-                  paddingBottom: 16,
-                  minHeight: 300,
                 }}
               >
                 {topics.map((topic) => (
@@ -426,28 +424,17 @@ export function DailyView() {
                     showEngagement={showEngagement}
                   />
                 ))}
-
-                {/* Create topic card at end of row */}
-                <div style={{ width: 280, flexShrink: 0 }}>
-                  <CreateTopicForm
-                    onSubmit={handleCreateTopic}
-                    loading={createTopicMutation.isPending}
-                    topicCount={topics.length}
-                  />
-                </div>
               </div>
             )}
 
-            {/* If no topics yet, show create form standalone */}
-            {topics.length === 0 && (
-              <div style={{ marginTop: 24 }}>
-                <CreateTopicForm
-                  onSubmit={handleCreateTopic}
-                  loading={createTopicMutation.isPending}
-                  topicCount={0}
-                />
-              </div>
-            )}
+            {/* Create topic form */}
+            <div style={{ marginTop: 16, maxWidth: 600 }}>
+              <CreateTopicForm
+                onSubmit={handleCreateTopic}
+                loading={createTopicMutation.isPending}
+                topicCount={topics.length}
+              />
+            </div>
 
             {/* Drag overlay */}
             <DragOverlay>

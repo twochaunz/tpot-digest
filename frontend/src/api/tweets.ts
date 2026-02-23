@@ -18,6 +18,8 @@ export interface Tweet {
   screenshot_path: string | null
   feed_source: string | null
   url: string | null
+  memo: string | null
+  grok_context: string | null
   created_at: string | null
   saved_at: string
 }
@@ -64,7 +66,7 @@ export function useUnassignTweets() {
 export function usePatchTweet() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...body }: { id: number; saved_at?: string }) => {
+    mutationFn: async ({ id, ...body }: { id: number; memo?: string | null; saved_at?: string }) => {
       const { data } = await api.patch(`/tweets/${id}`, body)
       return data
     },

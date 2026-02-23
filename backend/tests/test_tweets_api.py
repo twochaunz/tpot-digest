@@ -207,3 +207,39 @@ async def test_x_api_failure_returns_502(client: AsyncClient, mock_fetch_tweet):
     resp = await client.post("/api/tweets", json={"tweet_id": "fail1"})
     assert resp.status_code == 502
     assert "rate limit" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_grok_endpoint(client: AsyncClient):
+    # Create a tweet first
+    await client.post("/api/tweets", json={"tweet_id": "grok1"})
+    tweets = (await client.get("/api/tweets")).json()
+    tid = tweets[0]["id"]
+
+    # Mock the grok API
+    with patch("app.services.grok_api.fetch_grok_context", new_callable=AsyncMock) as mock_grok:
+        mock_grok.return_value = "This tweet discusses Claude 4 and its capabilities."
+
+        resp = await client.post(f"/api/tweets/{tid}/grok")
+        assert resp.status_code == 200
+        assert resp.json()["grok_context"] == "This tweet discusses Claude 4 and its capabilities."
+
+        # Second call returns cached (no re-fetch)
+        mock_grok.reset_mock()
+        resp2 = await client.post(f"/api/tweets/{tid}/grok")
+        assert resp2.status_code == 200
+        assert resp2.json()["grok_context"] == "This tweet discusses Claude 4 and its capabilities."
+        mock_grok.assert_not_called()
+
+        # Force refresh calls API again
+        mock_grok.return_value = "Updated context."
+        resp3 = await client.post(f"/api/tweets/{tid}/grok", params={"force": True})
+        assert resp3.status_code == 200
+        assert resp3.json()["grok_context"] == "Updated context."
+        mock_grok.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_grok_endpoint_not_found(client: AsyncClient):
+    resp = await client.post("/api/tweets/99999/grok")
+    assert resp.status_code == 404
