@@ -4,6 +4,8 @@ import type { Tweet } from '../api/tweets'
 import { useTweets, usePatchTweet } from '../api/tweets'
 import { useGrokContext } from '../hooks/useGrokContext'
 import { CropTool } from './CropTool'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface TweetDetailModalProps {
   tweet: Tweet
@@ -434,12 +436,27 @@ export function TweetDetailModal({ tweet, onClose, showEngagement = true }: Twee
             >
               <div
                 style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
                 }}
               >
-                Grok Context
+                {/* Grok icon */}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12zm10-6l1.5 3.5L17 11l-3.5 1.5L12 16l-1.5-3.5L7 11l3.5-1.5L12 6z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  Grok Context
+                </span>
               </div>
               <button
                 onClick={() => grokMutation.mutate({ id: tweet.id, force: !!grokContext })}
@@ -479,17 +496,86 @@ export function TweetDetailModal({ tweet, onClose, showEngagement = true }: Twee
             {grokContext && (
               <div
                 style={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '12px 14px',
-                  fontSize: 13,
-                  color: 'var(--text-primary)',
+                  background: '#16181c',
+                  border: '1px solid #2f3336',
+                  borderRadius: 16,
+                  padding: '16px 20px',
+                  color: '#e7e9ea',
+                  fontSize: 14,
                   lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
                 }}
               >
-                {grokContext}
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ children }) => (
+                      <h1 style={{ fontSize: 18, fontWeight: 700, color: '#e7e9ea', margin: '16px 0 8px' }}>{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 style={{ fontSize: 16, fontWeight: 700, color: '#e7e9ea', margin: '14px 0 6px' }}>{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e7e9ea', margin: '12px 0 4px' }}>{children}</h3>
+                    ),
+                    p: ({ children }) => (
+                      <p style={{ margin: '0 0 10px', color: '#e7e9ea', lineHeight: 1.6 }}>{children}</p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul style={{ margin: '0 0 10px', paddingLeft: 20, color: '#e7e9ea' }}>{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol style={{ margin: '0 0 10px', paddingLeft: 20, color: '#e7e9ea' }}>{children}</ol>
+                    ),
+                    li: ({ children }) => (
+                      <li style={{ marginBottom: 4, lineHeight: 1.5 }}>{children}</li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong style={{ fontWeight: 700, color: '#ffffff' }}>{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em style={{ color: '#9ca3af' }}>{children}</em>
+                    ),
+                    a: ({ href, children }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#1d9bf0', textDecoration: 'none' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                      >
+                        {children}
+                      </a>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote
+                        style={{
+                          borderLeft: '3px solid #1d9bf0',
+                          paddingLeft: 12,
+                          margin: '8px 0',
+                          color: '#9ca3af',
+                        }}
+                      >
+                        {children}
+                      </blockquote>
+                    ),
+                    code: ({ children }) => (
+                      <code
+                        style={{
+                          background: '#2f3336',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          fontSize: 13,
+                          color: '#e7e9ea',
+                        }}
+                      >
+                        {children}
+                      </code>
+                    ),
+                  }}
+                >
+                  {grokContext}
+                </ReactMarkdown>
               </div>
             )}
           </div>
