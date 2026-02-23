@@ -49,6 +49,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
             f"{X_API_BASE}/tweets/{tweet_id}",
             params=params,
             headers=headers,
+            timeout=10.0,
         )
 
     # Handle HTTP-level errors
@@ -56,6 +57,8 @@ async def fetch_tweet(tweet_id: str) -> dict:
         raise XAPIError("X API rate limit exceeded")
     if response.status_code == 401:
         raise XAPIError("X API authentication failed")
+    if response.status_code not in (200, 201):
+        raise XAPIError(f"X API error: HTTP {response.status_code}")
 
     body = response.json()
 
@@ -92,6 +95,8 @@ async def fetch_tweet(tweet_id: str) -> dict:
 
     author_handle = author.get("username", "") if author else ""
 
+    metrics = data.get("public_metrics", {})
+
     return {
         "author_handle": author_handle,
         "author_display_name": author.get("name", "") if author else "",
@@ -100,7 +105,11 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "text": data.get("text", ""),
         "url": f"https://x.com/{author_handle}/status/{tweet_id}" if author_handle else f"https://x.com/i/status/{tweet_id}",
         "media_urls": media_urls,
-        "engagement": data.get("public_metrics", {}),
+        "engagement": {
+            "likes": metrics.get("like_count", 0),
+            "retweets": metrics.get("retweet_count", 0),
+            "replies": metrics.get("reply_count", 0),
+        },
         "is_quote_tweet": is_quote_tweet,
         "is_reply": is_reply,
         "quoted_tweet_id": quoted_tweet_id,
@@ -119,18 +128,22 @@ def _find_author(author_id: str | None, users: list[dict]) -> dict | None:
     return None
 
 
-def _extract_media_urls(media_keys: list[str], media_list: list[dict]) -> list[str]:
-    """Extract media URLs matching the given media keys."""
+def _extract_media_urls(media_keys: list[str], media_list: list[dict]) -> list[dict] | None:
+    """Extract structured media objects matching the given media keys."""
     if not media_keys or not media_list:
-        return []
+        return None
 
     media_by_key = {m["media_key"]: m for m in media_list}
-    urls = []
+    result = []
     for key in media_keys:
         media = media_by_key.get(key)
         if media:
-            # Prefer url for photos, preview_image_url for videos
             url = media.get("url") or media.get("preview_image_url", "")
             if url:
-                urls.append(url)
-    return urls
+                result.append({
+                    "type": media.get("type", "photo"),
+                    "url": url,
+                    "width": media.get("width"),
+                    "height": media.get("height"),
+                })
+    return result if result else None
