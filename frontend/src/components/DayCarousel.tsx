@@ -128,7 +128,8 @@ export function DayCarousel({ date, onDateChange, search, onTweetClick }: DayCar
         display: 'flex',
         overflowX: 'auto',
         scrollSnapType: 'x mandatory',
-        height: 'calc(100vh - 65px)',
+        flex: 1,
+        minHeight: 0,
         scrollbarWidth: 'none',
       }}
     >
