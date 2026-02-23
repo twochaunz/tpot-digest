@@ -11,7 +11,7 @@ interface TweetCardProps {
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   onDelete?: (id: number) => void
   showEngagement?: boolean
-  /** Override the default 280px width */
+  /** Override the default width (defaults to 100%) */
   width?: number | string
   /** When true, renders a minimal card suitable for drag overlays */
   overlay?: boolean
@@ -28,6 +28,18 @@ function formatCount(n: number): string {
   return String(n)
 }
 
+function formatTimestamp(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 function isLegacyTweet(tweet: Tweet): boolean {
   return !tweet.author_avatar_url && !!tweet.screenshot_path
 }
@@ -41,16 +53,16 @@ export function TweetCard({
   onContextMenu,
   onDelete,
   showEngagement = true,
-  width = 280,
+  width = '100%',
   overlay = false,
 }: TweetCardProps) {
   const [hovered, setHovered] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
+  const cleanRef = useRef<HTMLDivElement>(null)
 
   const handleDownload = useCallback(async () => {
-    if (!cardRef.current) return
+    if (!cleanRef.current) return
     try {
-      const dataUrl = await toPng(cardRef.current, { cacheBust: true })
+      const dataUrl = await toPng(cleanRef.current, { cacheBust: true })
       const link = document.createElement('a')
       link.download = `tweet-${tweet.tweet_id || tweet.id}.png`
       link.href = dataUrl
@@ -68,6 +80,7 @@ export function TweetCard({
       <div
         style={{
           width,
+          maxWidth: 600,
           background: 'var(--bg-raised)',
           border: '2px solid var(--accent)',
           borderRadius: 'var(--radius-md)',
@@ -87,144 +100,120 @@ export function TweetCard({
   }
 
   return (
-    <div
-      ref={cardRef}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onContextMenu={
-        onContextMenu
-          ? (e) => {
-              e.preventDefault()
-              onContextMenu(e, tweet)
-            }
-          : undefined
-      }
-      style={{
-        width,
-        background: hovered ? 'var(--bg-hover)' : 'var(--bg-raised)',
-        border: selected
-          ? '1.5px solid var(--accent)'
-          : `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border)'}`,
-        borderRadius: 'var(--radius-md)',
-        overflow: 'hidden',
-        cursor: selectable ? 'pointer' : 'default',
-        transition: 'all 0.15s ease',
-        flexShrink: 0,
-        position: 'relative',
-      }}
-      onClick={() => {
-        if (onTweetClick) {
-          onTweetClick(tweet)
-        } else if (selectable && onToggle) {
-          onToggle(tweet.id)
+    <>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onContextMenu={
+          onContextMenu
+            ? (e) => {
+                e.preventDefault()
+                onContextMenu(e, tweet)
+              }
+            : undefined
         }
-      }}
-    >
-      {legacy ? (
-        <LegacyCard tweet={tweet} />
-      ) : (
-        <NativeCard tweet={tweet} showEngagement={showEngagement} />
-      )}
-
-      {/* Checkbox overlay */}
-      {selectable && onToggle && (
-        <div
-          onClick={(e) => {
-            e.stopPropagation()
+        style={{
+          width,
+          maxWidth: 600,
+          background: hovered ? 'var(--bg-hover)' : 'var(--bg-raised)',
+          border: selected
+            ? '1.5px solid var(--accent)'
+            : `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border)'}`,
+          borderRadius: 'var(--radius-md)',
+          overflow: 'hidden',
+          cursor: selectable ? 'pointer' : 'default',
+          transition: 'all 0.15s ease',
+          flexShrink: 0,
+          position: 'relative',
+        }}
+        onClick={() => {
+          if (onTweetClick) {
+            onTweetClick(tweet)
+          } else if (selectable && onToggle) {
             onToggle(tweet.id)
-          }}
-          style={{
-            position: 'absolute',
-            top: 6,
-            left: 6,
-            width: 18,
-            height: 18,
-            borderRadius: 'var(--radius-sm)',
-            border: selected ? 'none' : '1.5px solid rgba(255,255,255,0.4)',
-            background: selected ? 'var(--accent)' : 'rgba(0,0,0,0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            color: '#fff',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            zIndex: 2,
-          }}
-        >
-          {selected && '\u2713'}
-        </div>
-      )}
+          }
+        }}
+      >
+        {legacy ? (
+          <LegacyCard tweet={tweet} />
+        ) : (
+          <NativeCard tweet={tweet} showEngagement={showEngagement} />
+        )}
 
-      {/* Hover actions */}
-      {hovered && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            display: 'flex',
-            gap: 4,
-            zIndex: 2,
-          }}
-        >
-          {/* Delete button */}
-          {onDelete && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(tweet.id)
-              }}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(0,0,0,0.5)',
-                border: 'none',
-                color: '#fff',
-                fontSize: 14,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              title="Remove tweet"
-            >
-              &times;
-            </button>
-          )}
-
-          {/* Download button */}
-          <button
+        {/* Checkbox overlay */}
+        {selectable && onToggle && (
+          <div
             onClick={(e) => {
               e.stopPropagation()
-              handleDownload()
+              onToggle(tweet.id)
             }}
             style={{
-              width: 24,
-              height: 24,
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              width: 18,
+              height: 18,
               borderRadius: 'var(--radius-sm)',
-              background: 'rgba(0,0,0,0.5)',
-              border: 'none',
-              color: '#fff',
-              fontSize: 12,
-              cursor: 'pointer',
+              border: selected ? 'none' : '1.5px solid rgba(255,255,255,0.4)',
+              background: selected ? 'var(--accent)' : 'rgba(0,0,0,0.35)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              fontSize: 12,
+              color: '#fff',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              zIndex: 2,
             }}
-            title="Download as PNG"
           >
-            &#8595;
-          </button>
+            {selected && '\u2713'}
+          </div>
+        )}
 
-          {/* External link */}
-          {tweet.url && (
-            <a
-              href={tweet.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+        {/* Hover actions */}
+        {hovered && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 6,
+              right: 6,
+              display: 'flex',
+              gap: 4,
+              zIndex: 2,
+            }}
+          >
+            {/* Delete button */}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(tweet.id)
+                }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(0,0,0,0.5)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="Remove tweet"
+              >
+                &times;
+              </button>
+            )}
+
+            {/* Download button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDownload()
+              }}
               style={{
                 width: 24,
                 height: 24,
@@ -237,16 +226,160 @@ export function TweetCard({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                textDecoration: 'none',
               }}
-              title="Open on X"
+              title="Download as PNG"
             >
-              &#8599;
-            </a>
+              &#8595;
+            </button>
+
+            {/* External link */}
+            {tweet.url && (
+              <a
+                href={tweet.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(0,0,0,0.5)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                }}
+                title="Open on X"
+              >
+                &#8599;
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Hidden clean card for PNG download (no UI chrome) */}
+      {!legacy && (
+        <div
+          ref={cleanRef}
+          style={{
+            position: 'absolute',
+            left: -9999,
+            top: -9999,
+            width: 550,
+            background: '#15202b',
+            borderRadius: 16,
+            padding: '20px 24px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          }}
+        >
+          {/* Author row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            {tweet.author_avatar_url ? (
+              <img
+                src={tweet.author_avatar_url}
+                alt={tweet.author_handle}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  background: '#253341',
+                }}
+              />
+            )}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#e7e9ea' }}>
+                  {tweet.author_display_name || tweet.author_handle}
+                </span>
+                {tweet.author_verified && (
+                  <span style={{ color: '#1d9bf0', fontSize: 14 }}>&#10003;</span>
+                )}
+              </div>
+              <div style={{ fontSize: 13, color: '#71767b' }}>@{tweet.author_handle}</div>
+            </div>
+          </div>
+
+          {/* Full text */}
+          <div
+            style={{
+              fontSize: 15,
+              color: '#e7e9ea',
+              lineHeight: 1.5,
+              wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap',
+              marginBottom: 12,
+            }}
+          >
+            {tweet.text}
+          </div>
+
+          {/* Media */}
+          {tweet.media_urls && tweet.media_urls.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              {tweet.media_urls
+                .filter((m) => m.type === 'photo' || m.type === 'animated_gif')
+                .slice(0, 4)
+                .map((img, i) => (
+                  <img
+                    key={i}
+                    src={img.url}
+                    alt=""
+                    style={{
+                      width: '100%',
+                      borderRadius: 12,
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  />
+                ))}
+            </div>
+          )}
+
+          {/* Timestamp */}
+          {tweet.created_at && (
+            <div style={{ fontSize: 13, color: '#71767b', marginBottom: showEngagement ? 10 : 0 }}>
+              {formatTimestamp(tweet.created_at)}
+            </div>
+          )}
+
+          {/* Engagement */}
+          {showEngagement && tweet.engagement && (
+            <div
+              style={{
+                display: 'flex',
+                gap: 20,
+                paddingTop: 10,
+                borderTop: '1px solid #2f3336',
+              }}
+            >
+              <span style={{ fontSize: 13, color: '#71767b' }}>
+                <span style={{ fontWeight: 700, color: '#e7e9ea' }}>{formatCount(tweet.engagement.likes)}</span> Likes
+              </span>
+              <span style={{ fontSize: 13, color: '#71767b' }}>
+                <span style={{ fontWeight: 700, color: '#e7e9ea' }}>{formatCount(tweet.engagement.retweets)}</span> Retweets
+              </span>
+              <span style={{ fontSize: 13, color: '#71767b' }}>
+                <span style={{ fontWeight: 700, color: '#e7e9ea' }}>{formatCount(tweet.engagement.replies)}</span> Replies
+              </span>
+            </div>
           )}
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -329,17 +462,17 @@ function LegacyCard({ tweet }: { tweet: Tweet }) {
 /* Native card: structured tweet display using X API data */
 function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: boolean }) {
   return (
-    <div style={{ padding: '12px 14px' }}>
+    <div style={{ padding: '14px 16px' }}>
       {/* Author row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         {/* Avatar */}
         {tweet.author_avatar_url ? (
           <img
             src={tweet.author_avatar_url}
             alt={tweet.author_handle}
             style={{
-              width: 32,
-              height: 32,
+              width: 40,
+              height: 40,
               borderRadius: '50%',
               objectFit: 'cover',
               flexShrink: 0,
@@ -348,8 +481,8 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
         ) : (
           <div
             style={{
-              width: 32,
-              height: 32,
+              width: 40,
+              height: 40,
               borderRadius: '50%',
               background: 'var(--bg-elevated)',
               flexShrink: 0,
@@ -361,7 +494,7 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span
               style={{
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 overflow: 'hidden',
@@ -375,7 +508,7 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
               <span
                 style={{
                   color: 'var(--accent)',
-                  fontSize: 12,
+                  fontSize: 13,
                   flexShrink: 0,
                   lineHeight: 1,
                 }}
@@ -387,7 +520,7 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
           </div>
           <div
             style={{
-              fontSize: 11,
+              fontSize: 12,
               color: 'var(--text-tertiary)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -399,18 +532,15 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
         </div>
       </div>
 
-      {/* Tweet text */}
+      {/* Tweet text - full, no truncation */}
       <div
         style={{
-          fontSize: 13,
+          fontSize: 14,
           color: 'var(--text-primary)',
-          lineHeight: 1.5,
-          display: '-webkit-box',
-          WebkitLineClamp: 4,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
+          lineHeight: 1.6,
           wordBreak: 'break-word',
-          marginBottom: 8,
+          whiteSpace: 'pre-wrap',
+          marginBottom: 10,
         }}
       >
         {tweet.text}
@@ -426,14 +556,14 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
         <div
           style={{
             display: 'flex',
-            gap: 14,
-            paddingTop: 8,
+            gap: 16,
+            paddingTop: 10,
             borderTop: '1px solid var(--border)',
           }}
         >
-          <EngagementStat icon="\u2665" value={tweet.engagement.likes} />
-          <EngagementStat icon="\u21BB" value={tweet.engagement.retweets} />
-          <EngagementStat icon="\u2709" value={tweet.engagement.replies} />
+          <EngagementStat icon={'\u2665'} value={tweet.engagement.likes} />
+          <EngagementStat icon={'\u21BB'} value={tweet.engagement.retweets} />
+          <EngagementStat icon={'\u2709'} value={tweet.engagement.replies} />
         </div>
       )}
     </div>
@@ -451,7 +581,7 @@ function MediaGrid({
   if (images.length === 0) return null
 
   const gridCols = images.length === 1 ? '1fr' : '1fr 1fr'
-  const imgHeight = images.length === 1 ? 140 : 80
+  const imgHeight = images.length === 1 ? 200 : 120
 
   return (
     <div
@@ -461,7 +591,7 @@ function MediaGrid({
         gap: 4,
         borderRadius: 'var(--radius-sm)',
         overflow: 'hidden',
-        marginBottom: 8,
+        marginBottom: 10,
       }}
     >
       {images.slice(0, 4).map((img, i) => (
@@ -486,14 +616,14 @@ function EngagementStat({ icon, value }: { icon: string; value: number }) {
   return (
     <span
       style={{
-        fontSize: 11,
+        fontSize: 12,
         color: 'var(--text-tertiary)',
         display: 'flex',
         alignItems: 'center',
-        gap: 3,
+        gap: 4,
       }}
     >
-      <span style={{ fontSize: 12 }}>{icon}</span>
+      <span style={{ fontSize: 13 }}>{icon}</span>
       {formatCount(value)}
     </span>
   )

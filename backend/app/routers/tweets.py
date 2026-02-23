@@ -128,6 +128,31 @@ async def update_tweet(tweet_id: int, body: TweetUpdate, db: AsyncSession = Depe
     return tweet
 
 
+@router.post("/{tweet_id}/grok", response_model=TweetOut)
+async def fetch_grok(
+    tweet_id: int,
+    force: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+):
+    tweet = await db.get(Tweet, tweet_id)
+    if not tweet:
+        raise HTTPException(404, "Tweet not found")
+
+    if tweet.grok_context and not force:
+        return tweet
+
+    from app.services.grok_api import fetch_grok_context, XAIAPIError
+    try:
+        context = await fetch_grok_context(tweet.text, tweet.author_handle)
+    except XAIAPIError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    tweet.grok_context = context
+    await db.commit()
+    await db.refresh(tweet)
+    return tweet
+
+
 @router.post("/check", status_code=200)
 async def check_saved(body: TweetCheckRequest, db: AsyncSession = Depends(get_db)):
     if not body.tweet_ids:
