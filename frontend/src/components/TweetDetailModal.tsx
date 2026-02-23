@@ -101,7 +101,8 @@ function ThreadList({ threadId, currentTweetId }: { threadId: string; currentTwe
 
 function TweetEmbed({ tweetId, authorHandle }: { tweetId: string; authorHandle: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [height, setHeight] = useState(300)
+  const [height, setHeight] = useState(0)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
@@ -112,6 +113,7 @@ function TweetEmbed({ tweetId, authorHandle }: { tweetId: string; authorHandle: 
           const params = data['twttr.embed'].params
           if (params?.[0]?.height) {
             setHeight(params[0].height)
+            setReady(true)
           }
         }
       } catch {
@@ -124,16 +126,30 @@ function TweetEmbed({ tweetId, authorHandle }: { tweetId: string; authorHandle: 
 
   return (
     <div style={{ marginBottom: 20 }}>
+      {/* Loading placeholder until iframe reports its size */}
+      {!ready && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '40px 0',
+            color: 'var(--text-tertiary)',
+            fontSize: 13,
+          }}
+        >
+          Loading tweet...
+        </div>
+      )}
       <iframe
         ref={iframeRef}
         src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
         style={{
           width: '100%',
-          height,
+          height: ready ? height : 0,
           border: 'none',
-          borderRadius: 'var(--radius-md)',
+          display: ready ? 'block' : 'none',
           colorScheme: 'dark',
-          overflow: 'hidden',
         }}
         scrolling="no"
         allowFullScreen
