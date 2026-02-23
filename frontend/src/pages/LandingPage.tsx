@@ -1,10 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useJoinWaitlist } from '../api/waitlist'
 
 export function LandingPage() {
   const [email, setEmail] = useState('')
-  const navigate = useNavigate()
   const joinWaitlist = useJoinWaitlist()
 
   const handleSubmit = (e: FormEvent) => {
@@ -434,7 +432,7 @@ export function LandingPage() {
           {/* Sign in link */}
           <button
             className="sign-in-link"
-            onClick={() => navigate('/app')}
+            onClick={() => { window.location.href = '/app' }}
             type="button"
           >
             Sign in
