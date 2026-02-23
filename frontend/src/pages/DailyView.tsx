@@ -397,7 +397,6 @@ export function DailyView() {
               onDelete={handleDeleteTweet}
               onTweetClick={handleTweetClick}
               onContextMenu={handleContextMenu}
-              showEngagement={showEngagement}
             />
 
             {/* Topic sections (vertical feed) */}
@@ -421,7 +420,6 @@ export function DailyView() {
                     onUpdateTitle={handleUpdateTopicTitle}
                     onTweetClick={handleTweetClick}
                     onContextMenu={handleContextMenu}
-                    showEngagement={showEngagement}
                   />
                 ))}
               </div>

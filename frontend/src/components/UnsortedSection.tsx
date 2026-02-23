@@ -1,5 +1,5 @@
 import { useDroppable, useDraggable } from '@dnd-kit/core'
-import { TweetCard } from './TweetCard'
+import { EmbeddedTweet } from './EmbeddedTweet'
 import type { Tweet } from '../api/tweets'
 
 interface UnsortedSectionProps {
@@ -7,7 +7,6 @@ interface UnsortedSectionProps {
   onDelete: (tweetId: number) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
-  showEngagement?: boolean
 }
 
 // Grip handle SVG (6 dots, 2x3)
@@ -29,13 +28,11 @@ function DraggableFeedTweetCard({
   onDelete,
   onTweetClick,
   onContextMenu,
-  showEngagement,
 }: {
   tweet: Tweet
   onDelete: (id: number) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
-  showEngagement: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
@@ -71,13 +68,11 @@ function DraggableFeedTweetCard({
       </div>
 
       {/* TweetCard */}
-      <TweetCard
+      <EmbeddedTweet
         tweet={tweet}
-        selectable={false}
         onTweetClick={onTweetClick}
         onContextMenu={onContextMenu}
         onDelete={onDelete}
-        showEngagement={showEngagement}
       />
     </div>
   )
@@ -88,7 +83,6 @@ export function UnsortedSection({
   onDelete,
   onTweetClick,
   onContextMenu,
-  showEngagement = true,
 }: UnsortedSectionProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'droppable-unsorted',
@@ -159,7 +153,6 @@ export function UnsortedSection({
             onDelete={onDelete}
             onTweetClick={onTweetClick}
             onContextMenu={onContextMenu}
-            showEngagement={showEngagement}
           />
         ))}
       </div>
