@@ -223,6 +223,12 @@ async def test_grok_endpoint(client: AsyncClient):
         resp = await client.post(f"/api/tweets/{tid}/grok")
         assert resp.status_code == 200
         assert resp.json()["grok_context"] == "This tweet discusses Claude 4 and its capabilities."
+        mock_grok.assert_called_once_with(
+            "Claude 4 is amazing",
+            "karpathy",
+            "grok1",
+            "https://x.com/karpathy/status/123456",
+        )
 
         # Second call returns cached (no re-fetch)
         mock_grok.reset_mock()
