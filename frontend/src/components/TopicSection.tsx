@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets } from '../api/tweets'
+import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import type { Category } from '../api/categories'
 
@@ -29,7 +30,7 @@ export function TopicSectionWithData({
   onUpdateTitle,
   onTweetClick,
   onContextMenu,
-  showEngagement: _showEngagement,
+  showEngagement = true,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
   const tweets = tweetsQuery.data ?? []
@@ -53,36 +54,25 @@ export function TopicSectionWithData({
       onUpdateTitle={onUpdateTitle}
       onTweetClick={onTweetClick}
       onContextMenu={onContextMenu}
+      showEngagement={showEngagement}
     />
   )
 }
 
-// --- Grip handle SVG (4 dots, 2x2) ---
-function GripHandleSmall() {
-  return (
-    <svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
-      <circle cx="2.5" cy="3" r="1.2" />
-      <circle cx="5.5" cy="3" r="1.2" />
-      <circle cx="2.5" cy="7" r="1.2" />
-      <circle cx="5.5" cy="7" r="1.2" />
-    </svg>
-  )
-}
-
-// --- Draggable tweet row within a topic ---
-function DraggableTweetRow({
+// --- Draggable tweet card within a topic ---
+function DraggableTweetInTopic({
   tweet,
   topicId,
   onTweetClick,
   onContextMenu,
+  showEngagement,
 }: {
   tweet: Tweet
   topicId: number
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  showEngagement: boolean
 }) {
-  const [hovered, setHovered] = useState(false)
-
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
     data: { tweet, sourceTopicId: topicId },
@@ -91,65 +81,28 @@ function DraggableTweetRow({
   return (
     <div
       ref={setNodeRef}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={() => onTweetClick?.(tweet)}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        onContextMenu?.(e, tweet)
-      }}
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 8px',
-        background: hovered ? 'var(--bg-hover)' : 'transparent',
-        border: '1px solid transparent',
-        borderRadius: 'var(--radius-sm)',
-        cursor: 'pointer',
-        transition: 'all 0.1s ease',
         opacity: isDragging ? 0.3 : 1,
+        transition: 'opacity 0.15s ease',
       }}
     >
-      {/* Drag handle */}
+      {/* Invisible drag handle overlaid on the card */}
       <div
         {...attributes}
         {...listeners}
-        onClick={(e) => e.stopPropagation()}
         style={{
-          cursor: 'grab',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '2px 1px',
-          flexShrink: 0,
           touchAction: 'none',
         }}
       >
-        <GripHandleSmall />
+        <TweetCard
+          tweet={tweet}
+          selectable={false}
+          onTweetClick={onTweetClick}
+          onContextMenu={onContextMenu}
+          showEngagement={showEngagement}
+          width="100%"
+        />
       </div>
-
-      <span
-        style={{
-          fontSize: 12,
-          color: 'var(--text-primary)',
-          fontWeight: 500,
-          flexShrink: 0,
-        }}
-      >
-        @{tweet.author_handle}
-      </span>
-      <span
-        style={{
-          fontSize: 11,
-          color: 'var(--text-tertiary)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          flex: 1,
-        }}
-      >
-        {tweet.text.slice(0, 60)}
-      </span>
     </div>
   )
 }
@@ -165,6 +118,7 @@ interface TopicSectionProps {
   onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  showEngagement?: boolean
 }
 
 function TopicSection({
@@ -176,6 +130,7 @@ function TopicSection({
   onUpdateTitle,
   onTweetClick,
   onContextMenu,
+  showEngagement = true,
 }: TopicSectionProps) {
   const [headerHovered, setHeaderHovered] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -207,7 +162,7 @@ function TopicSection({
   return (
     <div
       style={{
-        width: 280,
+        width: 300,
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
@@ -376,15 +331,16 @@ function TopicSection({
               </div>
             )}
 
-            {/* Tweet rows */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {/* Tweet cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {group.tweets.map((t) => (
-                <DraggableTweetRow
+                <DraggableTweetInTopic
                   key={t.id}
                   tweet={t}
                   topicId={topicId}
                   onTweetClick={onTweetClick}
                   onContextMenu={onContextMenu}
+                  showEngagement={showEngagement}
                 />
               ))}
             </div>
