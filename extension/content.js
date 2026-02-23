@@ -5,15 +5,6 @@
 
   // ── Utilities ──────────────────────────────────────────────────────
 
-  function parseCount(text) {
-    if (!text) return 0;
-    text = text.trim().replace(/,/g, "");
-    const upper = text.toUpperCase();
-    if (upper.endsWith("K")) return Math.round(parseFloat(text) * 1000);
-    if (upper.endsWith("M")) return Math.round(parseFloat(text) * 1000000);
-    return parseInt(text, 10) || 0;
-  }
-
   function detectFeedSource() {
     const path = window.location.pathname;
     if (path === "/home" || path === "/") return "for_you";
@@ -40,46 +31,17 @@
     const idMatch = href.match(/status\/(\d+)/);
     const tweetId = idMatch ? idMatch[1] : "";
 
+    // Extract author handle from DOM for action card display only (not sent to backend)
     const handleEl = article.querySelector('div[data-testid="User-Name"] a[href^="/"]');
     const authorHandle = handleEl ? handleEl.getAttribute("href").replace("/", "") : "";
-
-    const nameEl = article.querySelector('div[data-testid="User-Name"] span');
-    const authorDisplayName = nameEl ? nameEl.textContent : "";
-
-    const textEl = article.querySelector('div[data-testid="tweetText"]');
-    const text = textEl ? textEl.textContent : "";
-
-    const mediaEls = article.querySelectorAll('img[src*="pbs.twimg.com/media"]');
-    const mediaUrls = Array.from(mediaEls).map((el) => el.src);
-
-    const likesEl = article.querySelector('button[data-testid="like"] span');
-    const retweetsEl = article.querySelector('button[data-testid="retweet"] span');
-    const repliesEl = article.querySelector('button[data-testid="reply"] span');
-
-    const isQuoteTweet = !!article.querySelector('div[role="link"][tabindex="0"]');
 
     // Thread detection: check if viewing a thread page
     const threadMatch = window.location.pathname.match(/\/status\/(\d+)/);
     const threadId = threadMatch && detectFeedSource() === "thread" ? threadMatch[1] : null;
 
-    const tweetUrl = tweetId && authorHandle
-      ? "https://x.com/" + authorHandle + "/status/" + tweetId
-      : null;
-
     return {
       tweet_id: tweetId,
-      author_handle: authorHandle,
-      author_display_name: authorDisplayName,
-      text: text,
-      url: tweetUrl,
-      media_urls: mediaUrls.length > 0 ? mediaUrls : null,
-      engagement: {
-        likes: parseCount(likesEl ? likesEl.textContent : "0"),
-        retweets: parseCount(retweetsEl ? retweetsEl.textContent : "0"),
-        replies: parseCount(repliesEl ? repliesEl.textContent : "0"),
-      },
-      is_quote_tweet: isQuoteTweet,
-      is_reply: false,
+      _author_handle: authorHandle,  // local-only, for action card display
       thread_id: threadId,
       feed_source: detectFeedSource(),
     };
@@ -575,46 +537,16 @@
       const tweetData = extractTweetData(article);
       if (!tweetData.tweet_id) throw new Error("Could not extract tweet ID");
 
-      // Request screenshot from service worker (exclude action bar with engagement icons)
-      const rect = article.getBoundingClientRect();
-      const actionBar = article.querySelector('div[role="group"]');
-      const cropHeight = actionBar
-        ? actionBar.getBoundingClientRect().top - rect.top
-        : rect.height;
-      const screenshotResp = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({
-          type: "CAPTURE_SCREENSHOT",
-          rect: { x: rect.x, y: rect.y, width: rect.width, height: cropHeight },
-          dpr: window.devicePixelRatio || 1,
-        }, (resp) => {
-          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-          resolve(resp);
-        });
-      });
-
-      const screenshot = screenshotResp && screenshotResp.screenshot
-        ? screenshotResp.screenshot
-        : null;
-      const screenshotError = screenshotResp && screenshotResp.error
-        ? screenshotResp.error
-        : null;
-
-      // Save tweet via service worker
-      const tweetPayload = { ...tweetData };
-      if (screenshot) tweetPayload.screenshot_base64 = screenshot;
-      if (screenshotError) tweetPayload.screenshot_error = screenshotError;
+      // Build payload with only backend-relevant fields
+      const tweetPayload = {
+        tweet_id: tweetData.tweet_id,
+        thread_id: tweetData.thread_id,
+        feed_source: tweetData.feed_source,
+      };
       // Default saved_at to the tweet's posted date if available
       const postedDate = extractPostedDate(article);
       if (postedDate) tweetPayload.saved_at = postedDate + "T12:00:00";
-      const saveResp = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({
-          type: "SAVE_TWEET",
-          tweet: tweetPayload,
-        }, (resp) => {
-          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-          resolve(resp);
-        });
-      });
+      const saveResp = await sendMessage({ type: "SAVE_TWEET", tweet: tweetPayload });
 
       if (saveResp && saveResp.error) throw new Error(saveResp.error);
 
@@ -624,9 +556,9 @@
       savedTweets.set(tweetData.tweet_id, saveResp.id);
 
       if (saveResp && saveResp.status === "duplicate") {
-        showToast("Tweet already saved — @" + tweetData.author_handle, false);
+        showToast("Tweet already saved — @" + tweetData._author_handle, false);
       } else {
-        showActionCard(saveResp.id, tweetData.author_handle, article);
+        showActionCard(saveResp.id, tweetData._author_handle, article);
       }
     } catch (err) {
       button.classList.remove("saving");
