@@ -32,36 +32,6 @@ async function getCount() {
   return stored[key];
 }
 
-async function handleScreenshot(message, sender) {
-  try {
-    const dataUrl = await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" });
-    const resp = await fetch(dataUrl);
-    const blob = await resp.blob();
-    const bitmap = await createImageBitmap(blob);
-
-    const dpr = message.dpr || 1;
-    const sx = Math.round(message.rect.x * dpr);
-    const sy = Math.round(message.rect.y * dpr);
-    const sw = Math.round(message.rect.width * dpr);
-    const sh = Math.round(message.rect.height * dpr);
-
-    const canvas = new OffscreenCanvas(sw, sh);
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
-    bitmap.close();
-
-    const pngBlob = await canvas.convertToBlob({ type: "image/png" });
-    const buffer = await pngBlob.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-
-    return { screenshot: btoa(binary) };
-  } catch (err) {
-    return { error: err.message };
-  }
-}
-
 async function handleSaveTweet(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets";
@@ -236,7 +206,6 @@ async function handleUpdateTweet(message) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "CAPTURE_SCREENSHOT") { handleScreenshot(message, sender).then(sendResponse); return true; }
   if (message.type === "SAVE_TWEET") { handleSaveTweet(message).then(sendResponse); return true; }
   if (message.type === "GET_STATUS") { handleGetStatus().then(sendResponse); return true; }
   if (message.type === "GET_TOPICS") { handleGetTopics(message).then(sendResponse); return true; }
