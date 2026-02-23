@@ -48,9 +48,10 @@ body {
 
 .day-carousel::-webkit-scrollbar { display: none; }
 
-/* react-tweet overrides: hide engagement metrics */
-.react-tweet-container [data-testid="tweet-actions"],
-.react-tweet-container .react-tweet-actions-row {
+/* react-tweet overrides: hide engagement metrics and info row */
+.react-tweet-container [class*="actions"],
+.react-tweet-container [class*="tweet-info"],
+.react-tweet-container [class*="tweetInfo"] {
   display: none !important;
 }
 
