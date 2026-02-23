@@ -22,6 +22,7 @@ services:
       DATA_DIR: /app/data
       AUTH_USER: ${AUTH_USER}
       AUTH_PASS: ${AUTH_PASS}
+      X_API_BEARER_TOKEN: ${X_API_BEARER_TOKEN}
     volumes:
       - app_data:/app/data
     depends_on:
