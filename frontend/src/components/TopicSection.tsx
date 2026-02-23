@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets } from '../api/tweets'
-import { TweetCard } from './TweetCard'
+import { EmbeddedTweet } from './EmbeddedTweet'
 import type { Tweet } from '../api/tweets'
 import type { Category } from '../api/categories'
 
@@ -17,7 +17,6 @@ interface TopicSectionWithDataProps {
   onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
-  showEngagement?: boolean
 }
 
 export function TopicSectionWithData({
@@ -30,7 +29,6 @@ export function TopicSectionWithData({
   onUpdateTitle,
   onTweetClick,
   onContextMenu,
-  showEngagement = true,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
   const tweets = tweetsQuery.data ?? []
@@ -54,7 +52,6 @@ export function TopicSectionWithData({
       onUpdateTitle={onUpdateTitle}
       onTweetClick={onTweetClick}
       onContextMenu={onContextMenu}
-      showEngagement={showEngagement}
     />
   )
 }
@@ -65,13 +62,11 @@ function DraggableTweetInTopic({
   topicId,
   onTweetClick,
   onContextMenu,
-  showEngagement,
 }: {
   tweet: Tweet
   topicId: number
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
-  showEngagement: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
@@ -94,12 +89,10 @@ function DraggableTweetInTopic({
           touchAction: 'none',
         }}
       >
-        <TweetCard
+        <EmbeddedTweet
           tweet={tweet}
-          selectable={false}
           onTweetClick={onTweetClick}
           onContextMenu={onContextMenu}
-          showEngagement={showEngagement}
         />
       </div>
     </div>
@@ -117,7 +110,6 @@ interface TopicSectionProps {
   onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
-  showEngagement?: boolean
 }
 
 function TopicSection({
@@ -129,13 +121,13 @@ function TopicSection({
   onUpdateTitle,
   onTweetClick,
   onContextMenu,
-  showEngagement = true,
 }: TopicSectionProps) {
   const [headerHovered, setHeaderHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
 
   const { setNodeRef, isOver } = useDroppable({
     id: `droppable-topic-${topicId}`,
@@ -161,6 +153,7 @@ function TopicSection({
 
   return (
     <div
+      ref={sectionRef}
       style={{
         width: '100%',
         display: 'flex',
@@ -183,8 +176,22 @@ function TopicSection({
           padding: '12px 16px',
           borderBottom: collapsed ? 'none' : '1px solid var(--border)',
           cursor: 'pointer',
+          position: 'sticky' as const,
+          top: 65,
+          zIndex: 5,
+          background: 'var(--bg-raised)',
         }}
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={() => {
+          setCollapsed((v) => {
+            const next = !v
+            if (!next && sectionRef.current) {
+              setTimeout(() => {
+                sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }, 50)
+            }
+            return next
+          })
+        }}
       >
         {/* Collapse arrow */}
         <span
@@ -266,9 +273,14 @@ function TopicSection({
         {/* Count */}
         <span
           style={{
-            fontSize: 11,
-            color: 'var(--text-tertiary)',
-            fontWeight: 500,
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#fff',
+            background: accentColor,
+            padding: '2px 10px',
+            borderRadius: 12,
+            minWidth: 28,
+            textAlign: 'center',
           }}
         >
           {totalTweets}
@@ -358,7 +370,6 @@ function TopicSection({
                     topicId={topicId}
                     onTweetClick={onTweetClick}
                     onContextMenu={onContextMenu}
-                    showEngagement={showEngagement}
                   />
                 ))}
               </div>
