@@ -120,12 +120,18 @@ async def test_fetch_tweet_success():
     assert result["author_verified"] is True
     assert result["text"] == "Check out this amazing demo! https://t.co/abc"
     assert result["url"] == "https://x.com/karpathy/status/123456"
-    assert result["media_urls"] == ["https://pbs.twimg.com/media/photo1.jpg"]
+    assert result["media_urls"] == [
+        {
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/photo1.jpg",
+            "width": 1200,
+            "height": 800,
+        }
+    ]
     assert result["engagement"] == {
-        "like_count": 5000,
-        "retweet_count": 1200,
-        "reply_count": 300,
-        "quote_count": 50,
+        "likes": 5000,
+        "retweets": 1200,
+        "replies": 300,
     }
     assert result["is_quote_tweet"] is True
     assert result["quoted_tweet_id"] == "111"
@@ -206,7 +212,7 @@ async def test_fetch_tweet_minimal_response():
     assert result["author_display_name"] == "Regular User"
     assert result["author_verified"] is False
     assert result["text"] == "Just a simple tweet"
-    assert result["media_urls"] == []
+    assert result["media_urls"] is None
     assert result["is_quote_tweet"] is False
     assert result["is_reply"] is False
     assert result["quoted_tweet_id"] is None
