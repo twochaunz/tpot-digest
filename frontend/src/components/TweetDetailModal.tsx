@@ -100,8 +100,6 @@ function ThreadList({ threadId, currentTweetId }: { threadId: string; currentTwe
   )
 }
 
-}
-
 export function TweetDetailModal({ tweet, onClose, showEngagement = true }: TweetDetailModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const cleanRef = useRef<HTMLDivElement>(null)
