@@ -4,11 +4,17 @@ import type { Tweet } from '../api/tweets'
 
 interface TweetCardProps {
   tweet: Tweet
-  selected: boolean
-  onToggle: (id: number) => void
+  selected?: boolean
+  onToggle?: (id: number) => void
   selectable?: boolean
   onTweetClick?: (tweet: Tweet) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  onDelete?: (id: number) => void
   showEngagement?: boolean
+  /** Override the default 280px width */
+  width?: number | string
+  /** When true, renders a minimal card suitable for drag overlays */
+  overlay?: boolean
 }
 
 function screenshotUrl(path: string | null): string | null {
@@ -28,11 +34,15 @@ function isLegacyTweet(tweet: Tweet): boolean {
 
 export function TweetCard({
   tweet,
-  selected,
+  selected = false,
   onToggle,
   selectable = true,
   onTweetClick,
+  onContextMenu,
+  onDelete,
   showEngagement = true,
+  width = 280,
+  overlay = false,
 }: TweetCardProps) {
   const [hovered, setHovered] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -52,13 +62,45 @@ export function TweetCard({
 
   const legacy = isLegacyTweet(tweet)
 
+  // Overlay mode: minimal card for drag previews
+  if (overlay) {
+    return (
+      <div
+        style={{
+          width,
+          background: 'var(--bg-raised)',
+          border: '2px solid var(--accent)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+          opacity: 0.92,
+          cursor: 'grabbing',
+          overflow: 'hidden',
+        }}
+      >
+        {legacy ? (
+          <LegacyCard tweet={tweet} />
+        ) : (
+          <NativeCard tweet={tweet} showEngagement={false} />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div
       ref={cardRef}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onContextMenu={
+        onContextMenu
+          ? (e) => {
+              e.preventDefault()
+              onContextMenu(e, tweet)
+            }
+          : undefined
+      }
       style={{
-        width: 280,
+        width,
         background: hovered ? 'var(--bg-hover)' : 'var(--bg-raised)',
         border: selected
           ? '1.5px solid var(--accent)'
@@ -73,7 +115,7 @@ export function TweetCard({
       onClick={() => {
         if (onTweetClick) {
           onTweetClick(tweet)
-        } else if (selectable) {
+        } else if (selectable && onToggle) {
           onToggle(tweet.id)
         }
       }}
@@ -85,7 +127,7 @@ export function TweetCard({
       )}
 
       {/* Checkbox overlay */}
-      {selectable && (
+      {selectable && onToggle && (
         <div
           onClick={(e) => {
             e.stopPropagation()
@@ -126,6 +168,32 @@ export function TweetCard({
             zIndex: 2,
           }}
         >
+          {/* Delete button */}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(tweet.id)
+              }}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 'var(--radius-sm)',
+                background: 'rgba(0,0,0,0.5)',
+                border: 'none',
+                color: '#fff',
+                fontSize: 14,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Remove tweet"
+            >
+              &times;
+            </button>
+          )}
+
           {/* Download button */}
           <button
             onClick={(e) => {

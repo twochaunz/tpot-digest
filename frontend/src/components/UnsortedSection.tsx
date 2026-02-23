@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
+import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 
 interface UnsortedSectionProps {
@@ -8,11 +8,6 @@ interface UnsortedSectionProps {
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   showEngagement?: boolean
-}
-
-function screenshotUrl(path: string | null): string | null {
-  if (!path) return null
-  return `/api/screenshots/${path}`
 }
 
 // Grip handle SVG (6 dots, 2x3)
@@ -34,55 +29,39 @@ function DraggableFeedTweetCard({
   onDelete,
   onTweetClick,
   onContextMenu,
+  showEngagement,
 }: {
   tweet: Tweet
   onDelete: (id: number) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  showEngagement: boolean
 }) {
-  const [hovered, setHovered] = useState(false)
-  const [imgError, setImgError] = useState(false)
-
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
     data: { tweet, sourceTopicId: null },
   })
 
-  const ssUrl = screenshotUrl(tweet.screenshot_path)
-
   return (
     <div
       ref={setNodeRef}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={() => onTweetClick?.(tweet)}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        onContextMenu?.(e, tweet)
-      }}
       style={{
         display: 'flex',
         gap: 8,
-        padding: '10px 12px',
-        background: hovered ? 'var(--bg-hover)' : 'var(--bg-raised)',
-        border: `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border)'}`,
-        borderRadius: 'var(--radius-md)',
-        cursor: 'pointer',
-        transition: 'all 0.15s ease',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         opacity: isDragging ? 0.3 : 1,
+        transition: 'opacity 0.15s ease',
       }}
     >
       {/* Drag handle */}
       <div
         {...attributes}
         {...listeners}
-        onClick={(e) => e.stopPropagation()}
         style={{
           cursor: 'grab',
           display: 'flex',
           alignItems: 'center',
-          padding: '4px 2px',
+          padding: '16px 2px',
           flexShrink: 0,
           touchAction: 'none',
         }}
@@ -90,125 +69,15 @@ function DraggableFeedTweetCard({
         <GripHandle />
       </div>
 
-      {/* Screenshot thumbnail */}
-      <div
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 'var(--radius-sm)',
-          overflow: 'hidden',
-          flexShrink: 0,
-          background: 'var(--bg-elevated)',
-        }}
-      >
-        {ssUrl && !imgError ? (
-          <img
-            src={ssUrl}
-            alt={`Tweet by ${tweet.author_handle}`}
-            onError={() => setImgError(true)}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--text-tertiary)',
-              fontSize: 9,
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            no img
-          </div>
-        )}
-      </div>
-
-      {/* Center: handle + text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            marginBottom: 2,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            @{tweet.author_handle}
-          </span>
-          {tweet.url && (
-            <a
-              href={tweet.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                color: 'var(--text-tertiary)',
-                fontSize: 11,
-                lineHeight: 1,
-                flexShrink: 0,
-                textDecoration: 'none',
-              }}
-              title="Open on X"
-            >
-              &#8599;
-            </a>
-          )}
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: 'var(--text-tertiary)',
-            lineHeight: 1.4,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
-          {tweet.text}
-        </div>
-      </div>
-
-      {/* Delete button (hover only) */}
-      {hovered && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete(tweet.id)
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-tertiary)',
-            fontSize: 16,
-            cursor: 'pointer',
-            padding: '2px 4px',
-            lineHeight: 1,
-            flexShrink: 0,
-          }}
-          title="Remove tweet"
-        >
-          &times;
-        </button>
-      )}
+      {/* TweetCard */}
+      <TweetCard
+        tweet={tweet}
+        selectable={false}
+        onTweetClick={onTweetClick}
+        onContextMenu={onContextMenu}
+        onDelete={onDelete}
+        showEngagement={showEngagement}
+      />
     </div>
   )
 }
@@ -218,7 +87,7 @@ export function UnsortedSection({
   onDelete,
   onTweetClick,
   onContextMenu,
-  showEngagement: _showEngagement,
+  showEngagement = true,
 }: UnsortedSectionProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'droppable-unsorted',
@@ -277,11 +146,11 @@ export function UnsortedSection({
       <div
         ref={setNodeRef}
         style={{
-          maxHeight: 400,
+          maxHeight: 600,
           overflowY: 'auto',
           display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
+          flexWrap: 'wrap',
+          gap: 12,
         }}
       >
         {tweets.map((t) => (
@@ -291,6 +160,7 @@ export function UnsortedSection({
             onDelete={onDelete}
             onTweetClick={onTweetClick}
             onContextMenu={onContextMenu}
+            showEngagement={showEngagement}
           />
         ))}
       </div>
