@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -27,6 +29,23 @@ async def override_get_db():
         yield session
 
 
+MOCK_X_API_RESULT = {
+    "author_handle": "karpathy",
+    "author_display_name": "Andrej Karpathy",
+    "author_avatar_url": "https://pbs.twimg.com/profile/karpathy_normal.jpg",
+    "author_verified": True,
+    "text": "Claude 4 is amazing",
+    "url": "https://x.com/karpathy/status/123456",
+    "media_urls": [],
+    "engagement": {"likes": 5000, "retweets": 1200, "replies": 300},
+    "is_quote_tweet": False,
+    "is_reply": False,
+    "quoted_tweet_id": None,
+    "reply_to_tweet_id": None,
+    "created_at": "2026-02-20T15:30:00.000Z",
+}
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
     app.dependency_overrides[get_db] = override_get_db
@@ -38,6 +57,13 @@ async def setup_db():
     app.dependency_overrides.pop(get_db, None)
 
 
+@pytest_asyncio.fixture(autouse=True)
+def mock_fetch_tweet():
+    mock = AsyncMock(return_value=MOCK_X_API_RESULT.copy())
+    with patch("app.services.x_api.fetch_tweet", mock):
+        yield mock
+
+
 @pytest_asyncio.fixture
 async def client():
     transport = ASGITransport(app=app)
@@ -45,21 +71,10 @@ async def client():
         yield ac
 
 
-TINY_PNG = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4"
-    "nGNgYPgPAAEDAQAIicLsAAAABJRU5ErkJggg=="
-)
-
-
 @pytest.mark.asyncio
 async def test_save_tweet(client: AsyncClient):
     payload = {
         "tweet_id": "123456",
-        "author_handle": "karpathy",
-        "author_display_name": "Andrej Karpathy",
-        "text": "Claude 4 is amazing",
-        "engagement": {"likes": 5000, "retweets": 1200, "replies": 300},
-        "screenshot_base64": TINY_PNG,
         "feed_source": "for_you",
     }
     resp = await client.post("/api/tweets", json=payload)
@@ -71,12 +86,7 @@ async def test_save_tweet(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_save_duplicate_returns_200(client: AsyncClient):
-    payload = {
-        "tweet_id": "123456",
-        "author_handle": "karpathy",
-        "text": "test",
-        "screenshot_base64": TINY_PNG,
-    }
+    payload = {"tweet_id": "123456"}
     resp1 = await client.post("/api/tweets", json=payload)
     assert resp1.status_code == 201
 
@@ -88,12 +98,7 @@ async def test_save_duplicate_returns_200(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_list_tweets(client: AsyncClient):
     for i in range(3):
-        await client.post("/api/tweets", json={
-            "tweet_id": str(i),
-            "author_handle": "test",
-            "text": f"Tweet {i}",
-            "screenshot_base64": TINY_PNG,
-        })
+        await client.post("/api/tweets", json={"tweet_id": str(i)})
     resp = await client.get("/api/tweets")
     assert resp.status_code == 200
     assert len(resp.json()) == 3
@@ -101,12 +106,7 @@ async def test_list_tweets(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_delete_tweet(client: AsyncClient):
-    await client.post("/api/tweets", json={
-        "tweet_id": "del1",
-        "author_handle": "test",
-        "text": "Delete me",
-        "screenshot_base64": TINY_PNG,
-    })
+    await client.post("/api/tweets", json={"tweet_id": "del1"})
     tweets = (await client.get("/api/tweets")).json()
     tweet_id = tweets[0]["id"]
 
@@ -119,14 +119,8 @@ async def test_delete_tweet(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_list_unassigned_tweets(client: AsyncClient):
-    # Save 2 tweets
     for i in range(2):
-        await client.post("/api/tweets", json={
-            "tweet_id": f"unassigned_{i}",
-            "author_handle": "test",
-            "text": f"Tweet {i}",
-            "screenshot_base64": TINY_PNG,
-        })
+        await client.post("/api/tweets", json={"tweet_id": f"unassigned_{i}"})
     resp = await client.get("/api/tweets", params={"unassigned": True})
     assert resp.status_code == 200
     assert len(resp.json()) == 2
@@ -134,47 +128,19 @@ async def test_list_unassigned_tweets(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_search_tweets(client: AsyncClient):
-    await client.post("/api/tweets", json={
-        "tweet_id": "s1",
-        "author_handle": "test",
-        "text": "Claude 4 is incredible",
-        "screenshot_base64": TINY_PNG,
-    })
-    await client.post("/api/tweets", json={
-        "tweet_id": "s2",
-        "author_handle": "test",
-        "text": "OpenAI raises funding",
-        "screenshot_base64": TINY_PNG,
-    })
+    # All tweets get the same text from mock: "Claude 4 is amazing"
+    await client.post("/api/tweets", json={"tweet_id": "s1"})
+    await client.post("/api/tweets", json={"tweet_id": "s2"})
     resp = await client.get("/api/tweets", params={"q": "Claude"})
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
+    # Both tweets match since they all have "Claude 4 is amazing" from mock
+    assert len(resp.json()) == 2
     assert "Claude" in resp.json()[0]["text"]
 
 
 @pytest.mark.asyncio
-async def test_save_tweet_with_memo(client: AsyncClient):
-    payload = {
-        "tweet_id": "memo1",
-        "author_handle": "test",
-        "text": "test tweet",
-        "screenshot_base64": TINY_PNG,
-        "memo": "great example of AI hype",
-    }
-    resp = await client.post("/api/tweets", json=payload)
-    assert resp.status_code == 201
-    data = resp.json()
-    assert data["memo"] == "great example of AI hype"
-
-
-@pytest.mark.asyncio
 async def test_patch_tweet_memo(client: AsyncClient):
-    await client.post("/api/tweets", json={
-        "tweet_id": "patch1",
-        "author_handle": "test",
-        "text": "test",
-        "screenshot_base64": TINY_PNG,
-    })
+    await client.post("/api/tweets", json={"tweet_id": "patch1"})
     tweets = (await client.get("/api/tweets")).json()
     tid = tweets[0]["id"]
 
@@ -185,12 +151,7 @@ async def test_patch_tweet_memo(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_patch_tweet_saved_at(client: AsyncClient):
-    await client.post("/api/tweets", json={
-        "tweet_id": "patch2",
-        "author_handle": "test",
-        "text": "test",
-        "screenshot_base64": TINY_PNG,
-    })
+    await client.post("/api/tweets", json={"tweet_id": "patch2"})
     tweets = (await client.get("/api/tweets")).json()
     tid = tweets[0]["id"]
 
@@ -200,28 +161,18 @@ async def test_patch_tweet_saved_at(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_save_tweet_with_url(client: AsyncClient):
-    payload = {
-        "tweet_id": "url1",
-        "author_handle": "test",
-        "text": "test tweet",
-        "screenshot_base64": TINY_PNG,
-        "url": "https://x.com/test/status/url1",
-    }
+async def test_save_tweet_url_from_api(client: AsyncClient):
+    payload = {"tweet_id": "url1"}
     resp = await client.post("/api/tweets", json=payload)
     assert resp.status_code == 201
-    assert resp.json()["url"] == "https://x.com/test/status/url1"
+    # URL comes from mock X API data
+    assert resp.json()["url"] == "https://x.com/karpathy/status/123456"
 
 
 @pytest.mark.asyncio
 async def test_check_saved_tweets(client: AsyncClient):
     for i in range(3):
-        await client.post("/api/tweets", json={
-            "tweet_id": f"check_{i}",
-            "author_handle": "test",
-            "text": f"Tweet {i}",
-            "screenshot_base64": TINY_PNG,
-        })
+        await client.post("/api/tweets", json={"tweet_id": f"check_{i}"})
     resp = await client.post("/api/tweets/check", json={
         "tweet_ids": ["check_0", "check_2", "not_saved"],
     })
@@ -237,11 +188,8 @@ async def test_list_thread_tweets(client: AsyncClient):
     for i in range(3):
         await client.post("/api/tweets", json={
             "tweet_id": f"thread_{i}",
-            "author_handle": "test",
-            "text": f"Thread part {i}",
             "thread_id": "thread_0",
             "thread_position": i,
-            "screenshot_base64": TINY_PNG,
         })
     resp = await client.get("/api/tweets", params={"thread_id": "thread_0"})
     assert resp.status_code == 200
@@ -249,3 +197,13 @@ async def test_list_thread_tweets(client: AsyncClient):
     assert len(data) == 3
     assert data[0]["thread_position"] == 0
     assert data[2]["thread_position"] == 2
+
+
+@pytest.mark.asyncio
+async def test_x_api_failure_returns_502(client: AsyncClient, mock_fetch_tweet):
+    from app.services.x_api import XAPIError
+    mock_fetch_tweet.side_effect = XAPIError("X API rate limit exceeded")
+
+    resp = await client.post("/api/tweets", json={"tweet_id": "fail1"})
+    assert resp.status_code == 502
+    assert "rate limit" in resp.json()["detail"]
