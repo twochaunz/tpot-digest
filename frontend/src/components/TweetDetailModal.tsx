@@ -258,135 +258,37 @@ export function TweetDetailModal({ tweet, onClose, showEngagement = true }: Twee
 
         {/* Content */}
         <div style={{ padding: '4px 24px 24px' }}>
-          {/* 1. Tweet card display */}
+          {/* 1. Interactive Twitter embed */}
           <div style={{ marginBottom: 20 }}>
-            {/* Author info with avatar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              {tweet.author_avatar_url ? (
-                <img
-                  src={tweet.author_avatar_url}
-                  alt={tweet.author_handle}
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    flexShrink: 0,
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: 'var(--bg-elevated)',
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    style={{
-                      fontSize: 16,
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {tweet.author_display_name || `@${tweet.author_handle}`}
-                  </span>
-                  {tweet.author_verified && (
-                    <span
-                      style={{
-                        color: 'var(--accent)',
-                        fontSize: 14,
-                        lineHeight: 1,
-                      }}
-                      title="Verified"
-                    >
-                      &#10003;
-                    </span>
-                  )}
-                </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--text-tertiary)',
-                    marginTop: 2,
-                  }}
-                >
-                  @{tweet.author_handle}
-                </div>
-              </div>
-            </div>
-
-            {/* Tweet text */}
-            <div
+            <iframe
+              src={`https://platform.twitter.com/embed/Tweet.html?id=${tweet.tweet_id}&theme=dark&dnt=true`}
               style={{
-                fontSize: 14,
-                color: 'var(--text-primary)',
-                lineHeight: 1.6,
-                marginBottom: 16,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
+                width: '100%',
+                minHeight: 300,
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                colorScheme: 'dark',
               }}
-            >
-              {tweet.text}
-            </div>
-
-            {/* Media images (new tweets only) */}
-            {!legacy && tweet.media_urls && tweet.media_urls.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: tweet.media_urls.length === 1 ? '1fr' : '1fr 1fr',
-                    gap: 8,
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {tweet.media_urls
-                    .filter((m) => m.type === 'photo' || m.type === 'animated_gif')
-                    .slice(0, 4)
-                    .map((media, i) => (
-                      <img
-                        key={i}
-                        src={media.url}
-                        alt={`Media from @${tweet.author_handle}`}
-                        style={{
-                          width: '100%',
-                          maxHeight: 400,
-                          objectFit: 'contain',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--border)',
-                          display: 'block',
-                          background: 'var(--bg-elevated)',
-                        }}
-                      />
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Engagement stats */}
-            {showEngagement && engagement && (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 20,
-                  marginBottom: 16,
-                  padding: '10px 0',
-                  borderTop: '1px solid var(--border)',
-                  borderBottom: '1px solid var(--border)',
-                }}
-              >
-                <Stat label="Likes" value={engagement.likes} />
-                <Stat label="Retweets" value={engagement.retweets} />
-                <Stat label="Replies" value={engagement.replies} />
-              </div>
-            )}
+              allowFullScreen
+              title={`Tweet by @${tweet.author_handle}`}
+              onLoad={(e) => {
+                // Auto-resize iframe to fit content
+                const iframe = e.currentTarget
+                const tryResize = () => {
+                  try {
+                    const doc = iframe.contentDocument || iframe.contentWindow?.document
+                    if (doc?.body) {
+                      iframe.style.height = doc.body.scrollHeight + 'px'
+                    }
+                  } catch {
+                    // Cross-origin: can't access, use default height
+                  }
+                }
+                tryResize()
+                setTimeout(tryResize, 1000)
+                setTimeout(tryResize, 3000)
+              }}
+            />
           </div>
 
           {/* 2. Memo section */}
