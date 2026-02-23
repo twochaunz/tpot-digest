@@ -737,28 +737,3 @@ export function TweetDetailModal({ tweet, onClose, showEngagement = true }: Twee
     </div>
   )
 }
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 15,
-          fontWeight: 600,
-          color: 'var(--text-primary)',
-        }}
-      >
-        {formatCount(value)}
-      </div>
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--text-tertiary)',
-          marginTop: 1,
-        }}
-      >
-        {label}
-      </div>
-    </div>
-  )
-}
