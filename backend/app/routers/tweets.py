@@ -1,28 +1,16 @@
-import base64
-from datetime import date
-from pathlib import Path
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.tweet import Tweet
 from app.schemas.tweet import TweetAssignRequest, TweetCheckRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
 
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
-
-
-def _save_screenshot(tweet_id: str, b64: str) -> str:
-    today = date.today().strftime("%Y%m%d")
-    dir_path = Path(settings.data_dir) / today / "screenshots"
-    dir_path.mkdir(parents=True, exist_ok=True)
-    file_path = dir_path / f"tweet_{tweet_id}.png"
-    file_path.write_bytes(base64.b64decode(b64))
-    return str(file_path.relative_to(settings.data_dir))
 
 
 @router.post("", status_code=201)
@@ -35,29 +23,30 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         out.status = "duplicate"
         return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
 
-    if body.screenshot_error:
-        import logging
-        logging.getLogger("tpot").warning("Screenshot capture failed for %s: %s", body.tweet_id, body.screenshot_error)
-    screenshot_path = _save_screenshot(body.tweet_id, body.screenshot_base64) if body.screenshot_base64 else None
+    from app.services.x_api import fetch_tweet, XAPIError
+    try:
+        api_data = await fetch_tweet(body.tweet_id)
+    except XAPIError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
     kwargs = dict(
         tweet_id=body.tweet_id,
-        author_handle=body.author_handle,
-        author_display_name=body.author_display_name,
-        text=body.text,
-        media_urls={"urls": body.media_urls} if body.media_urls else None,
-        engagement=body.engagement,
-        is_quote_tweet=body.is_quote_tweet,
-        is_reply=body.is_reply,
-        quoted_tweet_id=body.quoted_tweet_id,
-        reply_to_tweet_id=body.reply_to_tweet_id,
-        reply_to_handle=body.reply_to_handle,
+        author_handle=api_data["author_handle"],
+        author_display_name=api_data["author_display_name"],
+        author_avatar_url=api_data["author_avatar_url"],
+        author_verified=api_data["author_verified"],
+        text=api_data["text"],
+        media_urls=api_data["media_urls"],
+        engagement=api_data["engagement"],
+        is_quote_tweet=api_data["is_quote_tweet"],
+        is_reply=api_data["is_reply"],
+        quoted_tweet_id=api_data["quoted_tweet_id"],
+        reply_to_tweet_id=api_data.get("reply_to_tweet_id"),
+        url=api_data["url"],
+        created_at=datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00")) if api_data.get("created_at") else None,
+        feed_source=body.feed_source,
         thread_id=body.thread_id,
         thread_position=body.thread_position,
-        screenshot_path=screenshot_path,
-        feed_source=body.feed_source,
-        url=body.url,
-        memo=body.memo,
     )
     if body.saved_at:
         kwargs["saved_at"] = body.saved_at
