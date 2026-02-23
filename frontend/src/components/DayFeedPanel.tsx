@@ -187,7 +187,7 @@ export function DayFeedPanel({
         overflowY: 'auto',
         height: '100%',
         scrollSnapType: 'y proximity',
-        padding: '16px 16px 80px',
+        padding: '0 16px 80px',
       }}
     >
       {/* Loading state */}

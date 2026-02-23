@@ -12,12 +12,6 @@ function shiftDate(dateStr: string, days: number): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
-function formatShortDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
 interface DayCarouselProps {
   date: string
   onDateChange: (date: string) => void
@@ -157,34 +151,29 @@ export function DayCarousel({ date, onDateChange, search, onTweetClick }: DayCar
               overflow: 'hidden',
             }}
           >
-            {/* Side panel date label */}
+            {/* Click overlay for side panels */}
             {!isCenter && (
               <div
+                onClick={() => onDateChange(dayDate)}
                 style={{
                   position: 'absolute',
-                  top: 12,
-                  left: 0,
-                  right: 0,
-                  textAlign: 'center',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--text-tertiary)',
-                  zIndex: 2,
-                  pointerEvents: 'none',
+                  inset: 0,
+                  zIndex: 3,
+                  cursor: 'pointer',
                 }}
-              >
-                {formatShortDate(dayDate)}
-              </div>
+              />
             )}
 
-            <DayFeedPanel
-              date={dayDate}
-              search={search}
-              isActive={isCenter}
-              onTweetClick={onTweetClick}
-              activeDragTweet={activeDragTweet}
-              setActiveDragTweet={setActiveDragTweet}
-            />
+            <div style={{ pointerEvents: isCenter ? 'auto' : 'none', height: '100%' }}>
+              <DayFeedPanel
+                date={dayDate}
+                search={isCenter ? search : ''}
+                isActive={isCenter}
+                onTweetClick={onTweetClick}
+                activeDragTweet={isCenter ? activeDragTweet : null}
+                setActiveDragTweet={setActiveDragTweet}
+              />
+            </div>
           </div>
         )
       })}
