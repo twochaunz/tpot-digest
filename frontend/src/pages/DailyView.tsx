@@ -20,7 +20,7 @@ export function DailyView() {
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
-  const { showEngagement, toggle: toggleEngagement } = useEngagementToggle()
+  const { showEngagement } = useEngagementToggle()
 
   const searchRef = useRef<HTMLInputElement>(null)
 
