@@ -89,9 +89,13 @@ body {
   width: 100% !important;
 }
 
-/* react-tweet: prevent internal links from navigating (clicks open detail panel instead) */
-.react-tweet-container a {
+/* react-tweet: prevent all internal elements from capturing clicks (clicks open detail panel instead) */
+.react-tweet-container {
   pointer-events: none;
+}
+
+.embedded-tweet-wrapper {
+  pointer-events: auto;
 }
 
 /* Hover actions for embedded tweets */
