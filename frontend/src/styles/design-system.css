@@ -89,6 +89,11 @@ body {
   width: 100% !important;
 }
 
+/* react-tweet: prevent internal links from navigating (clicks open detail panel instead) */
+.react-tweet-container a {
+  pointer-events: none;
+}
+
 /* Hover actions for embedded tweets */
 .embedded-tweet-wrapper .embedded-tweet-actions {
   position: absolute;
