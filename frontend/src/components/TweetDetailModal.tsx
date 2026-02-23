@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { toPng } from 'html-to-image'
+import { Tweet as TweetEmbed } from 'react-tweet'
 import type { Tweet } from '../api/tweets'
 import { useTweets, usePatchTweet } from '../api/tweets'
 import { useGrokContext } from '../hooks/useGrokContext'
@@ -99,45 +100,6 @@ function ThreadList({ threadId, currentTweetId }: { threadId: string; currentTwe
   )
 }
 
-function TweetEmbed({ tweetId, authorHandle }: { tweetId: string; authorHandle: string }) {
-  const [height, setHeight] = useState(500)
-
-  useEffect(() => {
-    function handleMessage(e: MessageEvent) {
-      if (e.origin !== 'https://platform.twitter.com') return
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-        if (data['twttr.embed']?.method === 'twttr.private.resize') {
-          const params = data['twttr.embed'].params
-          if (params?.[0]?.height) {
-            setHeight(params[0].height)
-          }
-        }
-      } catch {
-        // ignore non-JSON messages
-      }
-    }
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [])
-
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <iframe
-        src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
-        style={{
-          width: '100%',
-          height,
-          border: 'none',
-          colorScheme: 'dark',
-          background: '#15202b',
-        }}
-        scrolling="no"
-        allowFullScreen
-        title={`Tweet by @${authorHandle}`}
-      />
-    </div>
-  )
 }
 
 export function TweetDetailModal({ tweet, onClose, showEngagement = true }: TweetDetailModalProps) {
@@ -299,8 +261,10 @@ export function TweetDetailModal({ tweet, onClose, showEngagement = true }: Twee
 
         {/* Content */}
         <div style={{ padding: '4px 24px 24px' }}>
-          {/* 1. Interactive Twitter embed - auto-resizes via postMessage */}
-          <TweetEmbed tweetId={tweet.tweet_id} authorHandle={tweet.author_handle} />
+          {/* 1. Native tweet embed via react-tweet (no iframe, instant render) */}
+          <div data-theme="dark" className="react-tweet-container" style={{ marginBottom: 20 }}>
+            <TweetEmbed id={tweet.tweet_id} />
+          </div>
 
           {/* 2. Memo section */}
           <div style={{ marginBottom: 20 }}>
