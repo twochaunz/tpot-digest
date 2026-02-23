@@ -16,6 +16,7 @@ interface TopicSectionWithDataProps {
   onUpdateTitle: (topicId: number, title: string) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  showEngagement?: boolean
 }
 
 export function TopicSectionWithData({
@@ -28,6 +29,7 @@ export function TopicSectionWithData({
   onUpdateTitle,
   onTweetClick,
   onContextMenu,
+  showEngagement: _showEngagement,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
   const tweets = tweetsQuery.data ?? []

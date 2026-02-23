@@ -7,6 +7,7 @@ interface UnsortedSectionProps {
   onDelete: (tweetId: number) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  showEngagement?: boolean
 }
 
 function screenshotUrl(path: string | null): string | null {
@@ -217,6 +218,7 @@ export function UnsortedSection({
   onDelete,
   onTweetClick,
   onContextMenu,
+  showEngagement: _showEngagement,
 }: UnsortedSectionProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'droppable-unsorted',
