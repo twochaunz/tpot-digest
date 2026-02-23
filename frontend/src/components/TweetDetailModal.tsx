@@ -104,10 +104,13 @@ function TweetIframe({ tweetId, authorHandle }: { tweetId: string; authorHandle:
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    const t0 = Date.now()
+    console.log('[TweetIframe] mounted')
     function handleMessage(e: MessageEvent) {
       if (e.origin !== 'https://platform.twitter.com') return
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+        console.log(`[TweetIframe] +${Date.now() - t0}ms`, data['twttr.embed']?.method)
         if (data['twttr.embed']?.method === 'twttr.private.resize') {
           const params = data['twttr.embed'].params
           if (params?.[0]?.height) {
@@ -130,33 +133,9 @@ function TweetIframe({ tweetId, authorHandle }: { tweetId: string; authorHandle:
         background: '#15202b',
         borderRadius: 12,
         overflow: 'hidden',
-        position: 'relative',
         minHeight: ready ? undefined : 300,
       }}
     >
-      {/* Loading indicator — visible until tweet renders */}
-      {!ready && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 13,
-              color: '#71767b',
-              fontFamily: 'var(--font-body)',
-            }}
-          >
-            Loading tweet...
-          </span>
-        </div>
-      )}
       <iframe
         src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
         style={{
@@ -164,7 +143,8 @@ function TweetIframe({ tweetId, authorHandle }: { tweetId: string; authorHandle:
           height,
           border: 'none',
           colorScheme: 'dark',
-          visibility: ready ? 'visible' : 'hidden',
+          opacity: ready ? 1 : 0,
+          transition: 'opacity 0.15s ease',
         }}
         scrolling="no"
         allowFullScreen
