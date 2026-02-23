@@ -130,9 +130,33 @@ function TweetIframe({ tweetId, authorHandle }: { tweetId: string; authorHandle:
         background: '#15202b',
         borderRadius: 12,
         overflow: 'hidden',
+        position: 'relative',
         minHeight: ready ? undefined : 300,
       }}
     >
+      {/* Loading indicator — visible until tweet renders */}
+      {!ready && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              color: '#71767b',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Loading tweet...
+          </span>
+        </div>
+      )}
       <iframe
         src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
         style={{
@@ -140,8 +164,7 @@ function TweetIframe({ tweetId, authorHandle }: { tweetId: string; authorHandle:
           height,
           border: 'none',
           colorScheme: 'dark',
-          opacity: ready ? 1 : 0,
-          transition: 'opacity 0.15s ease',
+          visibility: ready ? 'visible' : 'hidden',
         }}
         scrolling="no"
         allowFullScreen
