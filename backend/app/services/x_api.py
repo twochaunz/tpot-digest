@@ -1,0 +1,136 @@
+"""X API v2 client for fetching tweet data."""
+
+from __future__ import annotations
+
+import httpx
+
+from app.config import settings
+
+X_API_BASE = "https://api.x.com/2"
+
+TWEET_FIELDS = "text,created_at,public_metrics,entities,referenced_tweets"
+EXPANSIONS = "author_id,attachments.media_keys"
+USER_FIELDS = "profile_image_url,verified,name,username"
+MEDIA_FIELDS = "url,preview_image_url,type,width,height"
+
+
+class XAPIError(Exception):
+    """Raised when the X API returns an error or is misconfigured."""
+
+    pass
+
+
+async def fetch_tweet(tweet_id: str) -> dict:
+    """Fetch a tweet by ID from the X API v2 and return normalized data.
+
+    Returns a dict with keys:
+        author_handle, author_display_name, author_avatar_url, author_verified,
+        text, url, media_urls, engagement, is_quote_tweet, is_reply,
+        quoted_tweet_id, reply_to_tweet_id, created_at
+
+    Raises:
+        XAPIError: on missing token, rate limiting, auth failure, or tweet not found.
+    """
+    if not settings.x_api_bearer_token:
+        raise XAPIError("X API bearer token is not configured")
+
+    params = {
+        "tweet.fields": TWEET_FIELDS,
+        "expansions": EXPANSIONS,
+        "user.fields": USER_FIELDS,
+        "media.fields": MEDIA_FIELDS,
+    }
+    headers = {
+        "Authorization": f"Bearer {settings.x_api_bearer_token}",
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{X_API_BASE}/tweets/{tweet_id}",
+            params=params,
+            headers=headers,
+        )
+
+    # Handle HTTP-level errors
+    if response.status_code == 429:
+        raise XAPIError("X API rate limit exceeded")
+    if response.status_code == 401:
+        raise XAPIError("X API authentication failed")
+
+    body = response.json()
+
+    # Handle missing data (tweet not found or deleted)
+    if "data" not in body:
+        raise XAPIError(f"Tweet {tweet_id} not found")
+
+    data = body["data"]
+    includes = body.get("includes", {})
+
+    # Extract author from includes.users
+    author = _find_author(data.get("author_id"), includes.get("users", []))
+
+    # Extract media URLs from includes.media
+    media_urls = _extract_media_urls(
+        data.get("attachments", {}).get("media_keys", []),
+        includes.get("media", []),
+    )
+
+    # Extract referenced tweet info
+    referenced = data.get("referenced_tweets", [])
+    quoted_tweet_id = None
+    reply_to_tweet_id = None
+    is_quote_tweet = False
+    is_reply = False
+
+    for ref in referenced:
+        if ref["type"] == "quoted":
+            is_quote_tweet = True
+            quoted_tweet_id = ref["id"]
+        elif ref["type"] == "replied_to":
+            is_reply = True
+            reply_to_tweet_id = ref["id"]
+
+    author_handle = author.get("username", "") if author else ""
+
+    return {
+        "author_handle": author_handle,
+        "author_display_name": author.get("name", "") if author else "",
+        "author_avatar_url": author.get("profile_image_url", "") if author else "",
+        "author_verified": author.get("verified", False) if author else False,
+        "text": data.get("text", ""),
+        "url": f"https://x.com/{author_handle}/status/{tweet_id}" if author_handle else f"https://x.com/i/status/{tweet_id}",
+        "media_urls": media_urls,
+        "engagement": data.get("public_metrics", {}),
+        "is_quote_tweet": is_quote_tweet,
+        "is_reply": is_reply,
+        "quoted_tweet_id": quoted_tweet_id,
+        "reply_to_tweet_id": reply_to_tweet_id,
+        "created_at": data.get("created_at", ""),
+    }
+
+
+def _find_author(author_id: str | None, users: list[dict]) -> dict | None:
+    """Find the author user object from the includes.users list."""
+    if not author_id or not users:
+        return None
+    for user in users:
+        if user.get("id") == author_id:
+            return user
+    return None
+
+
+def _extract_media_urls(media_keys: list[str], media_list: list[dict]) -> list[str]:
+    """Extract media URLs matching the given media keys."""
+    if not media_keys or not media_list:
+        return []
+
+    media_by_key = {m["media_key"]: m for m in media_list}
+    urls = []
+    for key in media_keys:
+        media = media_by_key.get(key)
+        if media:
+            # Prefer url for photos, preview_image_url for videos
+            url = media.get("url") or media.get("preview_image_url", "")
+            if url:
+                urls.append(url)
+    return urls
