@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Tweet } from '../api/tweets'
 import { useEngagementToggle } from '../hooks/useEngagementToggle'
@@ -21,6 +21,19 @@ export function DailyView() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
   const { showEngagement, toggle: toggleEngagement } = useEngagementToggle()
+
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const handleTweetClick = useCallback((tweet: Tweet) => {
     setDetailTweet(tweet)
@@ -55,10 +68,17 @@ export function DailyView() {
             alignItems: 'center',
           }}
         >
-          {/* Left: search */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          {/* Left: empty for balance */}
+          <div style={{ flex: 1 }} />
+
+          {/* Center: date picker */}
+          <DatePicker value={date} onChange={setDate} />
+
+          {/* Right: search + settings */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
             <div style={{ position: 'relative' }}>
               <input
+                ref={searchRef}
                 type="text"
                 placeholder="Search tweets..."
                 value={search}
@@ -91,32 +111,28 @@ export function DailyView() {
               >
                 &#8981;
               </span>
+              {/* Cmd+K hint badge */}
+              {!searchFocused && !search && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-tertiary)',
+                    fontSize: 10,
+                    fontFamily: 'var(--font-body)',
+                    background: 'var(--bg-elevated)',
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-sm)',
+                    pointerEvents: 'none',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  &#8984;K
+                </span>
+              )}
             </div>
-          </div>
-
-          {/* Center: date picker */}
-          <DatePicker value={date} onChange={setDate} />
-
-          {/* Right: engagement toggle + settings */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
-            <button
-              onClick={toggleEngagement}
-              style={{
-                background: showEngagement ? 'var(--accent-muted)' : 'none',
-                border: `1px solid ${showEngagement ? 'var(--accent)' : 'var(--border)'}`,
-                borderRadius: 'var(--radius-md)',
-                padding: '5px 10px',
-                cursor: 'pointer',
-                color: showEngagement ? 'var(--accent-hover)' : 'var(--text-secondary)',
-                fontSize: 12,
-                fontFamily: 'var(--font-body)',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
-              }}
-              title={showEngagement ? 'Hide engagement stats' : 'Show engagement stats'}
-            >
-              {showEngagement ? 'Stats ON' : 'Stats OFF'}
-            </button>
 
             <button
               onClick={() => navigate('/app/settings')}
