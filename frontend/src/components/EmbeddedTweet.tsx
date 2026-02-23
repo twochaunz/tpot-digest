@@ -56,31 +56,6 @@ export function EmbeddedTweet({ tweet, onTweetClick, onContextMenu, onDelete }: 
             &times;
           </button>
         )}
-        {tweet.url && (
-          <a
-            href={tweet.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 'var(--radius-sm)',
-              background: 'rgba(0,0,0,0.6)',
-              border: 'none',
-              color: '#fff',
-              fontSize: 12,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textDecoration: 'none',
-            }}
-            title="Open on X"
-          >
-            &#8599;
-          </a>
-        )}
       </div>
     </div>
   )
