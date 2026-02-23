@@ -6,8 +6,12 @@ import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
 import { TweetDetailModal } from '../components/TweetDetailModal'
 
-function todayStr(): string {
-  const d = new Date()
+function defaultDateStr(): string {
+  // Use PST (UTC-8) to determine time of day
+  const now = new Date()
+  const pstHour = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours()
+  // Before noon PST, default to yesterday
+  const d = pstHour < 12 ? new Date(now.getTime() - 86400000) : now
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
@@ -16,7 +20,7 @@ function todayStr(): string {
 
 export function DailyView() {
   const navigate = useNavigate()
-  const [date, setDate] = useState(todayStr)
+  const [date, setDate] = useState(defaultDateStr)
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
