@@ -99,6 +99,50 @@ function ThreadList({ threadId, currentTweetId }: { threadId: string; currentTwe
   )
 }
 
+function TweetEmbed({ tweetId, authorHandle }: { tweetId: string; authorHandle: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [height, setHeight] = useState(300)
+
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (e.origin !== 'https://platform.twitter.com') return
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+        if (data['twttr.embed']?.method === 'twttr.private.resize') {
+          const params = data['twttr.embed'].params
+          if (params?.[0]?.height) {
+            setHeight(params[0].height)
+          }
+        }
+      } catch {
+        // ignore non-JSON messages
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <iframe
+        ref={iframeRef}
+        src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
+        style={{
+          width: '100%',
+          height,
+          border: 'none',
+          borderRadius: 'var(--radius-md)',
+          colorScheme: 'dark',
+          overflow: 'hidden',
+        }}
+        scrolling="no"
+        allowFullScreen
+        title={`Tweet by @${authorHandle}`}
+      />
+    </div>
+  )
+}
+
 export function TweetDetailModal({ tweet, onClose, showEngagement = true }: TweetDetailModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const cleanRef = useRef<HTMLDivElement>(null)
@@ -258,38 +302,8 @@ export function TweetDetailModal({ tweet, onClose, showEngagement = true }: Twee
 
         {/* Content */}
         <div style={{ padding: '4px 24px 24px' }}>
-          {/* 1. Interactive Twitter embed */}
-          <div style={{ marginBottom: 20 }}>
-            <iframe
-              src={`https://platform.twitter.com/embed/Tweet.html?id=${tweet.tweet_id}&theme=dark&dnt=true`}
-              style={{
-                width: '100%',
-                minHeight: 300,
-                border: 'none',
-                borderRadius: 'var(--radius-md)',
-                colorScheme: 'dark',
-              }}
-              allowFullScreen
-              title={`Tweet by @${tweet.author_handle}`}
-              onLoad={(e) => {
-                // Auto-resize iframe to fit content
-                const iframe = e.currentTarget
-                const tryResize = () => {
-                  try {
-                    const doc = iframe.contentDocument || iframe.contentWindow?.document
-                    if (doc?.body) {
-                      iframe.style.height = doc.body.scrollHeight + 'px'
-                    }
-                  } catch {
-                    // Cross-origin: can't access, use default height
-                  }
-                }
-                tryResize()
-                setTimeout(tryResize, 1000)
-                setTimeout(tryResize, 3000)
-              }}
-            />
-          </div>
+          {/* 1. Interactive Twitter embed - auto-resizes via postMessage */}
+          <TweetEmbed tweetId={tweet.tweet_id} authorHandle={tweet.author_handle} />
 
           {/* 2. Memo section */}
           <div style={{ marginBottom: 20 }}>
