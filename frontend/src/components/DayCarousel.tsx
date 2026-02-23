@@ -146,10 +146,12 @@ export function DayCarousel({ date, onDateChange, search, onTweetClick }: DayCar
               transform: `scale(${config.scale})`,
               opacity: config.opacity,
               transition: 'transform 0.3s ease, opacity 0.3s ease',
-              transformOrigin: 'center top',
+              transformOrigin: isCenter ? 'center top' : 'center center',
               position: 'relative',
               height: '100%',
               overflow: 'hidden',
+              display: isCenter ? undefined : 'flex',
+              alignItems: isCenter ? undefined : 'center',
             }}
           >
             {/* Click overlay for side panels */}
