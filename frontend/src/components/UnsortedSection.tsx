@@ -48,7 +48,6 @@ function DraggableFeedTweetCard({
         alignItems: 'flex-start',
         opacity: isDragging ? 0.3 : 1,
         transition: 'opacity 0.15s ease',
-        maxWidth: 600,
       }}
     >
       {/* Drag handle */}

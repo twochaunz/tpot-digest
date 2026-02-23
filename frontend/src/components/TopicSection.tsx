@@ -163,6 +163,7 @@ function TopicSection({
         borderRadius: 'var(--radius-lg)',
         overflow: 'hidden',
         transition: 'border 0.15s ease',
+        scrollSnapAlign: 'start' as const,
       }}
     >
       {/* Header */}
@@ -173,11 +174,11 @@ function TopicSection({
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '12px 16px',
+          padding: '14px 20px',
           borderBottom: collapsed ? 'none' : '1px solid var(--border)',
           cursor: 'pointer',
           position: 'sticky' as const,
-          top: 65,
+          top: 0,
           zIndex: 5,
           background: 'var(--bg-raised)',
         }}
@@ -196,7 +197,7 @@ function TopicSection({
         {/* Collapse arrow */}
         <span
           style={{
-            fontSize: 10,
+            fontSize: 12,
             color: 'var(--text-tertiary)',
             transition: 'transform 0.15s ease',
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
@@ -235,7 +236,7 @@ function TopicSection({
             autoFocus
             style={{
               flex: 1,
-              fontSize: 14,
+              fontSize: 17,
               fontWeight: 600,
               color: 'var(--text-primary)',
               background: 'var(--bg-base)',
@@ -256,7 +257,7 @@ function TopicSection({
             }}
             title={title}
             style={{
-              fontSize: 14,
+              fontSize: 17,
               fontWeight: 600,
               color: 'var(--text-primary)',
               flex: 1,
@@ -362,7 +363,7 @@ function TopicSection({
               )}
 
               {/* Tweet cards - vertical feed, max-width 600px */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 600 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {group.tweets.map((t) => (
                   <DraggableTweetInTopic
                     key={t.id}
