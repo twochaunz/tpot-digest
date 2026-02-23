@@ -13,6 +13,7 @@ import { useTweets, useAssignTweets, useUnassignTweets, useDeleteTweet, usePatch
 import type { Tweet } from '../api/tweets'
 import { useTopics, useCreateTopic, useDeleteTopic, useUpdateTopic } from '../api/topics'
 import { useUndo } from '../hooks/useUndo'
+import { useEngagementToggle } from '../hooks/useEngagementToggle'
 import { DatePicker } from '../components/DatePicker'
 import { UnsortedSection } from '../components/UnsortedSection'
 import { TopicSectionWithData } from '../components/TopicSection'
@@ -36,6 +37,7 @@ export function DailyView() {
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
+  const { showEngagement, toggle: toggleEngagement } = useEngagementToggle()
 
   // Drag state
   const [activeDragTweet, setActiveDragTweet] = useState<Tweet | null>(null)
@@ -261,6 +263,26 @@ export function DailyView() {
             </span>
           </div>
 
+          {/* Engagement toggle */}
+          <button
+            onClick={toggleEngagement}
+            style={{
+              background: showEngagement ? 'var(--accent-muted)' : 'none',
+              border: `1px solid ${showEngagement ? 'var(--accent)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius-md)',
+              padding: '5px 10px',
+              cursor: 'pointer',
+              color: showEngagement ? 'var(--accent-hover)' : 'var(--text-secondary)',
+              fontSize: 12,
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+            title={showEngagement ? 'Hide engagement stats' : 'Show engagement stats'}
+          >
+            {showEngagement ? 'Stats ON' : 'Stats OFF'}
+          </button>
+
           {/* Settings */}
           <button
             onClick={() => navigate('/app/settings')}
@@ -375,6 +397,7 @@ export function DailyView() {
               onDelete={handleDeleteTweet}
               onTweetClick={handleTweetClick}
               onContextMenu={handleContextMenu}
+              showEngagement={showEngagement}
             />
 
             {/* Kanban topic columns */}
@@ -400,6 +423,7 @@ export function DailyView() {
                     onUpdateTitle={handleUpdateTopicTitle}
                     onTweetClick={handleTweetClick}
                     onContextMenu={handleContextMenu}
+                    showEngagement={showEngagement}
                   />
                 ))}
 
@@ -450,6 +474,7 @@ export function DailyView() {
         <TweetDetailModal
           tweet={detailTweet}
           onClose={() => setDetailTweet(null)}
+          showEngagement={showEngagement}
         />
       )}
 
