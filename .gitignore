@@ -8,3 +8,4 @@ node_modules
 dist
 browser_state/
 data/
+.worktrees/
