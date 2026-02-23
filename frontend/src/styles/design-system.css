@@ -48,21 +48,28 @@ body {
 
 .day-carousel::-webkit-scrollbar { display: none; }
 
-/* react-tweet overrides: hide engagement, info, follow, "Read more on X" */
-.react-tweet-container [class*="actions"],
-.react-tweet-container [class*="tweet-info"],
-.react-tweet-container [class*="tweetInfo"],
-.react-tweet-container [class*="follow"],
-.react-tweet-container [class*="tweet-replies"],
-.react-tweet-container [class*="tweetReplies"],
-.react-tweet-container a[href*="x.com"][class*="root"],
-.react-tweet-container [class*="tweet-header"] [class*="brand"],
-.react-tweet-container [class*="tweetHeader"] [class*="brand"] {
+/* react-tweet: hide engagement actions row (like, reply, copy) */
+.react-tweet-container [class*="actions"] {
   display: none !important;
 }
 
-/* Hide the X logo in tweet header */
-.react-tweet-container svg[viewBox="0 0 24 24"][class*="twitter"] {
+/* react-tweet: hide "Read more on X" / "Read N replies" */
+.react-tweet-container [class*="replies"] {
+  display: none !important;
+}
+
+/* react-tweet: hide Follow button (scoped to authorFollow to avoid matching @mentions) */
+.react-tweet-container [class*="authorFollow"] {
+  display: none !important;
+}
+
+/* react-tweet: hide info (i) button but keep timestamp */
+.react-tweet-container a[class*="infoLink"] {
+  display: none !important;
+}
+
+/* react-tweet: hide X brand logo in header */
+.react-tweet-container a[class*="brand"] {
   display: none !important;
 }
 
