@@ -29,8 +29,11 @@ export function DailyView() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
         background: 'var(--bg-base)',
+        display: 'flex',
+        flexDirection: 'column' as const,
       }}
     >
       {/* Header */}
