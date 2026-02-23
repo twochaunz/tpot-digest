@@ -3,7 +3,33 @@ import { useJoinWaitlist } from '../api/waitlist'
 
 export function LandingPage() {
   const [email, setEmail] = useState('')
+  const [showLogin, setShowLogin] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [loggingIn, setLoggingIn] = useState(false)
   const joinWaitlist = useJoinWaitlist()
+
+  const handleLogin = (e: FormEvent) => {
+    e.preventDefault()
+    setLoginError('')
+    setLoggingIn(true)
+    const xhr = new XMLHttpRequest()
+    xhr.open('GET', '/app', true, username, password)
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        window.location.href = '/app'
+      } else {
+        setLoginError('Invalid credentials')
+        setLoggingIn(false)
+      }
+    }
+    xhr.onerror = () => {
+      setLoginError('Connection failed')
+      setLoggingIn(false)
+    }
+    xhr.send()
+  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -223,6 +249,82 @@ export function LandingPage() {
           color: #6B3A2A;
         }
 
+        .login-form {
+          animation: fadeInUp 0.4s ease-out both;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+          max-width: 320px;
+          margin-top: 20px;
+        }
+
+        .login-input {
+          border: 2px solid rgba(180, 130, 100, 0.2);
+          border-radius: 12px;
+          padding: 10px 16px;
+          font-family: 'Nunito', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          color: #5C3D2E;
+          background: white;
+          outline: none;
+          transition: border-color 0.2s ease;
+        }
+        .login-input::placeholder {
+          color: #C4A48E;
+          font-weight: 400;
+        }
+        .login-input:focus {
+          border-color: rgba(180, 130, 100, 0.45);
+        }
+
+        .login-btn {
+          border: none;
+          background: linear-gradient(135deg, #D4956A 0%, #C47D52 100%);
+          color: white;
+          font-family: 'Baloo 2', cursive;
+          font-size: 15px;
+          font-weight: 700;
+          padding: 10px 24px;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 8px rgba(196, 125, 82, 0.3);
+        }
+        .login-btn:hover {
+          background: linear-gradient(135deg, #C47D52 0%, #B06E45 100%);
+          transform: translateY(-1px);
+        }
+        .login-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .login-error {
+          color: #C47D52;
+          font-family: 'Nunito', sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          text-align: center;
+        }
+
+        .login-back {
+          font-family: 'Nunito', sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          color: #9C8578;
+          cursor: pointer;
+          border: none;
+          background: none;
+          padding: 2px 8px;
+          transition: color 0.2s ease;
+        }
+        .login-back:hover {
+          color: #6B3A2A;
+        }
+
         @media (max-width: 480px) {
           .title { font-size: 52px; }
           .waitlist-form { max-width: 340px; padding: 4px 4px 4px 18px; }
@@ -429,14 +531,53 @@ export function LandingPage() {
             </p>
           )}
 
-          {/* Sign in link */}
-          <button
-            className="sign-in-link"
-            onClick={() => { window.location.href = '/app' }}
-            type="button"
-          >
-            Sign in
-          </button>
+          {/* Sign in */}
+          {showLogin ? (
+            <form className="login-form" onSubmit={handleLogin}>
+              <input
+                type="text"
+                className="login-input"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoFocus
+                required
+                disabled={loggingIn}
+              />
+              <input
+                type="password"
+                className="login-input"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loggingIn}
+              />
+              {loginError && <p className="login-error">{loginError}</p>}
+              <button
+                type="submit"
+                className="login-btn"
+                disabled={loggingIn || !username || !password}
+              >
+                {loggingIn ? 'signing in...' : 'sign in'}
+              </button>
+              <button
+                type="button"
+                className="login-back"
+                onClick={() => { setShowLogin(false); setLoginError('') }}
+              >
+                back
+              </button>
+            </form>
+          ) : (
+            <button
+              className="sign-in-link"
+              onClick={() => setShowLogin(true)}
+              type="button"
+            >
+              Sign in
+            </button>
+          )}
         </div>
       </div>
     </>
