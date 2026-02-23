@@ -6,8 +6,10 @@ export interface Tweet {
   tweet_id: string
   author_handle: string
   author_display_name: string | null
+  author_avatar_url: string | null
+  author_verified: boolean
   text: string
-  media_urls: { urls: string[] } | null
+  media_urls: { type: string; url: string; width?: number; height?: number }[] | null
   engagement: { likes: number; retweets: number; replies: number } | null
   is_quote_tweet: boolean
   is_reply: boolean
@@ -16,6 +18,7 @@ export interface Tweet {
   screenshot_path: string | null
   feed_source: string | null
   url: string | null
+  created_at: string | null
   saved_at: string
 }
 
