@@ -141,12 +141,11 @@ async def fetch_grok(
     if tweet.grok_context and not force:
         return tweet
 
-    from app.services.grok_api import fetch_grok_context, XAIAPIError
+    from app.services.grok_api import fetch_grok_context, GrokAPIError
     try:
-        context = await fetch_grok_context(
-            tweet.text, tweet.author_handle, tweet.tweet_id, tweet.url
-        )
-    except XAIAPIError as e:
+        tweet_url = tweet.url or f"https://x.com/{tweet.author_handle}/status/{tweet.tweet_id}"
+        context = await fetch_grok_context(tweet_url)
+    except GrokAPIError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
     tweet.grok_context = context
