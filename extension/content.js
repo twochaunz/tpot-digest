@@ -661,32 +661,36 @@
 
     wrapper.appendChild(btn);
 
-    // Match bookmark/share: don't grow. Use individual properties
-    // (more reliable than shorthand in setProperty).
-    wrapper.style.setProperty("flex-grow", "0", "important");
-    wrapper.style.setProperty("flex-shrink", "0", "important");
-    wrapper.style.setProperty("flex-basis", "auto", "important");
-
     if (bookmarkBtn) {
       // Walk up from the bookmark button to find the direct child of the action bar
       let container = bookmarkBtn;
       while (container.parentElement && container.parentElement !== actionBar) {
         container = container.parentElement;
       }
-      actionBar.insertBefore(wrapper, container);
+      // On individual tweet pages, insert before share (last child) so the
+      // + button sits between bookmark and share at the right edge.
+      // On feed, insert before bookmark as a growing item with right-aligned button.
+      const isDetailPage = /^\/[^/]+\/status\/\d+/.test(window.location.pathname);
+      const insertBefore = isDetailPage ? actionBar.lastElementChild : container;
+      actionBar.insertBefore(wrapper, insertBefore);
 
-      // Diagnostic: verify flex after insertion
+      // Diagnostic: log layout info
       requestAnimationFrame(() => {
+        const abCS = window.getComputedStyle(actionBar);
         const wCS = window.getComputedStyle(wrapper);
-        const bCS = window.getComputedStyle(container);
+        const btnRect = btn.getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+        const abRect = actionBar.getBoundingClientRect();
         console.log("[tpot-debug] URL:", window.location.pathname);
-        console.log("[tpot-debug] wrapper AFTER insert - flex:", wCS.flex, "| grow:", wCS.flexGrow, "| width:", wCS.width);
-        console.log("[tpot-debug] bookmark AFTER insert - flex:", bCS.flex, "| grow:", bCS.flexGrow, "| width:", bCS.width);
-        console.log("[tpot-debug] actionBar children:", actionBar.children.length);
+        console.log("[tpot-debug] actionBar - width:", abCS.width, "| gap:", abCS.columnGap, "| children:", actionBar.children.length);
         Array.from(actionBar.children).forEach((child, i) => {
           const s = window.getComputedStyle(child);
-          console.log("[tpot-debug] child", i, "flex:", s.flex, "| grow:", s.flexGrow, "| width:", s.width);
+          console.log("[tpot-debug] child", i, "flex:", s.flex, "| width:", s.width, "| margin:", s.margin);
         });
+        console.log("[tpot-debug] wrapper - flex:", wCS.flex, "| width:", wCS.width, "| justifyContent:", wCS.justifyContent);
+        console.log("[tpot-debug] RECTS btn:", JSON.stringify({l: btnRect.left.toFixed(1), r: btnRect.right.toFixed(1)}));
+        console.log("[tpot-debug] RECTS bookmark:", JSON.stringify({l: cRect.left.toFixed(1), r: cRect.right.toFixed(1)}));
+        console.log("[tpot-debug] RECTS actionBar:", JSON.stringify({l: abRect.left.toFixed(1), r: abRect.right.toFixed(1)}));
       });
     } else {
       actionBar.appendChild(wrapper);
