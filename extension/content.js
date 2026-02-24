@@ -667,15 +667,7 @@
       while (container.parentElement && container.parentElement !== actionBar) {
         container = container.parentElement;
       }
-      // Position our button absolutely inside the bookmark container
-      // so we don't add an extra flex item to the action bar
-      container.style.position = "relative";
-      container.style.overflow = "visible";
-      wrapper.style.position = "absolute";
-      wrapper.style.right = "100%";
-      wrapper.style.top = "0";
-      wrapper.style.bottom = "0";
-      container.appendChild(wrapper);
+      actionBar.insertBefore(wrapper, container);
     } else {
       actionBar.appendChild(wrapper);
     }
