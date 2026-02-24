@@ -41,7 +41,7 @@ interface TopicSectionWithDataProps {
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
   onTweetClick?: (tweet: Tweet) => void
-  onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => void
 }
 
 export function TopicSectionWithData({
@@ -84,7 +84,7 @@ export function TopicSectionWithData({
       onUpdateTitle={onUpdateTitle}
       onSetOg={onSetOg}
       onTweetClick={onTweetClick}
-      onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId)}
+      onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId, ogTweetId)}
     />
   )
 }
@@ -417,14 +417,14 @@ function TopicSection({
               {/* OG Badge */}
               <div style={{
                 position: 'absolute',
-                top: 8,
-                right: 8,
+                top: 12,
+                right: 12,
                 background: '#F59E0B',
                 color: '#000',
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: 4,
+                padding: '4px 10px',
+                borderRadius: 6,
                 zIndex: 2,
                 letterSpacing: '0.05em',
               }}>
@@ -434,7 +434,7 @@ function TopicSection({
               {/* Tweet card */}
               <div
                 onClick={() => onTweetClick?.(ogTweet)}
-                onContextMenu={(e) => onContextMenu?.(e, ogTweet)}
+                onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
                 style={{ cursor: 'pointer' }}
               >
                 <EmbeddedTweet tweet={ogTweet} />
