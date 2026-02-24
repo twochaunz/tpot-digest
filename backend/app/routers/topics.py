@@ -9,6 +9,7 @@ from app.models.assignment import TweetAssignment
 from app.models.topic import Topic
 from app.models.tweet import Tweet
 from app.schemas.topic import TopicCreate, TopicOut, TopicUpdate
+from app.services.grok_api import fetch_grok_context, GrokAPIError
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
 
@@ -78,6 +79,13 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
         )).scalar_one_or_none()
         if not existing:
             db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id))
+
+        # Auto-fetch Grok context if empty
+        if not tweet.grok_context and tweet.url:
+            try:
+                tweet.grok_context = await fetch_grok_context(tweet.url)
+            except GrokAPIError:
+                pass  # Non-blocking: OG is set even if Grok fails
 
     for field, value in data.items():
         setattr(topic, field, value)
