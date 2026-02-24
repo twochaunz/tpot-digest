@@ -667,12 +667,6 @@
       while (container.parentElement && container.parentElement !== actionBar) {
         container = container.parentElement;
       }
-      // Match the sibling's flex and size so our button occupies equal space
-      // in both feed and detail views (prevents gap between bookmark and share)
-      const cs = window.getComputedStyle(container);
-      wrapper.style.setProperty("flex-grow", cs.flexGrow, "important");
-      wrapper.style.setProperty("flex-shrink", cs.flexShrink, "important");
-      wrapper.style.setProperty("flex-basis", cs.flexBasis, "important");
       actionBar.insertBefore(wrapper, container);
     } else {
       actionBar.appendChild(wrapper);
