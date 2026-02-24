@@ -667,21 +667,16 @@
       while (container.parentElement && container.parentElement !== actionBar) {
         container = container.parentElement;
       }
-      // Match sibling flex properties so button aligns in both feed and detail views
-      const siblingStyles = window.getComputedStyle(container);
-      wrapper.style.flexGrow = siblingStyles.flexGrow;
-      wrapper.style.flexShrink = siblingStyles.flexShrink;
-      wrapper.style.flexBasis = siblingStyles.flexBasis;
-      actionBar.insertBefore(wrapper, container);
+      // Position our button absolutely inside the bookmark container
+      // so we don't add an extra flex item to the action bar
+      container.style.position = "relative";
+      container.style.overflow = "visible";
+      wrapper.style.position = "absolute";
+      wrapper.style.right = "100%";
+      wrapper.style.top = "0";
+      wrapper.style.bottom = "0";
+      container.appendChild(wrapper);
     } else {
-      // No bookmark found — match first child's flex properties
-      const firstChild = actionBar.firstElementChild;
-      if (firstChild) {
-        const siblingStyles = window.getComputedStyle(firstChild);
-        wrapper.style.flexGrow = siblingStyles.flexGrow;
-        wrapper.style.flexShrink = siblingStyles.flexShrink;
-        wrapper.style.flexBasis = siblingStyles.flexBasis;
-      }
       actionBar.appendChild(wrapper);
     }
   }
