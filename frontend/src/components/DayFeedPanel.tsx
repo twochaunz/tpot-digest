@@ -194,7 +194,6 @@ export function DayFeedPanel({
       style={{
         overflowY: 'auto',
         height: '100%',
-        scrollSnapType: 'y proximity',
         padding: '20px 16px 80px',
       }}
     >
