@@ -6,9 +6,11 @@ interface ContextMenuProps {
   x: number
   y: number
   tweet: Tweet
+  topicId?: number
   onClose: () => void
   onDelete: (tweetId: number) => void
   onMoveToDate: (tweetId: number, date: string) => void
+  onSetOg?: (topicId: number, tweetId: number) => void
 }
 
 const MONTH_NAMES = [
@@ -126,7 +128,7 @@ function MiniCalendar({ onPick }: { onPick: (date: string) => void }) {
   )
 }
 
-export function ContextMenu({ x, y, tweet, onClose, onDelete, onMoveToDate }: ContextMenuProps) {
+export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg }: ContextMenuProps) {
   const [showCalendar, setShowCalendar] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -211,6 +213,19 @@ export function ContextMenu({ x, y, tweet, onClose, onDelete, onMoveToDate }: Co
             onClose()
           }}
         />
+      )}
+
+      {/* Set as OG Post */}
+      {onSetOg && topicId && (
+        <button
+          onClick={() => { onSetOg(topicId, tweet.id); onClose() }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+          style={{ ...itemStyle, color: '#F59E0B' }}
+        >
+          <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#11088;</span>
+          Set as OG Post
+        </button>
       )}
 
       {/* Divider */}

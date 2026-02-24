@@ -1,9 +1,32 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
-import { useTweets } from '../api/tweets'
+import { useTweets, useFetchGrokContext } from '../api/tweets'
 import { EmbeddedTweet } from './EmbeddedTweet'
 import type { Tweet } from '../api/tweets'
 import type { Category } from '../api/categories'
+
+function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string }) {
+  const fetchGrok = useFetchGrokContext()
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); fetchGrok.mutate(tweetId) }}
+      disabled={fetchGrok.isPending}
+      style={{
+        background: 'none',
+        border: 'none',
+        color: 'var(--text-tertiary)',
+        cursor: fetchGrok.isPending ? 'wait' : 'pointer',
+        fontSize: 12,
+        padding: '2px 4px',
+        opacity: fetchGrok.isPending ? 0.5 : 0.7,
+      }}
+      title="Refresh Grok context"
+    >
+      {fetchGrok.isPending ? 'Fetching...' : label ?? '\u21BB'}
+    </button>
+  )
+}
 
 // --- Data wrapper component (calls hooks at top level) ---
 
@@ -13,10 +36,12 @@ interface TopicSectionWithDataProps {
   color: string | null
   date: string
   search: string
+  ogTweetId: number | null
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
+  onSetOg: (topicId: number, tweetId: number | null) => void
   onTweetClick?: (tweet: Tweet) => void
-  onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number) => void
 }
 
 export function TopicSectionWithData({
@@ -25,22 +50,27 @@ export function TopicSectionWithData({
   color,
   date,
   search,
+  ogTweetId,
   onDelete,
   onUpdateTitle,
+  onSetOg,
   onTweetClick,
   onContextMenu,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
   const tweets = tweetsQuery.data ?? []
 
-  // Group all tweets under uncategorized for now
+  // Separate OG tweet from the rest
+  const ogTweet = ogTweetId ? tweets.find(t => t.id === ogTweetId) ?? null : null
+  const remainingTweets = ogTweetId ? tweets.filter(t => t.id !== ogTweetId) : tweets
+
   const tweetsByCategory = useMemo(() => {
     const byCat = new Map<number | null, { category: Category | null; tweets: Tweet[] }>()
-    if (tweets.length > 0) {
-      byCat.set(null, { category: null, tweets })
+    if (remainingTweets.length > 0) {
+      byCat.set(null, { category: null, tweets: remainingTweets })
     }
     return byCat
-  }, [tweets])
+  }, [remainingTweets])
 
   return (
     <TopicSection
@@ -48,10 +78,13 @@ export function TopicSectionWithData({
       title={title}
       color={color}
       tweetsByCategory={tweetsByCategory}
+      ogTweet={ogTweet}
+      ogTweetId={ogTweetId}
       onDelete={onDelete}
       onUpdateTitle={onUpdateTitle}
+      onSetOg={onSetOg}
       onTweetClick={onTweetClick}
-      onContextMenu={onContextMenu}
+      onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId)}
     />
   )
 }
@@ -60,11 +93,15 @@ export function TopicSectionWithData({
 function DraggableTweetInTopic({
   tweet,
   topicId,
+  ogTweetId,
+  onSetOg,
   onTweetClick,
   onContextMenu,
 }: {
   tweet: Tweet
   topicId: number
+  ogTweetId: number | null
+  onSetOg: (topicId: number, tweetId: number | null) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }) {
@@ -72,15 +109,49 @@ function DraggableTweetInTopic({
     id: `draggable-tweet-${tweet.id}`,
     data: { tweet, sourceTopicId: topicId },
   })
+  const [isHovered, setIsHovered] = useState(false)
 
   return (
     <div
       ref={setNodeRef}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         opacity: isDragging ? 0.3 : 1,
         transition: 'opacity 0.15s ease',
+        position: 'relative',
       }}
     >
+      {/* OG star toggle */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onSetOg(topicId, tweet.id === ogTweetId ? null : tweet.id)
+        }}
+        title={tweet.id === ogTweetId ? 'Remove OG' : 'Set as OG Post'}
+        style={{
+          position: 'absolute',
+          top: 6,
+          left: 6,
+          background: tweet.id === ogTweetId ? '#F59E0B' : 'rgba(0,0,0,0.5)',
+          border: 'none',
+          borderRadius: '50%',
+          width: 24,
+          height: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          fontSize: 12,
+          color: tweet.id === ogTweetId ? '#000' : '#888',
+          opacity: isHovered || tweet.id === ogTweetId ? 1 : 0,
+          transition: 'opacity 0.15s',
+          zIndex: 2,
+        }}
+      >
+        &#9733;
+      </button>
+
       {/* Invisible drag handle overlaid on the card */}
       <div
         {...attributes}
@@ -106,8 +177,11 @@ interface TopicSectionProps {
   title: string
   color: string | null
   tweetsByCategory: Map<number | null, { category: Category | null; tweets: Tweet[] }>
+  ogTweet: Tweet | null
+  ogTweetId: number | null
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
+  onSetOg: (topicId: number, tweetId: number | null) => void
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }
@@ -117,8 +191,11 @@ function TopicSection({
   title,
   color,
   tweetsByCategory,
+  ogTweet,
+  ogTweetId,
   onDelete,
   onUpdateTitle,
+  onSetOg,
   onTweetClick,
   onContextMenu,
 }: TopicSectionProps) {
@@ -147,7 +224,7 @@ function TopicSection({
   const totalTweets = Array.from(tweetsByCategory.values()).reduce(
     (sum, g) => sum + g.tweets.length,
     0,
-  )
+  ) + (ogTweet ? 1 : 0)
 
   const accentColor = color || 'var(--accent)'
 
@@ -329,6 +406,91 @@ function TopicSection({
             </div>
           )}
 
+          {/* OG Tweet - pinned at top */}
+          {ogTweet && (
+            <div style={{
+              borderLeft: '3px solid #F59E0B',
+              borderRadius: 'var(--radius-lg)',
+              marginBottom: 12,
+              position: 'relative',
+            }}>
+              {/* OG Badge */}
+              <div style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                background: '#F59E0B',
+                color: '#000',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 4,
+                zIndex: 2,
+                letterSpacing: '0.05em',
+              }}>
+                OG
+              </div>
+
+              {/* Tweet card */}
+              <div
+                onClick={() => onTweetClick?.(ogTweet)}
+                onContextMenu={(e) => onContextMenu?.(e, ogTweet)}
+                style={{ cursor: 'pointer' }}
+              >
+                <EmbeddedTweet tweet={ogTweet} />
+              </div>
+
+              {/* Grok Context section */}
+              {ogTweet.grok_context && (
+                <>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '0 12px' }} />
+                  <div style={{
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5,
+                    background: 'var(--bg-subtle, rgba(0,0,0,0.1))',
+                    borderBottomLeftRadius: 'var(--radius-lg)',
+                    borderBottomRightRadius: 'var(--radius-lg)',
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--text-tertiary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}>
+                      Grok Context
+                      <GrokRefreshButton tweetId={ogTweet.id} />
+                    </div>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{ogTweet.grok_context}</div>
+                  </div>
+                </>
+              )}
+
+              {/* No context yet - show fetch button */}
+              {!ogTweet.grok_context && (
+                <>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '0 12px' }} />
+                  <div style={{
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    color: 'var(--text-tertiary)',
+                    background: 'var(--bg-subtle, rgba(0,0,0,0.1))',
+                    borderBottomLeftRadius: 'var(--radius-lg)',
+                    borderBottomRightRadius: 'var(--radius-lg)',
+                  }}>
+                    <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {Array.from(tweetsByCategory.entries()).map(([catId, group]) => (
             <div key={catId ?? 'uncategorized'} style={{ marginBottom: 8 }}>
               {/* Category label if applicable */}
@@ -369,6 +531,8 @@ function TopicSection({
                     key={t.id}
                     tweet={t}
                     topicId={topicId}
+                    ogTweetId={ogTweetId}
+                    onSetOg={onSetOg}
                     onTweetClick={onTweetClick}
                     onContextMenu={onContextMenu}
                   />
