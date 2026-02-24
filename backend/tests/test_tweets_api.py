@@ -224,9 +224,6 @@ async def test_grok_endpoint(client: AsyncClient):
         assert resp.status_code == 200
         assert resp.json()["grok_context"] == "This tweet discusses Claude 4 and its capabilities."
         mock_grok.assert_called_once_with(
-            "Claude 4 is amazing",
-            "karpathy",
-            "grok1",
             "https://x.com/karpathy/status/123456",
         )
 
