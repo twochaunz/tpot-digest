@@ -661,25 +661,17 @@
 
     wrapper.appendChild(btn);
 
+    // Match bookmark/share: flex: 0 0 auto (don't grow).
+    // Must be inline !important to override X's positional CSS that
+    // applies flex:1 1 0% to children not in the last two positions.
+    wrapper.style.setProperty("flex", "0 0 auto", "important");
+
     if (bookmarkBtn) {
       // Walk up from the bookmark button to find the direct child of the action bar
       let container = bookmarkBtn;
       while (container.parentElement && container.parentElement !== actionBar) {
         container = container.parentElement;
       }
-
-      // Diagnostic: log action bar layout info
-      const abCS = window.getComputedStyle(actionBar);
-      const cCS = window.getComputedStyle(container);
-      console.log("[tpot-debug] URL:", window.location.pathname);
-      console.log("[tpot-debug] actionBar display:", abCS.display, "| justify:", abCS.justifyContent, "| children:", actionBar.children.length);
-      console.log("[tpot-debug] bookmark container flex:", cCS.flex, "| width:", cCS.width, "| grow:", cCS.flexGrow, "| basis:", cCS.flexBasis);
-      // Log all children's flex values
-      Array.from(actionBar.children).forEach((child, i) => {
-        const s = window.getComputedStyle(child);
-        console.log("[tpot-debug] child", i, "flex:", s.flex, "| grow:", s.flexGrow, "| basis:", s.flexBasis, "| width:", s.width);
-      });
-
       actionBar.insertBefore(wrapper, container);
     } else {
       actionBar.appendChild(wrapper);
