@@ -34,6 +34,9 @@ export function DailyView() {
         e.preventDefault()
         searchRef.current?.focus()
       }
+      if (e.key === 'Escape' && document.activeElement === searchRef.current) {
+        searchRef.current?.blur()
+      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
@@ -84,7 +87,7 @@ export function DailyView() {
               <input
                 ref={searchRef}
                 type="text"
-                placeholder="Search tweets..."
+                placeholder="Search tweets"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
