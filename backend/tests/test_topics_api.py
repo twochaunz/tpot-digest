@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -34,6 +36,30 @@ async def setup_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     app.dependency_overrides.pop(get_db, None)
+
+
+MOCK_X_API_RESULT = {
+    "author_handle": "testuser",
+    "author_display_name": "Test User",
+    "author_avatar_url": "https://pbs.twimg.com/profile/test_normal.jpg",
+    "author_verified": False,
+    "text": "Test tweet text",
+    "url": "https://x.com/testuser/status/111222333",
+    "media_urls": [],
+    "engagement": {"likes": 10, "retweets": 2, "replies": 1},
+    "is_quote_tweet": False,
+    "is_reply": False,
+    "quoted_tweet_id": None,
+    "reply_to_tweet_id": None,
+    "created_at": "2026-02-23T12:00:00.000Z",
+}
+
+
+@pytest_asyncio.fixture(autouse=True)
+def mock_fetch_tweet():
+    mock = AsyncMock(return_value=MOCK_X_API_RESULT.copy())
+    with patch("app.services.x_api.fetch_tweet", mock):
+        yield mock
 
 
 @pytest_asyncio.fixture
@@ -93,3 +119,47 @@ async def test_delete_topic(client: AsyncClient):
 
     list_resp = await client.get("/api/topics", params={"date": "2026-02-20"})
     assert len(list_resp.json()) == 0
+
+
+@pytest.mark.asyncio
+async def test_set_og_tweet_on_topic(client: AsyncClient):
+    # Create a tweet first
+    tweet_resp = await client.post("/api/tweets", json={"tweet_id": "111222333"})
+    tweet_db_id = tweet_resp.json()["id"]
+
+    # Create a topic
+    topic_resp = await client.post("/api/topics", json={"title": "Test OG", "date": "2026-02-23"})
+    topic_id = topic_resp.json()["id"]
+
+    # Assign tweet to topic
+    await client.post("/api/tweets/assign", json={"tweet_ids": [tweet_db_id], "topic_id": topic_id})
+
+    # Set OG
+    resp = await client.patch(f"/api/topics/{topic_id}", json={"og_tweet_id": tweet_db_id})
+    assert resp.status_code == 200
+    assert resp.json()["og_tweet_id"] == tweet_db_id
+
+
+@pytest.mark.asyncio
+async def test_clear_og_tweet(client: AsyncClient):
+    topic_resp = await client.post("/api/topics", json={"title": "Test Clear OG", "date": "2026-02-23"})
+    topic_id = topic_resp.json()["id"]
+
+    resp = await client.patch(f"/api/topics/{topic_id}", json={"og_tweet_id": None})
+    assert resp.status_code == 200
+    assert resp.json()["og_tweet_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_og_tweet_must_be_assigned(client: AsyncClient):
+    # Create tweet but don't assign to topic
+    tweet_resp = await client.post("/api/tweets", json={"tweet_id": "444555666"})
+    tweet_db_id = tweet_resp.json()["id"]
+
+    topic_resp = await client.post("/api/topics", json={"title": "Test Unassigned OG", "date": "2026-02-23"})
+    topic_id = topic_resp.json()["id"]
+
+    # Setting OG on unassigned tweet should auto-assign it
+    resp = await client.patch(f"/api/topics/{topic_id}", json={"og_tweet_id": tweet_db_id})
+    assert resp.status_code == 200
+    assert resp.json()["og_tweet_id"] == tweet_db_id

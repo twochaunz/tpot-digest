@@ -13,6 +13,7 @@ class TopicUpdate(BaseModel):
     title: str | None = None
     color: str | None = None
     position: int | None = None
+    og_tweet_id: int | None = None
 
 
 class TopicOut(BaseModel):
@@ -21,6 +22,7 @@ class TopicOut(BaseModel):
     date: date
     color: str | None
     position: int
+    og_tweet_id: int | None = None
     tweet_count: int = 0
     created_at: datetime
 
