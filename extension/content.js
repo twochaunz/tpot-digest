@@ -87,16 +87,16 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
-  async function loadTopicsForDate(dateStr, topicState, topicInput, topicDropdown) {
+  async function loadTopicsForDate(dateStr, topicState, topicInput, topicDropdown, ogWarning) {
     const resp = await sendMessage({ type: "GET_TOPICS", date: dateStr });
     topicState.topics = (resp && resp.topics) || [];
     topicState.selectedId = null;
     topicState.selectedName = "";
     topicInput.value = "";
-    renderTopicDropdown(topicState, topicInput, topicDropdown, "");
+    renderTopicDropdown(topicState, topicInput, topicDropdown, "", ogWarning);
   }
 
-  function renderTopicDropdown(topicState, topicInput, topicDropdown, query) {
+  function renderTopicDropdown(topicState, topicInput, topicDropdown, query, ogWarning) {
     topicDropdown.innerHTML = "";
     const q = (query || "").trim().toLowerCase();
     const matches = topicState.topics.filter((t) => !q || t.title.toLowerCase().includes(q));
@@ -114,6 +114,15 @@
         topicState.selectedName = t.title;
         topicInput.value = t.title;
         topicDropdown.style.display = "none";
+        // Show OG warning if topic already has an OG
+        if (ogWarning) {
+          if (t.og_tweet_id) {
+            ogWarning.textContent = "\u26A0 This topic already has an OG post. Checking this will replace it.";
+            ogWarning.style.display = "";
+          } else {
+            ogWarning.style.display = "none";
+          }
+        }
       });
       topicDropdown.appendChild(item);
     });
@@ -212,7 +221,7 @@
         presetIndex = (presetIndex + 1) % datePresets.length;
         dateInput.value = datePresets[presetIndex].date;
         updateToggleLabel();
-        loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown);
+        loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown, ogWarning);
       });
     } else {
       dateToggle.style.display = "none";
@@ -224,7 +233,7 @@
 
     // Re-fetch topics when date input changes manually
     dateInput.addEventListener("change", () => {
-      loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown);
+      loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown, ogWarning);
     });
 
     // Topic combobox
@@ -248,11 +257,11 @@
     topicDropdown.style.cssText = "display:none;position:absolute;left:0;right:0;top:100%;background:#1a1a2e;border:1px solid #3a3a5c;border-radius:6px;max-height:160px;overflow-y:auto;z-index:999;margin-top:2px;";
     topicContainer.appendChild(topicDropdown);
 
-    topicInput.addEventListener("focus", () => renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value));
+    topicInput.addEventListener("focus", () => renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value, ogWarning));
     topicInput.addEventListener("input", () => {
       topicState.selectedId = null;
       topicState.selectedName = "";
-      renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value);
+      renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value, ogWarning);
     });
     topicInput.addEventListener("blur", () => {
       setTimeout(() => { topicDropdown.style.display = "none"; }, 150);
@@ -334,6 +343,28 @@
     });
 
     card.appendChild(catContainer);
+
+    // OG Post toggle
+    const ogRow = document.createElement("div");
+    ogRow.style.cssText = "display:flex;align-items:center;gap:8px;margin:4px 0;";
+
+    const ogCheckbox = document.createElement("input");
+    ogCheckbox.type = "checkbox";
+    ogCheckbox.id = "tpot-og-toggle";
+    ogCheckbox.style.cssText = "width:16px;height:16px;accent-color:#F59E0B;cursor:pointer;";
+
+    const ogLabel = document.createElement("label");
+    ogLabel.htmlFor = "tpot-og-toggle";
+    ogLabel.textContent = "Set as OG Post";
+    ogLabel.style.cssText = "font-size:12px;color:#F59E0B;cursor:pointer;font-weight:600;";
+
+    ogRow.appendChild(ogCheckbox);
+    ogRow.appendChild(ogLabel);
+    card.appendChild(ogRow);
+
+    const ogWarning = document.createElement("div");
+    ogWarning.style.cssText = "font-size:11px;color:#a0a0c0;margin-bottom:4px;display:none;";
+    card.appendChild(ogWarning);
 
     // Memo
     const memoLabel = document.createElement("label");
@@ -441,6 +472,15 @@
             type: "ASSIGN_TWEET",
             assignment: { tweet_ids: [tweetDbId], topic_id: Number(topicId), category_id: catId },
           });
+
+          // Set as OG if checked
+          if (ogCheckbox.checked) {
+            await sendMessage({
+              type: "SET_OG",
+              topicId: Number(topicId),
+              tweetDbId: tweetDbId,
+            });
+          }
         }
 
         header.textContent = "\u2713 Assigned!";
