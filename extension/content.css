@@ -1,9 +1,12 @@
 .tpot-save-wrapper {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  align-self: stretch;
-  flex: 1 1 0px !important;
+  z-index: 1;
 }
 
 .tpot-save-btn {
