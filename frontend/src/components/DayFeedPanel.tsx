@@ -37,7 +37,7 @@ export function DayFeedPanel({
   setActiveDragTweet,
 }: DayFeedPanelProps) {
   // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number; ogTweetId?: number | null } | null>(null)
 
   // Data fetching
   const topicsQuery = useTopics(date)
@@ -122,8 +122,9 @@ export function DayFeedPanel({
     [updateTopicMutation],
   )
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, tweet: Tweet, topicId?: number) => {
-    setContextMenu({ x: e.clientX, y: e.clientY, tweet, topicId })
+  const handleContextMenu = useCallback((e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, tweet, topicId, ogTweetId })
   }, [])
 
   const handleMoveToDate = useCallback(
@@ -338,6 +339,7 @@ export function DayFeedPanel({
           onDelete={handleDeleteTweet}
           onMoveToDate={handleMoveToDate}
           onSetOg={contextMenu.topicId ? handleSetOg : undefined}
+          ogTweetId={contextMenu.ogTweetId ?? null}
         />
       )}
 

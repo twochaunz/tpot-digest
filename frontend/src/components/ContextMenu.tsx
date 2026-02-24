@@ -10,7 +10,8 @@ interface ContextMenuProps {
   onClose: () => void
   onDelete: (tweetId: number) => void
   onMoveToDate: (tweetId: number, date: string) => void
-  onSetOg?: (topicId: number, tweetId: number) => void
+  onSetOg?: (topicId: number, tweetId: number | null) => void
+  ogTweetId?: number | null
 }
 
 const MONTH_NAMES = [
@@ -128,7 +129,7 @@ function MiniCalendar({ onPick }: { onPick: (date: string) => void }) {
   )
 }
 
-export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg }: ContextMenuProps) {
+export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId }: ContextMenuProps) {
   const [showCalendar, setShowCalendar] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -215,16 +216,19 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
         />
       )}
 
-      {/* Set as OG Post */}
+      {/* Set / Remove OG Post */}
       {onSetOg && topicId && (
         <button
-          onClick={() => { onSetOg(topicId, tweet.id); onClose() }}
+          onClick={() => {
+            onSetOg(topicId, ogTweetId === tweet.id ? null : tweet.id)
+            onClose()
+          }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
           style={{ ...itemStyle, color: '#F59E0B' }}
         >
-          <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#11088;</span>
-          Set as OG Post
+          <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>{ogTweetId === tweet.id ? '\u2716' : '\u2B50'}</span>
+          {ogTweetId === tweet.id ? 'Remove OG' : 'Set as OG Post'}
         </button>
       )}
 
