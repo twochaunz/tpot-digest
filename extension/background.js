@@ -192,6 +192,23 @@ async function handleDeleteTweet(message) {
   }
 }
 
+async function handleSetOg(message) {
+  const config = await getConfig();
+  const url = config.backendUrl.replace(/\/+$/, "") + "/api/topics/" + message.topicId;
+  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
+  try {
+    const resp = await fetch(url, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ og_tweet_id: message.tweetDbId }),
+    });
+    if (!resp.ok) return { error: "HTTP " + resp.status };
+    return await resp.json();
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 async function handleUpdateTweet(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/tweets/" + message.tweetDbId;
@@ -214,6 +231,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "CREATE_CATEGORY") { handleCreateCategory(message).then(sendResponse); return true; }
   if (message.type === "ASSIGN_TWEET") { handleAssignTweet(message).then(sendResponse); return true; }
   if (message.type === "DELETE_TWEET") { handleDeleteTweet(message).then(sendResponse); return true; }
+  if (message.type === "SET_OG") { handleSetOg(message).then(sendResponse); return true; }
   if (message.type === "UPDATE_TWEET") { handleUpdateTweet(message).then(sendResponse); return true; }
   if (message.type === "CHECK_SAVED") { handleCheckSaved(message).then(sendResponse); return true; }
 });
