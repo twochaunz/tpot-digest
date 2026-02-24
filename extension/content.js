@@ -661,6 +661,12 @@
 
     wrapper.appendChild(btn);
 
+    // Force flex constraints via inline !important (overrides any X CSS changes)
+    wrapper.style.setProperty("flex-grow", "0", "important");
+    wrapper.style.setProperty("flex-shrink", "0", "important");
+    wrapper.style.setProperty("flex-basis", "auto", "important");
+    wrapper.style.setProperty("max-width", "34px", "important");
+
     if (bookmarkBtn) {
       // Walk up from the bookmark button to find the direct child of the action bar
       let container = bookmarkBtn;
