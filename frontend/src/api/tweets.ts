@@ -83,3 +83,14 @@ export function useDeleteTweet() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
   })
 }
+
+export function useFetchGrokContext() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tweetId: number) => {
+      const { data } = await api.post(`/tweets/${tweetId}/grok`)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
+  })
+}
