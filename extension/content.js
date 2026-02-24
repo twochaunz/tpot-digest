@@ -366,6 +366,24 @@
     ogWarning.style.cssText = "font-size:11px;color:#a0a0c0;margin-bottom:4px;display:none;";
     card.appendChild(ogWarning);
 
+    // Disable category when OG is checked
+    ogCheckbox.addEventListener("change", () => {
+      if (ogCheckbox.checked) {
+        catInput.disabled = true;
+        catInput.value = "";
+        selectedCatId = null;
+        selectedCatName = "";
+        catContainer.style.opacity = "0.4";
+        catContainer.style.pointerEvents = "none";
+        catLabel.style.opacity = "0.4";
+      } else {
+        catInput.disabled = false;
+        catContainer.style.opacity = "";
+        catContainer.style.pointerEvents = "";
+        catLabel.style.opacity = "";
+      }
+    });
+
     // Memo
     const memoLabel = document.createElement("label");
     memoLabel.textContent = "Memo";
@@ -440,7 +458,9 @@
 
         let catId = null;
 
-        if (selectedCatId === "__create__" && selectedCatName) {
+        if (ogCheckbox.checked) {
+          // OG posts don't get categories
+        } else if (selectedCatId === "__create__" && selectedCatName) {
           // Create new category
           const createResp = await sendMessage({
             type: "CREATE_CATEGORY",
@@ -647,8 +667,21 @@
       while (container.parentElement && container.parentElement !== actionBar) {
         container = container.parentElement;
       }
+      // Match sibling flex properties so button aligns in both feed and detail views
+      const siblingStyles = window.getComputedStyle(container);
+      wrapper.style.flexGrow = siblingStyles.flexGrow;
+      wrapper.style.flexShrink = siblingStyles.flexShrink;
+      wrapper.style.flexBasis = siblingStyles.flexBasis;
       actionBar.insertBefore(wrapper, container);
     } else {
+      // No bookmark found — match first child's flex properties
+      const firstChild = actionBar.firstElementChild;
+      if (firstChild) {
+        const siblingStyles = window.getComputedStyle(firstChild);
+        wrapper.style.flexGrow = siblingStyles.flexGrow;
+        wrapper.style.flexShrink = siblingStyles.flexShrink;
+        wrapper.style.flexBasis = siblingStyles.flexBasis;
+      }
       actionBar.appendChild(wrapper);
     }
   }
