@@ -3,6 +3,7 @@
   align-items: center;
   justify-content: center;
   align-self: stretch;
+  flex: 1 1 0px !important;
 }
 
 .tpot-save-btn {
