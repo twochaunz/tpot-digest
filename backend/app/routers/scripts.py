@@ -123,6 +123,15 @@ async def generate_topic_script(
     except ScriptGeneratorError as e:
         raise HTTPException(502, str(e))
 
+    # Validate tweet_ids in generated blocks exist in the topic
+    valid_tweet_ids = {t["tweet_id"] for t in tweets}
+    if og_tweet:
+        valid_tweet_ids.add(og_tweet.tweet_id)
+    blocks = [
+        b for b in blocks
+        if b.get("type") != "tweet" or b.get("tweet_id") in valid_tweet_ids
+    ]
+
     # Deactivate previous versions
     prev_scripts = (await db.execute(
         select(TopicScript)

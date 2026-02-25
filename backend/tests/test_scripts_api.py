@@ -169,6 +169,66 @@ async def test_regenerate_with_feedback(client):
 
 @pytest.mark.asyncio
 async def test_generate_nonexistent_topic(client):
-    with patch("app.routers.scripts.generate_script", new_callable=AsyncMock):
-        resp = await client.post("/api/topics/9999/script/generate", json={"model": "grok-3"})
+    resp = await client.post("/api/topics/9999/script/generate", json={"model": "grok-3", "fetch_grok_context": False})
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_generate_filters_invalid_tweet_ids(client):
+    topic_id, _ = await _create_topic_with_tweets(client)
+
+    # Model returns a block with a hallucinated tweet_id
+    mock_blocks = [
+        {"type": "text", "text": "Narrative."},
+        {"type": "tweet", "tweet_id": "111"},
+        {"type": "tweet", "tweet_id": "FAKE_ID"},
+    ]
+
+    with patch("app.routers.scripts.generate_script", new_callable=AsyncMock) as mock_gen:
+        mock_gen.return_value = mock_blocks
+        with patch("app.services.grok_api.fetch_grok_context", new_callable=AsyncMock) as mock_grok:
+            mock_grok.return_value = "Context."
+            resp = await client.post(
+                f"/api/topics/{topic_id}/script/generate",
+                json={"model": "grok-3", "fetch_grok_context": True},
+            )
+
+    assert resp.status_code == 200
+    content = resp.json()["content"]
+    # FAKE_ID should be filtered out
+    assert len(content) == 2
+    tweet_ids = [b["tweet_id"] for b in content if b["type"] == "tweet"]
+    assert "FAKE_ID" not in tweet_ids
+
+
+@pytest.mark.asyncio
+async def test_day_batch_generate(client):
+    # Create two topics for the same date
+    await client.post("/api/tweets", json={"tweet_id": "333"})
+    tweets_resp = await client.get("/api/tweets")
+    tweet_id = tweets_resp.json()[0]["id"]
+
+    resp1 = await client.post("/api/topics", json={"title": "Topic A", "date": "2026-02-25"})
+    resp2 = await client.post("/api/topics", json={"title": "Topic B", "date": "2026-02-25"})
+    topic_a = resp1.json()["id"]
+    topic_b = resp2.json()["id"]
+
+    await client.post("/api/tweets/assign", json={"tweet_ids": [tweet_id], "topic_id": topic_a})
+
+    with patch("app.routers.scripts.generate_script", new_callable=AsyncMock) as mock_gen:
+        mock_gen.return_value = [{"type": "text", "text": "Generated."}]
+        with patch("app.services.grok_api.fetch_grok_context", new_callable=AsyncMock) as mock_grok:
+            mock_grok.return_value = "Context."
+            resp = await client.post(
+                "/api/dates/2026-02-25/script/generate",
+                json={"model": "grok-3"},
+            )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+
+    # GET day scripts
+    resp = await client.get("/api/dates/2026-02-25/script")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
