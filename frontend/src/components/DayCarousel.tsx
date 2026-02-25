@@ -149,6 +149,7 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
               position: 'relative',
               height: '100%',
               overflow: 'hidden',
+              borderRadius: 'var(--radius-lg)',
               display: isCenter ? undefined : 'flex',
               alignItems: isCenter ? undefined : 'center',
             }}
