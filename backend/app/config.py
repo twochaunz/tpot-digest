@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     data_dir: str = "./data"
     x_api_bearer_token: str = ""
     xai_api_key: str = ""
+    anthropic_api_key: str = ""
 
     model_config = {"env_file": ".env"}
 
