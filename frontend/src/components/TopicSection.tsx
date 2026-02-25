@@ -5,6 +5,58 @@ import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 
+function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
+  const [collapsed, setCollapsed] = useState(true)
+
+  return (
+    <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      <div style={{ height: 1, background: 'var(--border)' }} />
+      <div style={{ padding: '12px 14px' }}>
+        <div
+          onClick={() => setCollapsed((v) => !v)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              fontSize: 10,
+              color: 'var(--text-tertiary)',
+              transition: 'transform 0.15s ease',
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            }}>&#9660;</span>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'var(--text-tertiary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}>
+              Grok Context
+            </span>
+          </div>
+          <GrokRefreshButton tweetId={tweetId} />
+        </div>
+        {!collapsed && (
+          <div style={{
+            marginTop: 8,
+            fontSize: 15,
+            color: 'var(--text-primary)',
+            lineHeight: 1.5,
+            whiteSpace: 'pre-wrap',
+          }}>
+            {context}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string }) {
   const fetchGrok = useFetchGrokContext()
 
@@ -466,42 +518,14 @@ function TopicSection({
 
               {/* Grok Context section */}
               {ogTweet.grok_context && (
-                <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
-                  <div style={{ height: 1, background: 'var(--border)', margin: '0 12px' }} />
-                  <div style={{
-                    padding: '10px 14px',
-                    fontSize: 15,
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.5,
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 6,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: 'var(--text-tertiary)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                    }}>
-                      Grok Context
-                      <GrokRefreshButton tweetId={ogTweet.id} />
-                    </div>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{ogTweet.grok_context}</div>
-                  </div>
-                </div>
+                <GrokContextSection tweetId={ogTweet.id} context={ogTweet.grok_context} />
               )}
 
               {/* No context yet - show fetch button */}
               {!ogTweet.grok_context && (
                 <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
-                  <div style={{ height: 1, background: 'var(--border)', margin: '0 12px' }} />
-                  <div style={{
-                    padding: '10px 14px',
-                    fontSize: 13,
-                    color: 'var(--text-tertiary)',
-                  }}>
+                  <div style={{ height: 1, background: 'var(--border)' }} />
+                  <div style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-tertiary)' }}>
                     <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
                   </div>
                 </div>
