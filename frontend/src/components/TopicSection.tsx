@@ -9,7 +9,7 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
   const [collapsed, setCollapsed] = useState(true)
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+    <>
       <div style={{ padding: '10px 0 0' }}>
         <div style={{ height: 1, background: 'var(--border)' }} />
       </div>
@@ -27,14 +27,14 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{
               fontSize: 10,
-              color: 'var(--text-quaternary, rgba(255,255,255,0.3))',
+              color: 'rgba(255,255,255,0.5)',
               transition: 'transform 0.15s ease',
               transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             }}>&#9660;</span>
             <span style={{
               fontSize: 11,
               fontWeight: 600,
-              color: 'var(--text-quaternary, rgba(255,255,255,0.3))',
+              color: 'rgba(255,255,255,0.5)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}>
@@ -55,7 +55,7 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }
 
@@ -523,12 +523,14 @@ function TopicSection({
 
               {/* No context yet - show fetch button */}
               {!ogTweet.grok_context && (
-                <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
-                  <div style={{ height: 1, background: 'var(--border)' }} />
-                  <div style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-tertiary)' }}>
+                <>
+                  <div style={{ padding: '10px 0 0' }}>
+                    <div style={{ height: 1, background: 'var(--border)' }} />
+                  </div>
+                  <div style={{ padding: '10px 12px 12px', fontSize: 13, color: 'var(--text-tertiary)' }}>
                     <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
