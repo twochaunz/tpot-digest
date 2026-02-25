@@ -45,37 +45,34 @@ export function DailyView() {
         searchRef.current?.blur()
       }
 
-      // Return / Shift+Return: navigate between topic sections
-      if (e.key === 'Enter' && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const topics = Array.from(document.querySelectorAll<HTMLElement>('[id^="toc-topic-"]'))
-        if (topics.length === 0) return
+      // Up/Down: navigate between category sections
+      // Return/Shift+Return: navigate between topic sections
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+        if (!feedPanel) return
 
-        // Find the scrollable parent (DayFeedPanel's overflow container)
-        const scrollParent = topics[0].closest<HTMLElement>('[style*="overflow"]') || topics[0].parentElement?.parentElement
-        if (!scrollParent) return
+        const isTopicNav = e.key === 'Enter'
+        const selector = isTopicNav ? '[id^="toc-topic-"]' : '[id^="toc-cat-"]'
+        const elements = Array.from(feedPanel.querySelectorAll<HTMLElement>(selector))
+        if (elements.length === 0) return
 
-        const parentRect = scrollParent.getBoundingClientRect()
-        const threshold = parentRect.top + 60 // offset past header
+        const goBack = isTopicNav ? e.shiftKey : e.key === 'ArrowUp'
+        const panelRect = feedPanel.getBoundingClientRect()
+        const threshold = panelRect.top + 20
 
-        if (e.shiftKey) {
-          // Shift+Return: go to previous topic
-          // Find the last topic whose top is above the current scroll position
-          for (let i = topics.length - 1; i >= 0; i--) {
-            const rect = topics[i].getBoundingClientRect()
-            if (rect.top < threshold - 10) {
-              topics[i].scrollIntoView({ behavior: 'smooth', block: 'start' })
-              e.preventDefault()
+        e.preventDefault()
+
+        if (goBack) {
+          for (let i = elements.length - 1; i >= 0; i--) {
+            if (elements[i].getBoundingClientRect().top < threshold - 10) {
+              feedPanel.scrollTo({ top: feedPanel.scrollTop + elements[i].getBoundingClientRect().top - panelRect.top, behavior: 'smooth' })
               return
             }
           }
         } else {
-          // Return: go to next topic
-          // Find the first topic whose top is below the current scroll position
-          for (const topic of topics) {
-            const rect = topic.getBoundingClientRect()
-            if (rect.top > threshold + 10) {
-              topic.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              e.preventDefault()
+          for (const el of elements) {
+            if (el.getBoundingClientRect().top > threshold + 10) {
+              feedPanel.scrollTo({ top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelRect.top, behavior: 'smooth' })
               return
             }
           }
