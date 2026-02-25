@@ -5,6 +5,10 @@ import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
+import { useTopicScript } from '../api/scripts'
+import type { TopicScript } from '../api/scripts'
+import ScriptView from './ScriptView'
+import { useEngagementToggle } from '../hooks/useEngagementToggle'
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
@@ -111,6 +115,8 @@ export function TopicSectionWithData({
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
   const tweets = tweetsQuery.data ?? []
+  const { data: activeScript } = useTopicScript(topicId)
+  const { showEngagement } = useEngagementToggle()
 
   // Separate OG tweet from the rest
   const ogTweet = ogTweetId ? tweets.find(t => t.id === ogTweetId) ?? null : null
@@ -148,6 +154,9 @@ export function TopicSectionWithData({
       tweetsByCategory={tweetsByCategory}
       ogTweet={ogTweet}
       ogTweetId={ogTweetId}
+      allTweets={tweets}
+      activeScript={activeScript ?? null}
+      showEngagement={showEngagement}
       onDelete={onDelete}
       onUpdateTitle={onUpdateTitle}
       onSetOg={onSetOg}
@@ -249,6 +258,9 @@ interface TopicSectionProps {
   tweetsByCategory: Map<string | null, { category: { name: string; color: string; sortOrder: number } | null; tweets: Tweet[] }>
   ogTweet: Tweet | null
   ogTweetId: number | null
+  allTweets: Tweet[]
+  activeScript: TopicScript | null
+  showEngagement: boolean
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
@@ -262,6 +274,9 @@ function TopicSection({
   tweetsByCategory,
   ogTweet,
   ogTweetId,
+  allTweets,
+  activeScript,
+  showEngagement,
   onDelete,
   onUpdateTitle,
   onSetOg,
@@ -271,6 +286,7 @@ function TopicSection({
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)
+  const [viewMode, setViewMode] = useState<'edit' | 'script'>('edit')
   const inputRef = useRef<HTMLInputElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
 
@@ -433,6 +449,30 @@ function TopicSection({
           {totalTweets}
         </span>
 
+        {/* Script/Edit toggle button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setViewMode((v) => (v === 'edit' ? 'script' : 'edit'))
+          }}
+          style={{
+            background: 'none',
+            border: '1px solid var(--border)',
+            color: 'var(--text-secondary)',
+            fontSize: 11,
+            cursor: 'pointer',
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-sm)',
+            opacity: headerHovered ? 1 : 0,
+            transition: 'opacity 0.15s ease',
+            lineHeight: 1.4,
+            flexShrink: 0,
+          }}
+          title={viewMode === 'edit' ? 'Switch to script view' : 'Switch to edit view'}
+        >
+          {viewMode === 'edit' ? 'Script' : 'Edit'}
+        </button>
+
         {/* Delete button - shows on hover */}
         <button
           onClick={(e) => {
@@ -461,124 +501,135 @@ function TopicSection({
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
         <div ref={setNodeRef} style={{ padding: '12px 8px', minHeight: 60 }}>
-          {totalTweets === 0 && (
-            <div
-              style={{
-                padding: '20px 0',
-                fontSize: 12,
-                color: isOver ? 'var(--accent)' : 'var(--text-tertiary)',
-                textAlign: 'center',
-                transition: 'color 0.15s ease',
-              }}
-            >
-              {isOver ? 'Drop here' : 'No tweets yet'}
-            </div>
-          )}
-
-          {/* OG Tweet - pinned at top */}
-          {ogTweet && (
-            <div
-              id={`toc-cat-${topicId}-og`}
-              style={{
-                borderLeft: '3px solid #F59E0B',
-                borderRadius: 'var(--radius-lg)',
-                marginBottom: 12,
-                background: 'rgba(245, 158, 11, 0.06)',
-              }}
-            >
-              {/* OG label - same style as category labels */}
-              <div
-                style={{
-                  padding: '6px 12px 2px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#F59E0B',
-                  letterSpacing: '0.03em',
-                }}
-              >
-                OG Post
-              </div>
-
-              {/* Tweet card */}
-              <div
-                onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
-                style={{ padding: '4px 0 0' }}
-              >
-                <TweetCard tweet={ogTweet} selectable={false} />
-              </div>
-
-              {/* Grok Context section */}
-              {ogTweet.grok_context && (
-                <GrokContextSection tweetId={ogTweet.id} context={ogTweet.grok_context} />
-              )}
-
-              {/* No context yet - show fetch button */}
-              {!ogTweet.grok_context && (
-                <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ height: 1, background: 'var(--border)' }} />
-                  </div>
-                  <div style={{ padding: '10px 12px 12px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-                    <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
-                  </div>
+          {viewMode === 'script' ? (
+            <ScriptView
+              topicId={topicId}
+              script={activeScript}
+              tweets={allTweets}
+              showEngagement={showEngagement}
+            />
+          ) : (
+            <>
+              {totalTweets === 0 && (
+                <div
+                  style={{
+                    padding: '20px 0',
+                    fontSize: 12,
+                    color: isOver ? 'var(--accent)' : 'var(--text-tertiary)',
+                    textAlign: 'center',
+                    transition: 'color 0.15s ease',
+                  }}
+                >
+                  {isOver ? 'Drop here' : 'No tweets yet'}
                 </div>
               )}
-            </div>
-          )}
 
-          {isKekTopic(title) ? (
-            /* Kek topics: render all tweets flat, no category grouping */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {Array.from(tweetsByCategory.values()).flatMap((group) => group.tweets).map((t) => (
-                <DraggableTweetInTopic
-                  key={t.id}
-                  tweet={t}
-                  topicId={topicId}
-                  ogTweetId={ogTweetId}
-                  onSetOg={onSetOg}
-                  onContextMenu={onContextMenu}
-                />
-              ))}
-            </div>
-          ) : (
-            Array.from(tweetsByCategory.entries()).map(([catKey, group], idx) => (
-            <div
-              key={catKey ?? 'uncategorized'}
-              id={`toc-cat-${topicId}-${catKey ?? 'uncategorized'}`}
-              style={{
-                borderLeft: `3px solid ${group.category?.color || '#6B7280'}`,
-                borderRadius: 'var(--radius-lg)',
-                marginTop: idx > 0 ? 16 : 0,
-              }}
-            >
-              {/* Category label */}
-              <div
-                style={{
-                  padding: '6px 12px 2px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: group.category?.color || '#6B7280',
-                  letterSpacing: '0.03em',
-                }}
-              >
-                {group.category?.name || 'Uncategorized'}
-              </div>
+              {/* OG Tweet - pinned at top */}
+              {ogTweet && (
+                <div
+                  id={`toc-cat-${topicId}-og`}
+                  style={{
+                    borderLeft: '3px solid #F59E0B',
+                    borderRadius: 'var(--radius-lg)',
+                    marginBottom: 12,
+                    background: 'rgba(245, 158, 11, 0.06)',
+                  }}
+                >
+                  {/* OG label - same style as category labels */}
+                  <div
+                    style={{
+                      padding: '6px 12px 2px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#F59E0B',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    OG Post
+                  </div>
 
-              {/* Tweet cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
-                {group.tweets.map((t) => (
-                  <DraggableTweetInTopic
-                    key={t.id}
-                    tweet={t}
-                    topicId={topicId}
-                    ogTweetId={ogTweetId}
-                    onSetOg={onSetOg}
+                  {/* Tweet card */}
+                  <div
+                    onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
+                    style={{ padding: '4px 0 0' }}
+                  >
+                    <TweetCard tweet={ogTweet} selectable={false} />
+                  </div>
+
+                  {/* Grok Context section */}
+                  {ogTweet.grok_context && (
+                    <GrokContextSection tweetId={ogTweet.id} context={ogTweet.grok_context} />
+                  )}
+
+                  {/* No context yet - show fetch button */}
+                  {!ogTweet.grok_context && (
+                    <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+                      <div style={{ marginTop: 10 }}>
+                        <div style={{ height: 1, background: 'var(--border)' }} />
+                      </div>
+                      <div style={{ padding: '10px 12px 12px', fontSize: 13, color: 'var(--text-tertiary)' }}>
+                        <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isKekTopic(title) ? (
+                /* Kek topics: render all tweets flat, no category grouping */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {Array.from(tweetsByCategory.values()).flatMap((group) => group.tweets).map((t) => (
+                    <DraggableTweetInTopic
+                      key={t.id}
+                      tweet={t}
+                      topicId={topicId}
+                      ogTweetId={ogTweetId}
+                      onSetOg={onSetOg}
                       onContextMenu={onContextMenu}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
+                    />
+                  ))}
+                </div>
+              ) : (
+                Array.from(tweetsByCategory.entries()).map(([catKey, group], idx) => (
+                <div
+                  key={catKey ?? 'uncategorized'}
+                  id={`toc-cat-${topicId}-${catKey ?? 'uncategorized'}`}
+                  style={{
+                    borderLeft: `3px solid ${group.category?.color || '#6B7280'}`,
+                    borderRadius: 'var(--radius-lg)',
+                    marginTop: idx > 0 ? 16 : 0,
+                  }}
+                >
+                  {/* Category label */}
+                  <div
+                    style={{
+                      padding: '6px 12px 2px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: group.category?.color || '#6B7280',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    {group.category?.name || 'Uncategorized'}
+                  </div>
+
+                  {/* Tweet cards */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+                    {group.tweets.map((t) => (
+                      <DraggableTweetInTopic
+                        key={t.id}
+                        tweet={t}
+                        topicId={topicId}
+                        ogTweetId={ogTweetId}
+                        onSetOg={onSetOg}
+                          onContextMenu={onContextMenu}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+              )}
+            </>
           )}
         </div>
       )}
