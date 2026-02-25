@@ -483,9 +483,11 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
   return (
     <div style={{ padding: '12px 12px' }}>
       {/* Reply indicator - above avatar row */}
-      {tweet.is_reply && tweet.reply_to_handle && (
+      {tweet.is_reply && (
         <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 4, paddingLeft: 50 }}>
-          Replying to <span style={{ color: 'var(--accent)' }}>@{tweet.reply_to_handle}</span>
+          {tweet.reply_to_handle
+            ? <>Replying to <span style={{ color: 'var(--accent)' }}>@{tweet.reply_to_handle}</span></>
+            : 'Replying to a post'}
         </div>
       )}
 

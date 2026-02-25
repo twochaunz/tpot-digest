@@ -9,7 +9,7 @@ from app.config import settings
 X_API_BASE = "https://api.x.com/2"
 
 TWEET_FIELDS = "text,note_tweet,created_at,public_metrics,entities,referenced_tweets"
-EXPANSIONS = "author_id,attachments.media_keys"
+EXPANSIONS = "author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.author_id"
 USER_FIELDS = "profile_image_url,verified,verified_type,name,username"
 MEDIA_FIELDS = "url,preview_image_url,type,width,height"
 
@@ -93,6 +93,17 @@ async def fetch_tweet(tweet_id: str) -> dict:
             is_reply = True
             reply_to_tweet_id = ref["id"]
 
+    # Extract reply-to handle from included tweets + users
+    reply_to_handle = None
+    if reply_to_tweet_id:
+        included_tweets = includes.get("tweets", [])
+        for t in included_tweets:
+            if t.get("id") == reply_to_tweet_id:
+                reply_author = _find_author(t.get("author_id"), includes.get("users", []))
+                if reply_author:
+                    reply_to_handle = reply_author.get("username")
+                break
+
     author_handle = author.get("username", "") if author else ""
 
     metrics = data.get("public_metrics", {})
@@ -114,6 +125,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "is_reply": is_reply,
         "quoted_tweet_id": quoted_tweet_id,
         "reply_to_tweet_id": reply_to_tweet_id,
+        "reply_to_handle": reply_to_handle,
         "created_at": data.get("created_at", ""),
     }
 
