@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { CategoryManager } from '../components/CategoryManager'
 
 export function SettingsPage() {
   const navigate = useNavigate()
@@ -81,9 +80,6 @@ export function SettingsPage() {
           gap: 24,
         }}
       >
-        {/* Category Manager */}
-        <CategoryManager />
-
         {/* Backend URL Info */}
         <div
           style={{

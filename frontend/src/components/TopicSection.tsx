@@ -3,7 +3,7 @@ import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets, useFetchGrokContext } from '../api/tweets'
 import { EmbeddedTweet } from './EmbeddedTweet'
 import type { Tweet } from '../api/tweets'
-import type { Category } from '../api/categories'
+import { getCategoryDef } from '../constants/categories'
 
 function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string }) {
   const fetchGrok = useFetchGrokContext()
@@ -65,9 +65,16 @@ export function TopicSectionWithData({
   const remainingTweets = ogTweetId ? tweets.filter(t => t.id !== ogTweetId) : tweets
 
   const tweetsByCategory = useMemo(() => {
-    const byCat = new Map<number | null, { category: Category | null; tweets: Tweet[] }>()
-    if (remainingTweets.length > 0) {
-      byCat.set(null, { category: null, tweets: remainingTweets })
+    const byCat = new Map<string | null, { category: { name: string; color: string } | null; tweets: Tweet[] }>()
+    for (const tweet of remainingTweets) {
+      const catKey = tweet.category ?? null
+      if (!byCat.has(catKey)) {
+        byCat.set(catKey, {
+          category: catKey ? { name: getCategoryDef(catKey).label, color: getCategoryDef(catKey).color } : null,
+          tweets: [],
+        })
+      }
+      byCat.get(catKey)!.tweets.push(tweet)
     }
     return byCat
   }, [remainingTweets])
@@ -181,7 +188,7 @@ interface TopicSectionProps {
   topicId: number
   title: string
   color: string | null
-  tweetsByCategory: Map<number | null, { category: Category | null; tweets: Tweet[] }>
+  tweetsByCategory: Map<string | null, { category: { name: string; color: string } | null; tweets: Tweet[] }>
   ogTweet: Tweet | null
   ogTweetId: number | null
   onDelete: (topicId: number) => void
@@ -497,8 +504,8 @@ function TopicSection({
             </div>
           )}
 
-          {Array.from(tweetsByCategory.entries()).map(([catId, group]) => (
-            <div key={catId ?? 'uncategorized'} style={{ marginBottom: 8 }}>
+          {Array.from(tweetsByCategory.entries()).map(([catKey, group]) => (
+            <div key={catKey ?? 'uncategorized'} style={{ marginBottom: 8 }}>
               {/* Category label if applicable */}
               {group.category && (
                 <div

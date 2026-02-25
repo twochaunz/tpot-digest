@@ -1,23 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Topic } from '../api/topics'
-import type { Category } from '../api/categories'
+import { CATEGORIES } from '../constants/categories'
 
 interface AssignDropdownProps {
   topics: Topic[]
-  categories: Category[]
-  onAssign: (topicId: number, categoryId?: number) => void
-  onCreateCategory?: (name: string, color: string) => void
-  onDeleteCategory?: (id: number) => void
+  onAssign: (topicId: number, category?: string) => void
   disabled?: boolean
 }
 
-export function AssignDropdown({ topics, categories, onAssign, onCreateCategory, onDeleteCategory, disabled }: AssignDropdownProps) {
+export function AssignDropdown({ topics, onAssign, disabled }: AssignDropdownProps) {
   const [open, setOpen] = useState(false)
   const [selectedTopic, setSelectedTopic] = useState<number | null>(null)
   const [hovered, setHovered] = useState(false)
-  const [addingCategory, setAddingCategory] = useState(false)
-  const [newCatName, setNewCatName] = useState('')
-  const [newCatColor, setNewCatColor] = useState('#6366f1')
   const ref = useRef<HTMLDivElement>(null)
 
   // Close on outside click
@@ -105,7 +99,7 @@ export function AssignDropdown({ topics, categories, onAssign, onCreateCategory,
                   label={t.title}
                   color={t.color}
                   onClick={() => {
-                    if (categories.length === 0) {
+                    if (CATEGORIES.length === 0) {
                       onAssign(t.id)
                       setOpen(false)
                       setSelectedTopic(null)
@@ -156,80 +150,18 @@ export function AssignDropdown({ topics, categories, onAssign, onCreateCategory,
                   setSelectedTopic(null)
                 }}
               />
-              {categories.map((c) => (
+              {CATEGORIES.map((c) => (
                 <DropdownItem
-                  key={c.id}
-                  label={c.name}
+                  key={c.key}
+                  label={c.label}
                   color={c.color}
                   onClick={() => {
-                    onAssign(selectedTopic!, c.id)
+                    onAssign(selectedTopic!, c.key)
                     setOpen(false)
                     setSelectedTopic(null)
                   }}
-                  onDelete={onDeleteCategory ? () => onDeleteCategory(c.id) : undefined}
                 />
               ))}
-
-              {/* Separator before add category */}
-              <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-
-              {addingCategory ? (
-                <div style={{ padding: '8px 12px' }}>
-                  <input
-                    type="text"
-                    placeholder="Category name..."
-                    value={newCatName}
-                    onChange={(e) => setNewCatName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newCatName.trim()) {
-                        onCreateCategory?.(newCatName.trim(), newCatColor)
-                        setNewCatName('')
-                        setAddingCategory(false)
-                      }
-                      if (e.key === 'Escape') {
-                        setAddingCategory(false)
-                        setNewCatName('')
-                      }
-                    }}
-                    autoFocus
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-base)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '5px 8px',
-                      color: 'var(--text-primary)',
-                      fontSize: 12,
-                      outline: 'none',
-                      fontFamily: 'var(--font-body)',
-                      marginBottom: 6,
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {['#6366f1','#ec4899','#f59e0b','#22c55e','#3b82f6','#ef4444','#06b6d4','#8b5cf6'].map(c => (
-                      <button
-                        key={c}
-                        onClick={() => setNewCatColor(c)}
-                        style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: '50%',
-                          background: c,
-                          border: newCatColor === c ? '2px solid var(--text-primary)' : '2px solid transparent',
-                          cursor: 'pointer',
-                          padding: 0,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <DropdownItem
-                  label="+ Add Category"
-                  onClick={() => setAddingCategory(true)}
-                />
-              )}
             </>
           )}
         </div>
