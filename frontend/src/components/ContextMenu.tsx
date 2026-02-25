@@ -134,6 +134,7 @@ function MiniCalendar({ onPick }: { onPick: (date: string) => void }) {
 export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory }: ContextMenuProps) {
   const [showCalendar, setShowCalendar] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
+  const [focusedCatIndex, setFocusedCatIndex] = useState(-1)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Position with edge detection
@@ -150,13 +151,53 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
     setPos({ x: nx, y: ny })
   }, [x, y, showCalendar])
 
-  // Close on outside click or Escape
+  // Reset focused index when submenu opens/closes
+  useEffect(() => {
+    if (showCategories) {
+      const currentIdx = CATEGORIES.findIndex((c) => c.key === tweet.category)
+      setFocusedCatIndex(currentIdx >= 0 ? currentIdx : 0)
+    } else {
+      setFocusedCatIndex(-1)
+    }
+  }, [showCategories, tweet.category])
+
+  // Total items in category submenu (categories + optional "Remove" item)
+  const catItemCount = CATEGORIES.length + (tweet.category ? 1 : 0)
+
+  // Close on outside click or Escape; arrow/enter for category submenu
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose()
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (showCategories) {
+          setShowCategories(false)
+          e.stopPropagation()
+        } else {
+          onClose()
+        }
+        return
+      }
+
+      if (showCategories) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setFocusedCatIndex((i) => (i + 1) % catItemCount)
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setFocusedCatIndex((i) => (i - 1 + catItemCount) % catItemCount)
+        } else if (e.key === 'Enter') {
+          e.preventDefault()
+          if (focusedCatIndex >= 0 && focusedCatIndex < CATEGORIES.length) {
+            onSetCategory?.(tweet.id, topicId!, CATEGORIES[focusedCatIndex].key)
+            onClose()
+          } else if (focusedCatIndex === CATEGORIES.length && tweet.category) {
+            onSetCategory?.(tweet.id, topicId!, null)
+            onClose()
+          }
+        }
+      }
     }
     document.addEventListener('mousedown', handleClick)
     document.addEventListener('keydown', handleKey)
@@ -164,7 +205,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
-  }, [onClose])
+  }, [onClose, showCategories, catItemCount, focusedCatIndex, tweet.id, tweet.category, topicId, onSetCategory])
 
   const itemStyle: React.CSSProperties = {
     display: 'flex',
@@ -270,18 +311,19 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                 minWidth: 160,
               }}
             >
-              {CATEGORIES.map((cat) => (
+              {CATEGORIES.map((cat, idx) => (
                 <button
                   key={cat.key}
                   onClick={() => {
                     onSetCategory(tweet.id, topicId, cat.key)
                     onClose()
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                  onMouseEnter={() => setFocusedCatIndex(idx)}
+                  onMouseLeave={() => setFocusedCatIndex(-1)}
                   style={{
                     ...itemStyle,
                     fontWeight: tweet.category === cat.key ? 600 : 400,
+                    background: focusedCatIndex === idx ? 'var(--bg-hover)' : 'none',
                   }}
                 >
                   <span style={{
@@ -304,9 +346,13 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                       onSetCategory(tweet.id, topicId, null)
                       onClose()
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-                    style={{ ...itemStyle, color: 'var(--text-tertiary)' }}
+                    onMouseEnter={() => setFocusedCatIndex(CATEGORIES.length)}
+                    onMouseLeave={() => setFocusedCatIndex(-1)}
+                    style={{
+                      ...itemStyle,
+                      color: 'var(--text-tertiary)',
+                      background: focusedCatIndex === CATEGORIES.length ? 'var(--bg-hover)' : 'none',
+                    }}
                   >
                     <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#10005;</span>
                     Remove Category
