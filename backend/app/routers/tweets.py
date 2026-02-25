@@ -56,7 +56,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
 
     if body.topic_id:
         assignment = TweetAssignment(
-            tweet_id=tweet.id, topic_id=body.topic_id, category_id=body.category_id
+            tweet_id=tweet.id, topic_id=body.topic_id, category=body.category
         )
         db.add(assignment)
 
@@ -72,24 +72,27 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
 async def list_tweets(
     date: date | None = Query(None),
     topic_id: int | None = Query(None),
-    category_id: int | None = Query(None),
+    category: str | None = Query(None),
     unassigned: bool = Query(False),
     q: str | None = Query(None),
     thread_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Tweet)
+    if topic_id:
+        # Join with TweetAssignment to get category
+        stmt = select(Tweet, TweetAssignment.category).join(
+            TweetAssignment, TweetAssignment.tweet_id == Tweet.id
+        ).where(TweetAssignment.topic_id == topic_id)
+
+        if category:
+            stmt = stmt.where(TweetAssignment.category == category)
+    else:
+        stmt = select(Tweet)
 
     if date:
         from sqlalchemy import func, text
         local_date = func.date(func.timezone(text("'America/Los_Angeles'"), Tweet.saved_at))
         stmt = stmt.where(local_date == date)
-
-    if topic_id:
-        assigned_ids = select(TweetAssignment.tweet_id).where(TweetAssignment.topic_id == topic_id)
-        if category_id:
-            assigned_ids = assigned_ids.where(TweetAssignment.category_id == category_id)
-        stmt = stmt.where(Tweet.id.in_(assigned_ids))
 
     if unassigned:
         all_assigned = select(TweetAssignment.tweet_id)
@@ -104,7 +107,18 @@ async def list_tweets(
         stmt = stmt.order_by(Tweet.saved_at.desc())
 
     result = await db.execute(stmt)
-    return result.scalars().all()
+
+    if topic_id:
+        tweets = []
+        for row in result.all():
+            tweet_obj = row[0]
+            cat = row[1]
+            tweet_out = TweetOut.model_validate(tweet_obj)
+            tweet_out.category = cat
+            tweets.append(tweet_out)
+        return tweets
+    else:
+        return result.scalars().all()
 
 
 @router.delete("/{tweet_id}", status_code=204)
@@ -175,10 +189,10 @@ async def assign_tweets(body: TweetAssignRequest, db: AsyncSession = Depends(get
             )
         )).scalar_one_or_none()
         if existing:
-            existing.category_id = body.category_id
+            existing.category = body.category
         else:
             db.add(TweetAssignment(
-                tweet_id=tid, topic_id=body.topic_id, category_id=body.category_id
+                tweet_id=tid, topic_id=body.topic_id, category=body.category
             ))
     await db.commit()
     return {"assigned": len(body.tweet_ids)}
