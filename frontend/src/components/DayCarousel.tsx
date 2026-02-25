@@ -1,5 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { DayFeedPanel } from './DayFeedPanel'
+import type { Tweet } from '../api/tweets'
+
 function shiftDate(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
