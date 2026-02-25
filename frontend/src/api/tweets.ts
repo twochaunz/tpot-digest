@@ -22,6 +22,7 @@ export interface Tweet {
   grok_context: string | null
   created_at: string | null
   saved_at: string
+  category?: string | null
 }
 
 export function useTweets(params: {
@@ -44,7 +45,7 @@ export function useTweets(params: {
 export function useAssignTweets() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (body: { tweet_ids: number[]; topic_id: number; category_id?: number }) => {
+    mutationFn: async (body: { tweet_ids: number[]; topic_id: number; category?: string | null }) => {
       const { data } = await api.post('/tweets/assign', body)
       return data
     },
