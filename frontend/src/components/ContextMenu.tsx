@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { Tweet } from '../api/tweets'
+import { CATEGORIES, getCategoryDef } from '../constants/categories'
 
 interface ContextMenuProps {
   x: number
@@ -12,6 +13,7 @@ interface ContextMenuProps {
   onMoveToDate: (tweetId: number, date: string) => void
   onSetOg?: (topicId: number, tweetId: number | null) => void
   ogTweetId?: number | null
+  onSetCategory?: (tweetId: number, topicId: number, category: string | null) => void
 }
 
 const MONTH_NAMES = [
@@ -129,8 +131,9 @@ function MiniCalendar({ onPick }: { onPick: (date: string) => void }) {
   )
 }
 
-export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId }: ContextMenuProps) {
+export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory }: ContextMenuProps) {
   const [showCalendar, setShowCalendar] = useState(false)
+  const [showCategories, setShowCategories] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Position with edge detection
@@ -230,6 +233,85 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>{ogTweetId === tweet.id ? '\u2716' : '\u2B50'}</span>
           {ogTweetId === tweet.id ? 'Remove OG' : 'Set as OG Post'}
         </button>
+      )}
+
+      {/* Set Category */}
+      {onSetCategory && topicId && (
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowCategories((v) => !v) }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+            style={{ ...itemStyle, justifyContent: 'space-between' }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#9776;</span>
+              {tweet.category ? getCategoryDef(tweet.category).label : 'Set Category'}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
+          </button>
+
+          {showCategories && (
+            <div
+              style={{
+                position: 'absolute',
+                left: '100%',
+                top: 0,
+                zIndex: 101,
+                background: 'var(--bg-raised)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                padding: 4,
+                minWidth: 160,
+              }}
+            >
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.key}
+                  onClick={() => {
+                    onSetCategory(tweet.id, topicId, cat.key)
+                    onClose()
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                  style={{
+                    ...itemStyle,
+                    fontWeight: tweet.category === cat.key ? 600 : 400,
+                  }}
+                >
+                  <span style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: cat.color,
+                    flexShrink: 0,
+                  }} />
+                  {cat.label}
+                </button>
+              ))}
+
+              {/* Remove category option */}
+              {tweet.category && (
+                <>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
+                  <button
+                    onClick={() => {
+                      onSetCategory(tweet.id, topicId, null)
+                      onClose()
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                    style={{ ...itemStyle, color: 'var(--text-tertiary)' }}
+                  >
+                    <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#10005;</span>
+                    Remove Category
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Divider */}
