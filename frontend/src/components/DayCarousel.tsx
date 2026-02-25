@@ -148,8 +148,6 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
               transformOrigin: isCenter ? 'center top' : 'center center',
               position: 'relative',
               height: '100%',
-              overflow: isCenter ? undefined : 'hidden',
-              borderRadius: isCenter ? undefined : 'var(--radius-lg)',
               display: isCenter ? undefined : 'flex',
               alignItems: isCenter ? undefined : 'center',
             }}
@@ -163,11 +161,16 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
                   inset: 0,
                   zIndex: 3,
                   cursor: 'pointer',
+                  borderRadius: 'var(--radius-lg)',
                 }}
               />
             )}
 
-            <div style={{ pointerEvents: isCenter ? 'auto' : 'none', height: '100%', overflow: isCenter ? undefined : 'hidden' }}>
+            <div style={{
+              pointerEvents: isCenter ? 'auto' : 'none',
+              height: '100%',
+              ...(isCenter ? {} : { overflow: 'hidden', borderRadius: 'var(--radius-lg)' }),
+            }}>
               <DayFeedPanel
                 date={dayDate}
                 search={isCenter ? search : ''}
