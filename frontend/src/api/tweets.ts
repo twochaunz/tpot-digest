@@ -13,6 +13,7 @@ export interface Tweet {
   engagement: { likes: number; retweets: number; replies: number } | null
   is_quote_tweet: boolean
   is_reply: boolean
+  quoted_tweet_id: string | null
   thread_id: string | null
   thread_position: number | null
   screenshot_path: string | null
