@@ -326,6 +326,7 @@ function TopicSection({
           top: 0,
           zIndex: 5,
           background: 'var(--bg-raised)',
+          borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
         }}
         onClick={() => {
           setCollapsed((v) => {

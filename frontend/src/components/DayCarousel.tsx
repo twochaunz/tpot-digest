@@ -148,8 +148,7 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
               transformOrigin: isCenter ? 'center top' : 'center center',
               position: 'relative',
               height: '100%',
-              overflow: 'hidden',
-              borderRadius: 'var(--radius-lg)',
+              overflow: isCenter ? undefined : 'hidden',
               display: isCenter ? undefined : 'flex',
               alignItems: isCenter ? undefined : 'center',
             }}
