@@ -431,12 +431,15 @@ function TopicSection({
 
           {/* OG Tweet - pinned at top */}
           {ogTweet && (
-            <div style={{
-              borderLeft: '3px solid #F59E0B',
-              borderRadius: 'var(--radius-lg)',
-              marginBottom: 12,
-              position: 'relative',
-            }}>
+            <div
+              id={`toc-cat-${topicId}-og`}
+              style={{
+                borderLeft: '3px solid #F59E0B',
+                borderRadius: 'var(--radius-lg)',
+                marginBottom: 12,
+                position: 'relative',
+              }}
+            >
               {/* OG Badge */}
               <div style={{
                 position: 'absolute',
