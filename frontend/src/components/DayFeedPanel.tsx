@@ -122,6 +122,13 @@ export function DayFeedPanel({
     [updateTopicMutation],
   )
 
+  const handleSetCategory = useCallback(
+    (tweetId: number, topicId: number, category: string | null) => {
+      assignMutation.mutate({ tweet_ids: [tweetId], topic_id: topicId, category })
+    },
+    [assignMutation],
+  )
+
   const handleContextMenu = useCallback((e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY, tweet, topicId, ogTweetId })
@@ -339,6 +346,7 @@ export function DayFeedPanel({
           onMoveToDate={handleMoveToDate}
           onSetOg={contextMenu.topicId ? handleSetOg : undefined}
           ogTweetId={contextMenu.ogTweetId ?? null}
+          onSetCategory={contextMenu.topicId ? handleSetCategory : undefined}
         />
       )}
 
