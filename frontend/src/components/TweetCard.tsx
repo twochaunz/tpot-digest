@@ -50,7 +50,7 @@ function formatRelativeTime(iso: string): string {
 }
 
 function isLegacyTweet(tweet: Tweet): boolean {
-  return !tweet.author_avatar_url && !!tweet.screenshot_path
+  return !tweet.text && !!tweet.screenshot_path
 }
 
 export function TweetCard({
