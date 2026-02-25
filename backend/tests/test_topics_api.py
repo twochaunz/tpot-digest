@@ -9,7 +9,7 @@ from sqlalchemy.ext.compiler import compiles
 
 from app.db import Base, get_db
 from app.main import app
-from app.models import Tweet, Topic, Category, TweetAssignment  # noqa: F401
+from app.models import Tweet, Topic, TweetAssignment  # noqa: F401
 
 
 @compiles(JSONB, "sqlite")
