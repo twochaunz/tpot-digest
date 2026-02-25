@@ -307,7 +307,6 @@ function TopicSection({
         background: 'var(--bg-raised)',
         border: isOver ? `2px solid ${accentColor}` : '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden',
         transition: 'border 0.15s ease',
         scrollSnapAlign: 'start' as const,
       }}
