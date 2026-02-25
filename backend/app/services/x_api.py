@@ -10,7 +10,7 @@ X_API_BASE = "https://api.x.com/2"
 
 TWEET_FIELDS = "text,note_tweet,created_at,public_metrics,entities,referenced_tweets"
 EXPANSIONS = "author_id,attachments.media_keys"
-USER_FIELDS = "profile_image_url,verified,name,username"
+USER_FIELDS = "profile_image_url,verified,verified_type,name,username"
 MEDIA_FIELDS = "url,preview_image_url,type,width,height"
 
 
@@ -101,7 +101,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "author_handle": author_handle,
         "author_display_name": author.get("name", "") if author else "",
         "author_avatar_url": author.get("profile_image_url", "") if author else "",
-        "author_verified": author.get("verified", False) if author else False,
+        "author_verified": (author.get("verified", False) or bool(author.get("verified_type"))) if author else False,
         "text": data.get("note_tweet", {}).get("text") or data.get("text", ""),
         "url": f"https://x.com/{author_handle}/status/{tweet_id}" if author_handle else f"https://x.com/i/status/{tweet_id}",
         "media_urls": media_urls,
