@@ -710,7 +710,7 @@ function MediaGrid({
   media: { type: string; url: string; width?: number; height?: number }[]
   authorHandle: string
 }) {
-  const images = media.filter((m) => m.type === 'photo' || m.type === 'animated_gif')
+  const images = media.filter((m) => m.type === 'photo' || m.type === 'animated_gif' || m.type === 'video')
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   if (images.length === 0) return null
 
