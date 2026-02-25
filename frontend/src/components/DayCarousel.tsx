@@ -161,16 +161,11 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
                   inset: 0,
                   zIndex: 3,
                   cursor: 'pointer',
-                  borderRadius: 'var(--radius-lg)',
                 }}
               />
             )}
 
-            <div style={{
-              pointerEvents: isCenter ? 'auto' : 'none',
-              height: '100%',
-              ...(isCenter ? {} : { overflow: 'hidden', borderRadius: 'var(--radius-lg)' }),
-            }}>
+            <div style={{ pointerEvents: isCenter ? 'auto' : 'none', height: '100%' }}>
               <DayFeedPanel
                 date={dayDate}
                 search={isCenter ? search : ''}
