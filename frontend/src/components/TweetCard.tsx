@@ -675,7 +675,7 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
         {/* Media */}
         {tweet.media_urls && tweet.media_urls.length > 0 && (
           <div style={{ marginTop: 10 }}>
-            <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} />
+            <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} tweetUrl={tweet.url} />
           </div>
         )}
 
@@ -706,9 +706,11 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
 function MediaGrid({
   media,
   authorHandle,
+  tweetUrl,
 }: {
   media: { type: string; url: string; width?: number; height?: number }[]
   authorHandle: string
+  tweetUrl?: string
 }) {
   const images = media.filter((m) => m.type === 'photo' || m.type === 'animated_gif' || m.type === 'video')
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
@@ -729,30 +731,69 @@ function MediaGrid({
           marginBottom: 10,
         }}
       >
-        {images.slice(0, 4).map((img, i) => (
-          <div
-            key={i}
-            onClick={(e) => { e.stopPropagation(); setLightboxIdx(i) }}
-            style={{ cursor: 'pointer', lineHeight: 0 }}
-          >
-            <img
-              src={img.url}
-              alt={`Media from @${authorHandle}`}
-              style={{
-                width: '100%',
-                ...(isSingle
-                  ? { maxHeight: 500, objectFit: 'contain' }
-                  : { height: 160, objectFit: 'cover' }),
-                display: 'block',
-                borderRadius: 'var(--radius-sm)',
+        {images.slice(0, 4).map((img, i) => {
+          const isVideo = img.type === 'video'
+          return (
+            <div
+              key={i}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (isVideo && tweetUrl) {
+                  window.open(tweetUrl, '_blank')
+                } else {
+                  setLightboxIdx(i)
+                }
               }}
-            />
-          </div>
-        ))}
+              style={{ cursor: 'pointer', lineHeight: 0, position: 'relative' }}
+            >
+              <img
+                src={img.url}
+                alt={`Media from @${authorHandle}`}
+                style={{
+                  width: '100%',
+                  ...(isSingle
+                    ? { maxHeight: 500, objectFit: 'contain' }
+                    : { height: 160, objectFit: 'cover' }),
+                  display: 'block',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              />
+              {isVideo && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.3)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
       {lightboxIdx !== null && (
         <ImageLightbox
-          images={images.slice(0, 4)}
+          images={images.filter(m => m.type !== 'video').slice(0, 4)}
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
         />
