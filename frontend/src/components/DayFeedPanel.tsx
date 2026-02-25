@@ -196,7 +196,6 @@ export function DayFeedPanel({
   const isLoading = topicsQuery.isLoading || unsortedQuery.isLoading
 
   return (
-    <div style={{ height: '100%', overflow: 'hidden', borderRadius: 'var(--radius-lg)' }}>
     <div
       data-active-feed={isActive ? 'true' : undefined}
       style={{
@@ -355,7 +354,6 @@ export function DayFeedPanel({
         onUndo={undo.undoLast}
         onDismiss={undo.dismissToast}
       />
-    </div>
     </div>
   )
 }
