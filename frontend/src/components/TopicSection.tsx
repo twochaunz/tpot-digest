@@ -513,40 +513,49 @@ function TopicSection({
             </div>
           )}
 
-          {Array.from(tweetsByCategory.entries()).map(([catKey, group]) => (
-            <div key={catKey ?? 'uncategorized'} style={{ marginBottom: 8 }}>
-              {/* Category label if applicable */}
-              {group.category && (
-                <div
+          {Array.from(tweetsByCategory.entries()).map(([catKey, group], idx) => (
+            <div key={catKey ?? 'uncategorized'} style={{ marginTop: idx > 0 ? 16 : 0 }}>
+              {/* Category lane header */}
+              <div
+                style={{
+                  borderLeft: `3px solid ${group.category?.color || '#6B7280'}`,
+                  background: group.category
+                    ? `${group.category.color}0D`
+                    : 'rgba(107, 114, 128, 0.05)',
+                  padding: '8px 12px',
+                  marginBottom: 10,
+                  borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <span
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    marginBottom: 6,
-                    padding: '0 2px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: group.category?.color || '#6B7280',
                   }}
                 >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      background: group.category.color || 'var(--text-tertiary)',
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
-                    {group.category.name}
-                  </span>
-                </div>
-              )}
+                  {group.category?.name || 'Uncategorized'}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: group.category?.color || '#6B7280',
+                    background: group.category
+                      ? `${group.category.color}1A`
+                      : 'rgba(107, 114, 128, 0.1)',
+                    padding: '1px 8px',
+                    borderRadius: 10,
+                  }}
+                >
+                  {group.tweets.length}
+                </span>
+              </div>
 
-              {/* Tweet cards - vertical feed, max-width 600px */}
+              {/* Tweet cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {group.tweets.map((t) => (
                   <DraggableTweetInTopic
