@@ -517,6 +517,7 @@ function TopicSection({
           {Array.from(tweetsByCategory.entries()).map(([catKey, group], idx) => (
             <div
               key={catKey ?? 'uncategorized'}
+              id={`toc-cat-${topicId}-${catKey ?? 'uncategorized'}`}
               style={{
                 borderLeft: `3px solid ${group.category?.color || '#6B7280'}`,
                 borderRadius: 'var(--radius-lg)',

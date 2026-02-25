@@ -198,6 +198,7 @@ export function DayFeedPanel({
 
   return (
     <div
+      data-active-feed={isActive ? 'true' : undefined}
       style={{
         overflowY: 'auto',
         height: '100%',
