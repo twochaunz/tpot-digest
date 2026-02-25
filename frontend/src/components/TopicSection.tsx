@@ -10,8 +10,10 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
-      <div style={{ height: 1, background: 'var(--border)' }} />
-      <div style={{ padding: '12px 14px' }}>
+      <div style={{ padding: '10px 0 0' }}>
+        <div style={{ height: 1, background: 'var(--border)' }} />
+      </div>
+      <div style={{ padding: '10px 12px 12px' }}>
         <div
           onClick={() => setCollapsed((v) => !v)}
           style={{
@@ -25,14 +27,14 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{
               fontSize: 10,
-              color: 'var(--text-tertiary)',
+              color: 'var(--text-quaternary, rgba(255,255,255,0.3))',
               transition: 'transform 0.15s ease',
               transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             }}>&#9660;</span>
             <span style={{
               fontSize: 11,
               fontWeight: 600,
-              color: 'var(--text-tertiary)',
+              color: 'var(--text-quaternary, rgba(255,255,255,0.3))',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}>
@@ -506,14 +508,12 @@ function TopicSection({
               </div>
 
               {/* Tweet card */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
-                <div
-                  onClick={() => onTweetClick?.(ogTweet)}
-                  onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <TweetCard tweet={ogTweet} selectable={false} />
-                </div>
+              <div
+                onClick={() => onTweetClick?.(ogTweet)}
+                onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
+                style={{ cursor: 'pointer', padding: '4px 0 0' }}
+              >
+                <TweetCard tweet={ogTweet} selectable={false} />
               </div>
 
               {/* Grok Context section */}
