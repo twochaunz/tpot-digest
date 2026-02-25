@@ -7,7 +7,7 @@
 #
 # First-time setup (run manually on server):
 #   1. Install Docker: curl -fsSL https://get.docker.com | sh
-#   2. Clone repo: git clone https://github.com/wktinker/tpot-digest.git
+#   2. Clone repo: git clone https://github.com/twochaunz/tpot-digest.git
 #   3. cd tpot-digest && cp .env.example .env && nano .env  (set passwords, domain)
 #   4. ./scripts/deploy.sh user@yourserver.com
 #
