@@ -675,7 +675,7 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
         {/* Media */}
         {tweet.media_urls && tweet.media_urls.length > 0 && (
           <div style={{ marginTop: 10 }}>
-            <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} tweetUrl={tweet.url} />
+            <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} tweetUrl={tweet.url ?? undefined} />
           </div>
         )}
 
