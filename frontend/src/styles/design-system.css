@@ -1,25 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-base: #0f0f23;
-  --bg-raised: #1a1a2e;
-  --bg-elevated: #16213e;
-  --bg-hover: #1e293b;
+  --bg-base: #000000;
+  --bg-raised: #16181c;
+  --bg-elevated: #1d1f23;
+  --bg-hover: #1d1f23;
 
-  --border: #1e293b;
-  --border-strong: #334155;
+  --border: #2f3336;
+  --border-strong: #536471;
 
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
+  --text-primary: #e7e9ea;
+  --text-secondary: #71767b;
+  --text-tertiary: #536471;
 
-  --accent: #6366f1;
-  --accent-hover: #818cf8;
-  --accent-muted: rgba(99, 102, 241, 0.12);
+  --accent: #00a67d;
+  --accent-hover: #00c896;
+  --accent-muted: rgba(0, 166, 125, 0.12);
 
-  --success: #22c55e;
-  --error: #ef4444;
-  --warning: #f59e0b;
+  --success: #00ba7c;
+  --error: #f4212e;
+  --warning: #ffd400;
 
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -48,66 +48,29 @@ body {
 
 .day-carousel::-webkit-scrollbar { display: none; }
 
-/* react-tweet: hide engagement actions row (like, reply, copy) */
-.react-tweet-container [class*="actions"] {
+/* react-tweet (used for quoted tweet embeds): clean up chrome */
+[data-theme="dark"] [class*="actions"] {
   display: none !important;
 }
 
-/* react-tweet: hide "Read more on X" / "Read N replies" */
-.react-tweet-container [class*="replies"] {
+[data-theme="dark"] [class*="replies"] {
   display: none !important;
 }
 
-/* react-tweet: hide Follow button (scoped to authorFollow to avoid matching @mentions) */
-.react-tweet-container [class*="authorFollow"] {
+[data-theme="dark"] [class*="authorFollow"] {
   display: none !important;
 }
 
-/* react-tweet: hide info (i) button but keep timestamp */
-.react-tweet-container a[class*="infoLink"] {
+[data-theme="dark"] a[class*="infoLink"] {
   display: none !important;
 }
 
-/* react-tweet: hide X brand logo in header */
-.react-tweet-container a[class*="brand"] {
+[data-theme="dark"] a[class*="brand"] {
   display: none !important;
 }
 
-/* react-tweet: remove default margins, full width */
-.react-tweet-container {
-  --tweet-container-margin: 0;
-}
-
-.react-tweet-container > div {
+/* react-tweet: compact quoted tweet embed */
+[data-theme="dark"] > div {
   margin: 0 !important;
   max-width: 100% !important;
-  width: 100% !important;
-}
-
-.react-tweet-container article {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-/* react-tweet: prevent all internal elements from capturing clicks (clicks open detail panel instead) */
-.react-tweet-container {
-  pointer-events: none;
-}
-
-.embedded-tweet-wrapper {
-  pointer-events: auto;
-}
-
-/* Hover actions for embedded tweets */
-.embedded-tweet-wrapper .embedded-tweet-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: none;
-  gap: 4px;
-  z-index: 2;
-}
-
-.embedded-tweet-wrapper:hover .embedded-tweet-actions {
-  display: flex;
 }

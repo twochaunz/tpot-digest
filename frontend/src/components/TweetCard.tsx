@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
+import { Tweet as ReactTweet } from 'react-tweet'
 import type { Tweet } from '../api/tweets'
 
 interface TweetCardProps {
@@ -115,6 +116,7 @@ export function TweetCard({
         style={{
           width,
           maxWidth: 600,
+          margin: '0 auto',
           background: hovered ? 'var(--bg-hover)' : 'var(--bg-raised)',
           border: selected
             ? '1.5px solid var(--accent)'
@@ -581,6 +583,22 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
       {/* Media thumbnails */}
       {tweet.media_urls && tweet.media_urls.length > 0 && (
         <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} />
+      )}
+
+      {/* Quoted tweet embed */}
+      {tweet.quoted_tweet_id && (
+        <div
+          data-theme="dark"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            overflow: 'hidden',
+            marginBottom: 10,
+          }}
+        >
+          <ReactTweet id={tweet.quoted_tweet_id} />
+        </div>
       )}
 
       {/* Engagement stats */}
