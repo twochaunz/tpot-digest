@@ -8,7 +8,8 @@ import { SettingsPage } from './pages/SettingsPage'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10000,
+      staleTime: 30000,
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },

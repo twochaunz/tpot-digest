@@ -106,7 +106,7 @@ async def list_tweets(
     if thread_id:
         stmt = stmt.where(Tweet.thread_id == thread_id).order_by(Tweet.thread_position)
     else:
-        stmt = stmt.order_by(Tweet.saved_at.desc())
+        stmt = stmt.order_by(Tweet.saved_at.desc(), Tweet.id.desc())
 
     result = await db.execute(stmt)
 
