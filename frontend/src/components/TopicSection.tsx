@@ -65,18 +65,27 @@ export function TopicSectionWithData({
   const remainingTweets = ogTweetId ? tweets.filter(t => t.id !== ogTweetId) : tweets
 
   const tweetsByCategory = useMemo(() => {
-    const byCat = new Map<string | null, { category: { name: string; color: string } | null; tweets: Tweet[] }>()
+    const byCat = new Map<string | null, { category: { name: string; color: string; sortOrder: number } | null; tweets: Tweet[] }>()
     for (const tweet of remainingTweets) {
       const catKey = tweet.category ?? null
       if (!byCat.has(catKey)) {
+        const def = catKey ? getCategoryDef(catKey) : null
         byCat.set(catKey, {
-          category: catKey ? { name: getCategoryDef(catKey).label, color: getCategoryDef(catKey).color } : null,
+          category: def ? { name: def.label, color: def.color, sortOrder: def.sortOrder } : null,
           tweets: [],
         })
       }
       byCat.get(catKey)!.tweets.push(tweet)
     }
-    return byCat
+    // Sort by narrative order: categorized groups by sortOrder, uncategorized (null) last
+    const sorted = new Map(
+      Array.from(byCat.entries()).sort(([aKey, aGroup], [bKey, bGroup]) => {
+        if (aKey === null) return 1
+        if (bKey === null) return -1
+        return (aGroup.category?.sortOrder ?? 999) - (bGroup.category?.sortOrder ?? 999)
+      })
+    )
+    return sorted
   }, [remainingTweets])
 
   return (
@@ -188,7 +197,7 @@ interface TopicSectionProps {
   topicId: number
   title: string
   color: string | null
-  tweetsByCategory: Map<string | null, { category: { name: string; color: string } | null; tweets: Tweet[] }>
+  tweetsByCategory: Map<string | null, { category: { name: string; color: string; sortOrder: number } | null; tweets: Tweet[] }>
   ogTweet: Tweet | null
   ogTweetId: number | null
   onDelete: (topicId: number) => void
