@@ -11,6 +11,7 @@ export interface Tweet {
   text: string
   media_urls: { type: string; url: string; width?: number; height?: number }[] | null
   engagement: { likes: number; retweets: number; replies: number } | null
+  url_entities: { url: string; expanded_url: string; display_url: string; title?: string; description?: string; images?: { url: string; width: number; height: number }[]; unwound_url?: string }[] | null
   is_quote_tweet: boolean
   is_reply: boolean
   reply_to_handle: string | null

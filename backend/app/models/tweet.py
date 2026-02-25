@@ -17,6 +17,7 @@ class Tweet(Base):
     text: Mapped[str] = mapped_column(Text, default="", server_default="")
     media_urls: Mapped[dict | None] = mapped_column(JSONB)
     engagement: Mapped[dict | None] = mapped_column(JSONB)
+    url_entities: Mapped[list | None] = mapped_column(JSONB)
     is_quote_tweet: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_reply: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     quoted_tweet_id: Mapped[str | None] = mapped_column(String(64))
