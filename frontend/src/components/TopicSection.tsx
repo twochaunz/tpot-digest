@@ -473,9 +473,6 @@ function TopicSection({
                     fontSize: 15,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.5,
-                    background: 'var(--bg-subtle, rgba(0,0,0,0.1))',
-                    borderBottomLeftRadius: 'var(--radius-lg)',
-                    borderBottomRightRadius: 'var(--radius-lg)',
                   }}>
                     <div style={{
                       display: 'flex',
@@ -504,9 +501,6 @@ function TopicSection({
                     padding: '10px 14px',
                     fontSize: 13,
                     color: 'var(--text-tertiary)',
-                    background: 'var(--bg-subtle, rgba(0,0,0,0.1))',
-                    borderBottomLeftRadius: 'var(--radius-lg)',
-                    borderBottomRightRadius: 'var(--radius-lg)',
                   }}>
                     <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
                   </div>
