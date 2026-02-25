@@ -459,6 +459,38 @@ function LegacyCard({ tweet }: { tweet: Tweet }) {
   )
 }
 
+/** Render tweet text with clickable links. Strips trailing t.co URLs when media is present. */
+function TweetText({ text, hasMedia }: { text: string; hasMedia: boolean }) {
+  // Strip trailing t.co URLs if media is shown (they're just media links)
+  let cleaned = text
+  if (hasMedia) {
+    cleaned = cleaned.replace(/\s*https:\/\/t\.co\/\w+\s*$/, '')
+  }
+
+  // Split on URLs and render as links
+  const parts = cleaned.split(/(https?:\/\/[^\s]+)/g)
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'var(--accent)', textDecoration: 'none' }}
+          >
+            {part.startsWith('https://t.co/') ? part.replace('https://t.co/', 't.co/') : part}
+          </a>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  )
+}
+
 /* Native card: structured tweet display using X API data */
 function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: boolean }) {
   return (
@@ -543,7 +575,7 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
           marginBottom: 10,
         }}
       >
-        {tweet.text}
+        <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} />
       </div>
 
       {/* Media thumbnails */}

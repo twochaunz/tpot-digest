@@ -1,5 +1,5 @@
 import { useDroppable, useDraggable } from '@dnd-kit/core'
-import { EmbeddedTweet } from './EmbeddedTweet'
+import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 
 interface UnsortedSectionProps {
@@ -67,8 +67,9 @@ function DraggableFeedTweetCard({
       </div>
 
       {/* TweetCard */}
-      <EmbeddedTweet
+      <TweetCard
         tweet={tweet}
+        selectable={false}
         onTweetClick={onTweetClick}
         onContextMenu={onContextMenu}
         onDelete={onDelete}
