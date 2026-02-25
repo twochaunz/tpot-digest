@@ -340,10 +340,7 @@ export function DayFeedPanel({
       )}
 
       {/* Context menu */}
-      {contextMenu && (() => {
-        const ctxTopic = contextMenu.topicId ? topics.find(t => t.id === contextMenu.topicId) : null
-        const isKek = ctxTopic?.title.toLowerCase() === 'kek'
-        return (
+      {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
@@ -354,10 +351,8 @@ export function DayFeedPanel({
           onMoveToDate={handleMoveToDate}
           onSetOg={contextMenu.topicId ? handleSetOg : undefined}
           ogTweetId={contextMenu.ogTweetId ?? null}
-          onSetCategory={contextMenu.topicId && !isKek ? handleSetCategory : undefined}
+          onSetCategory={contextMenu.topicId && !topics.find(t => t.id === contextMenu.topicId && t.title.toLowerCase() === 'kek') ? handleSetCategory : undefined}
         />
-        )
-      })()}
       )}
 
       {/* Undo toast */}
