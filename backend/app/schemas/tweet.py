@@ -6,12 +6,11 @@ from pydantic import BaseModel
 
 class TweetSave(BaseModel):
     tweet_id: str
-    # Extension-only context fields
     feed_source: str | None = None
     thread_id: str | None = None
     thread_position: int | None = None
     topic_id: int | None = None
-    category_id: int | None = None
+    category: str | None = None
     saved_at: datetime | None = None
 
 
@@ -39,6 +38,7 @@ class TweetOut(BaseModel):
     memo: str | None
     grok_context: str | None
     saved_at: datetime
+    category: str | None = None
     status: str = "saved"
 
     model_config = {"from_attributes": True}
@@ -56,7 +56,7 @@ class TweetCheckRequest(BaseModel):
 class TweetAssignRequest(BaseModel):
     tweet_ids: list[int]
     topic_id: int
-    category_id: int | None = None
+    category: str | None = None
 
 
 class TweetUnassignRequest(BaseModel):

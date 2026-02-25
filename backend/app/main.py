@@ -20,9 +20,6 @@ app.include_router(tweets_router)
 from app.routers.topics import router as topics_router
 app.include_router(topics_router)
 
-from app.routers.categories import router as categories_router
-app.include_router(categories_router)
-
 from app.routers.waitlist import router as waitlist_router
 app.include_router(waitlist_router)
 
