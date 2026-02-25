@@ -66,8 +66,8 @@ export function DayFeedPanel({
   )
 
   const handleAssign = useCallback(
-    (tweetIds: number[], topicId: number, categoryId?: number) => {
-      assignMutation.mutate({ tweet_ids: tweetIds, topic_id: topicId, category_id: categoryId })
+    (tweetIds: number[], topicId: number, category?: string | null) => {
+      assignMutation.mutate({ tweet_ids: tweetIds, topic_id: topicId, category })
       undo.push({
         label: `${tweetIds.length} tweet${tweetIds.length > 1 ? 's' : ''} assigned`,
         undo: () => unassignMutation.mutate({ tweet_ids: tweetIds, topic_id: topicId }),

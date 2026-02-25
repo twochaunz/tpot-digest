@@ -28,7 +28,7 @@ export interface Tweet {
 export function useTweets(params: {
   date?: string
   topic_id?: number
-  category_id?: number
+  category?: string
   unassigned?: boolean
   q?: string
   thread_id?: string
