@@ -13,6 +13,30 @@ from app.services.grok_api import fetch_grok_context, GrokAPIError
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
 
+# Words that stay lowercase in title case (AP style), unless first/last word
+_SMALL_WORDS = {
+    'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
+    'at', 'by', 'in', 'of', 'on', 'to', 'up', 'as', 'is', 'if', 'it',
+    'vs', 'via', 'from', 'with', 'into', 'over',
+}
+
+
+def title_case(text: str) -> str:
+    """AP-style title case. 'kek' always stays lowercase."""
+    if text.lower() == 'kek':
+        return 'kek'
+    words = text.split()
+    result = []
+    for i, word in enumerate(words):
+        if word.lower() == 'kek':
+            result.append('kek')
+        elif i == 0 or i == len(words) - 1 or word.lower() not in _SMALL_WORDS:
+            result.append(word.capitalize())
+        else:
+            result.append(word.lower())
+    return ' '.join(result)
+
+
 TOPIC_COLORS = [
     '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
     '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7',
@@ -26,7 +50,7 @@ async def create_topic(body: TopicCreate, db: AsyncSession = Depends(get_db)):
         count_result = await db.execute(select(Topic).where(Topic.date == body.date))
         count = len(count_result.scalars().all())
         color = TOPIC_COLORS[count % len(TOPIC_COLORS)]
-    topic = Topic(title=body.title, date=body.date, color=color)
+    topic = Topic(title=title_case(body.title), date=body.date, color=color)
     db.add(topic)
     await db.commit()
     await db.refresh(topic)
@@ -87,12 +111,29 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
             except GrokAPIError:
                 pass  # Non-blocking: OG is set even if Grok fails
 
+    if "title" in data:
+        data["title"] = title_case(data["title"])
     for field, value in data.items():
         setattr(topic, field, value)
 
     await db.commit()
     await db.refresh(topic)
     return topic
+
+
+@router.post("/fix-title-case", status_code=200)
+async def fix_all_title_case(db: AsyncSession = Depends(get_db)):
+    """One-time: apply title case to all existing topics."""
+    result = await db.execute(select(Topic))
+    topics = result.scalars().all()
+    updated = 0
+    for topic in topics:
+        new_title = title_case(topic.title)
+        if new_title != topic.title:
+            topic.title = new_title
+            updated += 1
+    await db.commit()
+    return {"updated": updated, "total": len(topics)}
 
 
 @router.delete("/{topic_id}", status_code=204)
