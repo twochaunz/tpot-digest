@@ -5,6 +5,7 @@ import { useEngagementToggle } from '../hooks/useEngagementToggle'
 import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
 import { TweetDetailModal } from '../components/TweetDetailModal'
+import { TableOfContents } from '../components/TableOfContents'
 
 function defaultDateStr(): string {
   // Use PST (UTC-8) to determine time of day
@@ -25,11 +26,18 @@ export function DailyView() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
   const { showEngagement } = useEngagementToggle()
+  const [tocOpen, setTocOpen] = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 't' || e.key === 'T') {
+        const tag = (e.target as HTMLElement).tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        e.preventDefault()
+        setTocOpen(prev => !prev)
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         searchRef.current?.focus()
@@ -172,6 +180,44 @@ export function DailyView() {
         search={search}
         onTweetClick={handleTweetClick}
       />
+
+      {/* TOC FAB button */}
+      {!tocOpen && (
+        <button
+          onClick={() => setTocOpen(true)}
+          aria-label="Table of Contents"
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            width: 48,
+            height: 48,
+            borderRadius: '50%',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-secondary)',
+            fontSize: 20,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            zIndex: 50,
+            transition: 'all 0.15s ease',
+          }}
+        >
+          &#9776;
+        </button>
+      )}
+
+      {/* TOC overlay */}
+      {tocOpen && (
+        <TableOfContents
+          date={date}
+          search={search}
+          onClose={() => setTocOpen(false)}
+        />
+      )}
 
       {/* Tweet detail modal */}
       {detailTweet && (
