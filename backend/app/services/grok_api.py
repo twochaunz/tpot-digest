@@ -34,11 +34,18 @@ async def fetch_grok_context(tweet_url: str) -> str:
                 "Content-Type": "application/json",
             },
             json={
-                "model": "grok-3",
+                "model": "grok-4-1-fast-reasoning",
                 "messages": [
                     {
                         "role": "user",
-                        "content": f"I want you to give me context about this tweet: {tweet_url}",
+                        "content": (
+                            f"Explain this X post: {tweet_url}\n\n"
+                            "- Include relevant context, backstory, and discourse happening around this post\n"
+                            "- Cover sentiment: how are people reacting? Any sarcasm, ratio, pushback?\n"
+                            "- Note any parent tweet/thread context if this is a reply or quote tweet\n"
+                            "- Who are the key figures involved and why does that matter?\n"
+                            "- Keep it concise — bullet points, no fluff"
+                        ),
                     }
                 ],
             },
