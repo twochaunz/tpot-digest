@@ -57,26 +57,32 @@ export function DailyView() {
         if (elements.length === 0) return
 
         const goBack = isTopicNav ? e.shiftKey : e.key === 'ArrowUp'
-        const panelRect = feedPanel.getBoundingClientRect()
-        const threshold = panelRect.top + 20
+        const panelTop = feedPanel.getBoundingClientRect().top
 
-        e.preventDefault()
-
-        if (goBack) {
-          for (let i = elements.length - 1; i >= 0; i--) {
-            if (elements[i].getBoundingClientRect().top < threshold - 10) {
-              feedPanel.scrollTo({ top: feedPanel.scrollTop + elements[i].getBoundingClientRect().top - panelRect.top, behavior: 'smooth' })
-              return
-            }
-          }
-        } else {
-          for (const el of elements) {
-            if (el.getBoundingClientRect().top > threshold + 10) {
-              feedPanel.scrollTo({ top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelRect.top, behavior: 'smooth' })
-              return
-            }
+        // Find which element is closest to the panel top (the "current" one)
+        let currentIdx = 0
+        let minDist = Infinity
+        for (let i = 0; i < elements.length; i++) {
+          const dist = Math.abs(elements[i].getBoundingClientRect().top - panelTop)
+          if (dist < minDist) {
+            minDist = dist
+            currentIdx = i
           }
         }
+
+        const targetIdx = goBack ? currentIdx - 1 : currentIdx + 1
+        // If current element isn't snapped to top yet, navigating forward should go to it first
+        if (!goBack && elements[currentIdx].getBoundingClientRect().top > panelTop + 30) {
+          const el = elements[currentIdx]
+          e.preventDefault()
+          feedPanel.scrollTo({ top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelTop, behavior: 'smooth' })
+          return
+        }
+        if (targetIdx < 0 || targetIdx >= elements.length) return
+
+        e.preventDefault()
+        const target = elements[targetIdx]
+        feedPanel.scrollTo({ top: feedPanel.scrollTop + target.getBoundingClientRect().top - panelTop, behavior: 'smooth' })
       }
     }
     document.addEventListener('keydown', handleKeyDown)
