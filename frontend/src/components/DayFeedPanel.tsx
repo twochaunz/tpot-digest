@@ -203,6 +203,7 @@ export function DayFeedPanel({
         height: '100%',
         padding: '0 16px 80px',
         borderRadius: 'var(--radius-lg)',
+        clipPath: 'inset(0 round var(--radius-lg))',
       }}
     >
       {/* Loading state */}
