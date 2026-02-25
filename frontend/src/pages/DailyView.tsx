@@ -1,9 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Tweet } from '../api/tweets'
 import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
-import { TweetDetailModal } from '../components/TweetDetailModal'
 import { TableOfContents } from '../components/TableOfContents'
 
 function defaultDateStr(): string {
@@ -23,7 +21,6 @@ export function DailyView() {
   const [date, setDate] = useState(defaultDateStr)
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
-  const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
   const [tocOpen, setTocOpen] = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
@@ -87,10 +84,6 @@ export function DailyView() {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  const handleTweetClick = useCallback((tweet: Tweet) => {
-    setDetailTweet(tweet)
   }, [])
 
   return (
@@ -217,7 +210,6 @@ export function DailyView() {
         date={date}
         onDateChange={setDate}
         search={search}
-        onTweetClick={handleTweetClick}
       />
 
       {/* TOC FAB button */}
@@ -258,13 +250,6 @@ export function DailyView() {
         />
       )}
 
-      {/* Tweet detail modal */}
-      {detailTweet && (
-        <TweetDetailModal
-          tweet={detailTweet}
-          onClose={() => setDetailTweet(null)}
-        />
-      )}
     </div>
   )
 }

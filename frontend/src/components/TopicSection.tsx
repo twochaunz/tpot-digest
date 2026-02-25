@@ -94,7 +94,6 @@ interface TopicSectionWithDataProps {
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
-  onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => void
 }
 
@@ -108,7 +107,6 @@ export function TopicSectionWithData({
   onDelete,
   onUpdateTitle,
   onSetOg,
-  onTweetClick,
   onContextMenu,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
@@ -153,7 +151,6 @@ export function TopicSectionWithData({
       onDelete={onDelete}
       onUpdateTitle={onUpdateTitle}
       onSetOg={onSetOg}
-      onTweetClick={onTweetClick}
       onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId, ogTweetId)}
     />
   )
@@ -165,14 +162,12 @@ function DraggableTweetInTopic({
   topicId,
   ogTweetId,
   onSetOg,
-  onTweetClick,
   onContextMenu,
 }: {
   tweet: Tweet
   topicId: number
   ogTweetId: number | null
   onSetOg: (topicId: number, tweetId: number | null) => void
-  onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -238,7 +233,6 @@ function DraggableTweetInTopic({
         <TweetCard
           tweet={tweet}
           selectable={false}
-          onTweetClick={onTweetClick}
           onContextMenu={onContextMenu}
         />
       </div>
@@ -258,7 +252,6 @@ interface TopicSectionProps {
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
-  onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }
 
@@ -272,7 +265,6 @@ function TopicSection({
   onDelete,
   onUpdateTitle,
   onSetOg,
-  onTweetClick,
   onContextMenu,
 }: TopicSectionProps) {
   const [headerHovered, setHeaderHovered] = useState(false)
@@ -509,9 +501,8 @@ function TopicSection({
 
               {/* Tweet card */}
               <div
-                onClick={() => onTweetClick?.(ogTweet)}
                 onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
-                style={{ cursor: 'pointer', padding: '4px 0 0' }}
+                style={{ padding: '4px 0 0' }}
               >
                 <TweetCard tweet={ogTweet} selectable={false} />
               </div>
@@ -545,7 +536,6 @@ function TopicSection({
                   topicId={topicId}
                   ogTweetId={ogTweetId}
                   onSetOg={onSetOg}
-                  onTweetClick={onTweetClick}
                   onContextMenu={onContextMenu}
                 />
               ))}
@@ -583,8 +573,7 @@ function TopicSection({
                     topicId={topicId}
                     ogTweetId={ogTweetId}
                     onSetOg={onSetOg}
-                    onTweetClick={onTweetClick}
-                    onContextMenu={onContextMenu}
+                      onContextMenu={onContextMenu}
                   />
                 ))}
               </div>

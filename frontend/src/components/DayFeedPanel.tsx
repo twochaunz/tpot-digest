@@ -24,7 +24,6 @@ interface DayFeedPanelProps {
   date: string
   search: string
   isActive: boolean
-  onTweetClick: (tweet: Tweet) => void
   activeDragTweet: Tweet | null
   setActiveDragTweet: (tweet: Tweet | null) => void
 }
@@ -33,7 +32,6 @@ export function DayFeedPanel({
   date,
   search,
   isActive,
-  onTweetClick,
   activeDragTweet,
   setActiveDragTweet,
 }: DayFeedPanelProps) {
@@ -286,7 +284,6 @@ export function DayFeedPanel({
           <UnsortedSection
             tweets={unsortedTweets}
             onDelete={handleDeleteTweet}
-            onTweetClick={onTweetClick}
             onContextMenu={handleContextMenu}
           />
 
@@ -311,8 +308,7 @@ export function DayFeedPanel({
                   onDelete={handleDeleteTopic}
                   onUpdateTitle={handleUpdateTopicTitle}
                   onSetOg={handleSetOg}
-                  onTweetClick={onTweetClick}
-                  onContextMenu={handleContextMenu}
+                        onContextMenu={handleContextMenu}
                 />
               ))}
             </div>
