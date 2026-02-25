@@ -30,9 +30,10 @@ export function DailyView() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 't' || e.key === 'T') {
-        const tag = (e.target as HTMLElement).tagName
-        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      const tag = (e.target as HTMLElement).tagName
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA'
+
+      if ((e.key === 't' || e.key === 'T') && !isInput) {
         e.preventDefault()
         setTocOpen(prev => !prev)
       }
@@ -42,6 +43,43 @@ export function DailyView() {
       }
       if (e.key === 'Escape' && document.activeElement === searchRef.current) {
         searchRef.current?.blur()
+      }
+
+      // Return / Shift+Return: navigate between topic sections
+      if (e.key === 'Enter' && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const topics = Array.from(document.querySelectorAll<HTMLElement>('[id^="toc-topic-"]'))
+        if (topics.length === 0) return
+
+        // Find the scrollable parent (DayFeedPanel's overflow container)
+        const scrollParent = topics[0].closest<HTMLElement>('[style*="overflow"]') || topics[0].parentElement?.parentElement
+        if (!scrollParent) return
+
+        const parentRect = scrollParent.getBoundingClientRect()
+        const threshold = parentRect.top + 60 // offset past header
+
+        if (e.shiftKey) {
+          // Shift+Return: go to previous topic
+          // Find the last topic whose top is above the current scroll position
+          for (let i = topics.length - 1; i >= 0; i--) {
+            const rect = topics[i].getBoundingClientRect()
+            if (rect.top < threshold - 10) {
+              topics[i].scrollIntoView({ behavior: 'smooth', block: 'start' })
+              e.preventDefault()
+              return
+            }
+          }
+        } else {
+          // Return: go to next topic
+          // Find the first topic whose top is below the current scroll position
+          for (const topic of topics) {
+            const rect = topic.getBoundingClientRect()
+            if (rect.top > threshold + 10) {
+              topic.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              e.preventDefault()
+              return
+            }
+          }
+        }
       }
     }
     document.addEventListener('keydown', handleKeyDown)
