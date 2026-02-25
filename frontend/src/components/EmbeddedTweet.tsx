@@ -3,12 +3,11 @@ import type { Tweet as TweetData } from '../api/tweets'
 
 interface EmbeddedTweetProps {
   tweet: TweetData
-  onTweetClick?: (tweet: TweetData) => void
   onContextMenu?: (e: React.MouseEvent, tweet: TweetData) => void
   onDelete?: (id: number) => void
 }
 
-export function EmbeddedTweet({ tweet, onTweetClick, onContextMenu, onDelete }: EmbeddedTweetProps) {
+export function EmbeddedTweet({ tweet, onContextMenu, onDelete }: EmbeddedTweetProps) {
   return (
     <div
       className="embedded-tweet-wrapper"
@@ -20,10 +19,8 @@ export function EmbeddedTweet({ tweet, onTweetClick, onContextMenu, onDelete }: 
             }
           : undefined
       }
-      onClick={() => onTweetClick?.(tweet)}
       style={{
         position: 'relative',
-        cursor: onTweetClick ? 'pointer' : 'default',
       }}
     >
       <div data-theme="dark" className="react-tweet-container">

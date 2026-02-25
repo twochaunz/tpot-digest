@@ -1,7 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { DayFeedPanel } from './DayFeedPanel'
-import type { Tweet } from '../api/tweets'
-
 function shiftDate(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
@@ -16,10 +14,9 @@ interface DayCarouselProps {
   date: string
   onDateChange: (date: string) => void
   search: string
-  onTweetClick: (tweet: Tweet) => void
 }
 
-export function DayCarousel({ date, onDateChange, search, onTweetClick }: DayCarouselProps) {
+export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const isScrollingRef = useRef(false)
@@ -172,7 +169,6 @@ export function DayCarousel({ date, onDateChange, search, onTweetClick }: DayCar
                 date={dayDate}
                 search={isCenter ? search : ''}
                 isActive={isCenter}
-                onTweetClick={onTweetClick}
                 activeDragTweet={isCenter ? activeDragTweet : null}
                 setActiveDragTweet={setActiveDragTweet}
               />

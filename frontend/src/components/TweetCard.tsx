@@ -9,7 +9,6 @@ interface TweetCardProps {
   selected?: boolean
   onToggle?: (id: number) => void
   selectable?: boolean
-  onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   onDelete?: (id: number) => void
   /** Override the default width (defaults to 100%) */
@@ -59,7 +58,6 @@ export function TweetCard({
   selected = false,
   onToggle,
   selectable = true,
-  onTweetClick,
   onContextMenu,
   onDelete,
   width = '100%',
@@ -137,9 +135,7 @@ export function TweetCard({
           position: 'relative',
         }}
         onClick={() => {
-          if (onTweetClick) {
-            onTweetClick(tweet)
-          } else if (selectable && onToggle) {
+          if (selectable && onToggle) {
             onToggle(tweet.id)
           }
         }}
@@ -180,13 +176,45 @@ export function TweetCard({
           </div>
         )}
 
+        {/* Always-visible outlink button */}
+        {tweet.url && (
+          <a
+            href={tweet.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              top: 6,
+              right: 6,
+              width: 24,
+              height: 24,
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(0,0,0,0.4)',
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+              zIndex: 2,
+              transition: 'all 0.15s ease',
+            }}
+            title="Open on X"
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.7)'; e.currentTarget.style.color = '#fff' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.4)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
+          >
+            &#8599;
+          </a>
+        )}
+
         {/* Hover actions */}
         {hovered && (
           <div
             style={{
               position: 'absolute',
               top: 6,
-              right: 6,
+              right: tweet.url ? 34 : 6,
               display: 'flex',
               gap: 4,
               zIndex: 2,
@@ -241,33 +269,6 @@ export function TweetCard({
             >
               &#8595;
             </button>
-
-            {/* External link */}
-            {tweet.url && (
-              <a
-                href={tweet.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(0,0,0,0.5)',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textDecoration: 'none',
-                }}
-                title="Open on X"
-              >
-                &#8599;
-              </a>
-            )}
           </div>
         )}
       </div>

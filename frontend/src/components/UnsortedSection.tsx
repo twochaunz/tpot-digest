@@ -5,7 +5,6 @@ import type { Tweet } from '../api/tweets'
 interface UnsortedSectionProps {
   tweets: Tweet[]
   onDelete: (tweetId: number) => void
-  onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }
 
@@ -26,12 +25,10 @@ function GripHandle() {
 function DraggableFeedTweetCard({
   tweet,
   onDelete,
-  onTweetClick,
   onContextMenu,
 }: {
   tweet: Tweet
   onDelete: (id: number) => void
-  onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -70,7 +67,6 @@ function DraggableFeedTweetCard({
       <TweetCard
         tweet={tweet}
         selectable={false}
-        onTweetClick={onTweetClick}
         onContextMenu={onContextMenu}
         onDelete={onDelete}
       />
@@ -81,7 +77,6 @@ function DraggableFeedTweetCard({
 export function UnsortedSection({
   tweets,
   onDelete,
-  onTweetClick,
   onContextMenu,
 }: UnsortedSectionProps) {
   const { setNodeRef, isOver } = useDroppable({
@@ -152,7 +147,6 @@ export function UnsortedSection({
             key={t.id}
             tweet={t}
             onDelete={onDelete}
-            onTweetClick={onTweetClick}
             onContextMenu={onContextMenu}
           />
         ))}
