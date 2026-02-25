@@ -437,33 +437,31 @@ function TopicSection({
                 borderLeft: '3px solid #F59E0B',
                 borderRadius: 'var(--radius-lg)',
                 marginBottom: 12,
-                position: 'relative',
+                background: 'rgba(245, 158, 11, 0.06)',
               }}
             >
-              {/* OG Badge */}
-              <div style={{
-                position: 'absolute',
-                top: 12,
-                right: 12,
-                background: '#F59E0B',
-                color: '#000',
-                fontSize: 13,
-                fontWeight: 700,
-                padding: '4px 10px',
-                borderRadius: 6,
-                zIndex: 2,
-                letterSpacing: '0.05em',
-              }}>
-                OG
+              {/* OG label - same style as category labels */}
+              <div
+                style={{
+                  padding: '6px 12px 2px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#F59E0B',
+                  letterSpacing: '0.03em',
+                }}
+              >
+                OG Post
               </div>
 
               {/* Tweet card */}
-              <div
-                onClick={() => onTweetClick?.(ogTweet)}
-                onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
-                style={{ cursor: 'pointer' }}
-              >
-                <TweetCard tweet={ogTweet} selectable={false} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+                <div
+                  onClick={() => onTweetClick?.(ogTweet)}
+                  onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <TweetCard tweet={ogTweet} selectable={false} />
+                </div>
               </div>
 
               {/* Grok Context section */}
