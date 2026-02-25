@@ -523,19 +523,6 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
           >
             {tweet.author_display_name || tweet.author_handle}
           </span>
-          {tweet.author_verified && (
-            <span
-              style={{
-                color: '#1d9bf0',
-                fontSize: 14,
-                flexShrink: 0,
-                lineHeight: 1,
-              }}
-              title="Verified"
-            >
-              &#10003;
-            </span>
-          )}
           <span style={{ fontSize: 13, color: 'var(--text-tertiary)', flexShrink: 0 }}>
             @{tweet.author_handle}
           </span>
