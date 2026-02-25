@@ -514,49 +514,29 @@ function TopicSection({
           )}
 
           {Array.from(tweetsByCategory.entries()).map(([catKey, group], idx) => (
-            <div key={catKey ?? 'uncategorized'} style={{ marginTop: idx > 0 ? 16 : 0 }}>
-              {/* Category lane header */}
+            <div
+              key={catKey ?? 'uncategorized'}
+              style={{
+                borderLeft: `3px solid ${group.category?.color || '#6B7280'}`,
+                borderRadius: 'var(--radius-lg)',
+                marginTop: idx > 0 ? 16 : 0,
+              }}
+            >
+              {/* Category label */}
               <div
                 style={{
-                  borderLeft: `3px solid ${group.category?.color || '#6B7280'}`,
-                  background: group.category
-                    ? `${group.category.color}0D`
-                    : 'rgba(107, 114, 128, 0.05)',
-                  padding: '8px 12px',
-                  marginBottom: 10,
-                  borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
+                  padding: '6px 12px 2px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: group.category?.color || '#6B7280',
+                  letterSpacing: '0.03em',
                 }}
               >
-                <span
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: group.category?.color || '#6B7280',
-                  }}
-                >
-                  {group.category?.name || 'Uncategorized'}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: group.category?.color || '#6B7280',
-                    background: group.category
-                      ? `${group.category.color}1A`
-                      : 'rgba(107, 114, 128, 0.1)',
-                    padding: '1px 8px',
-                    borderRadius: 10,
-                  }}
-                >
-                  {group.tweets.length}
-                </span>
+                {group.category?.name || 'Uncategorized'}
               </div>
 
               {/* Tweet cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
                 {group.tweets.map((t) => (
                   <DraggableTweetInTopic
                     key={t.id}
