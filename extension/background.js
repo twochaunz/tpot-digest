@@ -115,18 +115,6 @@ async function handleGetTopics(message) {
   }
 }
 
-async function handleGetCategories() {
-  const config = await getConfig();
-  const url = config.backendUrl.replace(/\/+$/, "") + "/api/categories";
-  try {
-    const resp = await fetch(url, { headers: authHeaders(config) });
-    if (!resp.ok) return { error: "HTTP " + resp.status };
-    return { categories: await resp.json() };
-  } catch (err) {
-    return { error: err.message };
-  }
-}
-
 async function handleCreateTopic(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/topics";
@@ -135,19 +123,6 @@ async function handleCreateTopic(message) {
     const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.topic) });
     if (!resp.ok) return { error: "HTTP " + resp.status };
     return { topic: await resp.json() };
-  } catch (err) {
-    return { error: err.message };
-  }
-}
-
-async function handleCreateCategory(message) {
-  const config = await getConfig();
-  const url = config.backendUrl.replace(/\/+$/, "") + "/api/categories";
-  const headers = { "Content-Type": "application/json", ...authHeaders(config) };
-  try {
-    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.category) });
-    if (!resp.ok) return { error: "HTTP " + resp.status };
-    return { category: await resp.json() };
   } catch (err) {
     return { error: err.message };
   }
@@ -226,9 +201,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "SAVE_TWEET") { handleSaveTweet(message).then(sendResponse); return true; }
   if (message.type === "GET_STATUS") { handleGetStatus().then(sendResponse); return true; }
   if (message.type === "GET_TOPICS") { handleGetTopics(message).then(sendResponse); return true; }
-  if (message.type === "GET_CATEGORIES") { handleGetCategories().then(sendResponse); return true; }
   if (message.type === "CREATE_TOPIC") { handleCreateTopic(message).then(sendResponse); return true; }
-  if (message.type === "CREATE_CATEGORY") { handleCreateCategory(message).then(sendResponse); return true; }
   if (message.type === "ASSIGN_TWEET") { handleAssignTweet(message).then(sendResponse); return true; }
   if (message.type === "DELETE_TWEET") { handleDeleteTweet(message).then(sendResponse); return true; }
   if (message.type === "SET_OG") { handleSetOg(message).then(sendResponse); return true; }
