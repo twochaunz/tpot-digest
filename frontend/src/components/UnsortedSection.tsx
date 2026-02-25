@@ -91,6 +91,7 @@ export function UnsortedSection({
 
   return (
     <div
+      id="toc-unsorted"
       style={{
         background: 'var(--bg-raised)',
         border: isOver ? '2px dashed var(--accent)' : '1px solid var(--border)',

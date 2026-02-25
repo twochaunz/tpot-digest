@@ -231,6 +231,7 @@ function TopicSection({
   return (
     <div
       ref={sectionRef}
+      id={`toc-topic-${topicId}`}
       style={{
         width: '100%',
         display: 'flex',
