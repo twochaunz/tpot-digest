@@ -11,7 +11,6 @@ interface TweetCardProps {
   onTweetClick?: (tweet: Tweet) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   onDelete?: (id: number) => void
-  showEngagement?: boolean
   /** Override the default width (defaults to 100%) */
   width?: number | string
   /** When true, renders a minimal card suitable for drag overlays */
@@ -21,12 +20,6 @@ interface TweetCardProps {
 function screenshotUrl(path: string | null): string | null {
   if (!path) return null
   return `/api/screenshots/${path}`
-}
-
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'
-  return String(n)
 }
 
 function formatTimestamp(iso: string | null): string {
@@ -41,6 +34,21 @@ function formatTimestamp(iso: string | null): string {
   })
 }
 
+function formatRelativeTime(iso: string): string {
+  const d = new Date(iso)
+  const now = Date.now()
+  const diff = now - d.getTime()
+  const secs = Math.floor(diff / 1000)
+  if (secs < 60) return `${secs}s`
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 function isLegacyTweet(tweet: Tweet): boolean {
   return !tweet.author_avatar_url && !!tweet.screenshot_path
 }
@@ -53,7 +61,6 @@ export function TweetCard({
   onTweetClick,
   onContextMenu,
   onDelete,
-  showEngagement = true,
   width = '100%',
   overlay = false,
 }: TweetCardProps) {
@@ -94,7 +101,7 @@ export function TweetCard({
         {legacy ? (
           <LegacyCard tweet={tweet} />
         ) : (
-          <NativeCard tweet={tweet} showEngagement={false} />
+          <NativeCard tweet={tweet} />
         )}
       </div>
     )
@@ -139,7 +146,7 @@ export function TweetCard({
         {legacy ? (
           <LegacyCard tweet={tweet} />
         ) : (
-          <NativeCard tweet={tweet} showEngagement={showEngagement} />
+          <NativeCard tweet={tweet} />
         )}
 
         {/* Checkbox overlay */}
@@ -353,30 +360,8 @@ export function TweetCard({
 
           {/* Timestamp */}
           {tweet.created_at && (
-            <div style={{ fontSize: 13, color: '#71767b', marginBottom: showEngagement ? 10 : 0 }}>
+            <div style={{ fontSize: 13, color: '#71767b' }}>
               {formatTimestamp(tweet.created_at)}
-            </div>
-          )}
-
-          {/* Engagement */}
-          {showEngagement && tweet.engagement && (
-            <div
-              style={{
-                display: 'flex',
-                gap: 20,
-                paddingTop: 10,
-                borderTop: '1px solid #2f3336',
-              }}
-            >
-              <span style={{ fontSize: 13, color: '#71767b' }}>
-                <span style={{ fontWeight: 700, color: '#e7e9ea' }}>{formatCount(tweet.engagement.likes)}</span> Likes
-              </span>
-              <span style={{ fontSize: 13, color: '#71767b' }}>
-                <span style={{ fontWeight: 700, color: '#e7e9ea' }}>{formatCount(tweet.engagement.retweets)}</span> Retweets
-              </span>
-              <span style={{ fontSize: 13, color: '#71767b' }}>
-                <span style={{ fontWeight: 700, color: '#e7e9ea' }}>{formatCount(tweet.engagement.replies)}</span> Replies
-              </span>
             </div>
           )}
         </div>
@@ -493,129 +478,113 @@ function TweetText({ text, hasMedia, hasQuotedTweet }: { text: string; hasMedia:
   )
 }
 
-/* Native card: structured tweet display using X API data */
-function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: boolean }) {
+/* Native card: X.com-style two-column layout (avatar | content) */
+function NativeCard({ tweet }: { tweet: Tweet }) {
   return (
-    <div style={{ padding: '14px 16px' }}>
-      {/* Author row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        {/* Avatar */}
-        {tweet.author_avatar_url ? (
-          <img
-            src={tweet.author_avatar_url}
-            alt={tweet.author_handle}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              objectFit: 'cover',
-              flexShrink: 0,
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              background: 'var(--bg-elevated)',
-              flexShrink: 0,
-            }}
-          />
-        )}
+    <div style={{ display: 'flex', gap: 10, padding: '12px 16px' }}>
+      {/* Left column: avatar */}
+      {tweet.author_avatar_url ? (
+        <img
+          src={tweet.author_avatar_url}
+          alt={tweet.author_handle}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            objectFit: 'cover',
+            flexShrink: 0,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: 'var(--bg-elevated)',
+            flexShrink: 0,
+          }}
+        />
+      )}
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {tweet.author_display_name || tweet.author_handle}
-            </span>
-            {tweet.author_verified && (
-              <span
-                style={{
-                  color: 'var(--accent)',
-                  fontSize: 13,
-                  flexShrink: 0,
-                  lineHeight: 1,
-                }}
-                title="Verified"
-              >
-                &#10003;
-              </span>
-            )}
-          </div>
-          <div
+      {/* Right column: name + text + media */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Name row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+          <span
             style={{
-              fontSize: 12,
-              color: 'var(--text-tertiary)',
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--text-primary)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
             }}
           >
+            {tweet.author_display_name || tweet.author_handle}
+          </span>
+          {tweet.author_verified && (
+            <span
+              style={{
+                color: '#1d9bf0',
+                fontSize: 14,
+                flexShrink: 0,
+                lineHeight: 1,
+              }}
+              title="Verified"
+            >
+              &#10003;
+            </span>
+          )}
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)', flexShrink: 0 }}>
             @{tweet.author_handle}
+          </span>
+          {tweet.created_at && (
+            <>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>&middot;</span>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                {formatRelativeTime(tweet.created_at)}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Tweet text */}
+        <div
+          style={{
+            fontSize: 15,
+            color: 'var(--text-primary)',
+            lineHeight: 1.5,
+            wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} />
+        </div>
+
+        {/* Media thumbnails */}
+        {tweet.media_urls && tweet.media_urls.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} />
           </div>
-        </div>
+        )}
+
+        {/* Quoted tweet embed */}
+        {tweet.quoted_tweet_id && (
+          <div
+            data-theme="dark"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              overflow: 'hidden',
+              marginTop: 10,
+            }}
+          >
+            <ReactTweet id={tweet.quoted_tweet_id} />
+          </div>
+        )}
       </div>
-
-      {/* Tweet text - full, no truncation */}
-      <div
-        style={{
-          fontSize: 14,
-          color: 'var(--text-primary)',
-          lineHeight: 1.6,
-          wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap',
-          marginBottom: 10,
-        }}
-      >
-        <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} />
-      </div>
-
-      {/* Media thumbnails */}
-      {tweet.media_urls && tweet.media_urls.length > 0 && (
-        <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} />
-      )}
-
-      {/* Quoted tweet embed */}
-      {tweet.quoted_tweet_id && (
-        <div
-          data-theme="dark"
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            overflow: 'hidden',
-            marginBottom: 10,
-          }}
-        >
-          <ReactTweet id={tweet.quoted_tweet_id} />
-        </div>
-      )}
-
-      {/* Engagement stats */}
-      {showEngagement && tweet.engagement && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 16,
-            paddingTop: 10,
-            borderTop: '1px solid var(--border)',
-          }}
-        >
-          <EngagementStat icon={'\u2665'} value={tweet.engagement.likes} />
-          <EngagementStat icon={'\u21BB'} value={tweet.engagement.retweets} />
-          <EngagementStat icon={'\u2709'} value={tweet.engagement.replies} />
-        </div>
-      )}
     </div>
   )
 }
@@ -662,19 +631,3 @@ function MediaGrid({
   )
 }
 
-function EngagementStat({ icon, value }: { icon: string; value: number }) {
-  return (
-    <span
-      style={{
-        fontSize: 12,
-        color: 'var(--text-tertiary)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-      }}
-    >
-      <span style={{ fontSize: 13 }}>{icon}</span>
-      {formatCount(value)}
-    </span>
-  )
-}

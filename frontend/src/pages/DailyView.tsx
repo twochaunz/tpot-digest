@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Tweet } from '../api/tweets'
-import { useEngagementToggle } from '../hooks/useEngagementToggle'
 import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
 import { TweetDetailModal } from '../components/TweetDetailModal'
@@ -25,7 +24,6 @@ export function DailyView() {
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [detailTweet, setDetailTweet] = useState<Tweet | null>(null)
-  const { showEngagement } = useEngagementToggle()
   const [tocOpen, setTocOpen] = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
@@ -224,7 +222,6 @@ export function DailyView() {
         <TweetDetailModal
           tweet={detailTweet}
           onClose={() => setDetailTweet(null)}
-          showEngagement={showEngagement}
         />
       )}
     </div>
