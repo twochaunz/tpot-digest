@@ -188,6 +188,10 @@ async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
     tweet.media_urls = api_data["media_urls"]
     tweet.engagement = api_data["engagement"]
     tweet.url = api_data["url"]
+    tweet.is_quote_tweet = api_data["is_quote_tweet"]
+    tweet.is_reply = api_data["is_reply"]
+    tweet.quoted_tweet_id = api_data.get("quoted_tweet_id")
+    tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
     if api_data.get("created_at"):
         tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
 
@@ -216,6 +220,10 @@ async def refetch_all_tweets(db: AsyncSession = Depends(get_db)):
             tweet.media_urls = api_data["media_urls"]
             tweet.engagement = api_data["engagement"]
             tweet.url = api_data["url"]
+            tweet.is_quote_tweet = api_data["is_quote_tweet"]
+            tweet.is_reply = api_data["is_reply"]
+            tweet.quoted_tweet_id = api_data.get("quoted_tweet_id")
+            tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
             if api_data.get("created_at"):
                 tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
             updated += 1

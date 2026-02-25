@@ -461,11 +461,11 @@ function LegacyCard({ tweet }: { tweet: Tweet }) {
   )
 }
 
-/** Render tweet text with clickable links. Strips trailing t.co URLs when media is present. */
-function TweetText({ text, hasMedia }: { text: string; hasMedia: boolean }) {
-  // Strip trailing t.co URLs if media is shown (they're just media links)
+/** Render tweet text with clickable links. Strips trailing t.co URLs when media or quoted tweet is present. */
+function TweetText({ text, hasMedia, hasQuotedTweet }: { text: string; hasMedia: boolean; hasQuotedTweet: boolean }) {
+  // Strip trailing t.co URLs if media is shown or quoted tweet is embedded (they're just links to the attachment)
   let cleaned = text
-  if (hasMedia) {
+  if (hasMedia || hasQuotedTweet) {
     cleaned = cleaned.replace(/\s*https:\/\/t\.co\/\w+\s*$/, '')
   }
 
@@ -577,7 +577,7 @@ function NativeCard({ tweet, showEngagement }: { tweet: Tweet; showEngagement: b
           marginBottom: 10,
         }}
       >
-        <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} />
+        <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} />
       </div>
 
       {/* Media thumbnails */}
