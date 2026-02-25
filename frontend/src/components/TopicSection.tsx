@@ -466,7 +466,7 @@ function TopicSection({
 
               {/* Grok Context section */}
               {ogTweet.grok_context && (
-                <>
+                <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
                   <div style={{ height: 1, background: 'var(--border)', margin: '0 12px' }} />
                   <div style={{
                     padding: '10px 14px',
@@ -493,12 +493,12 @@ function TopicSection({
                     </div>
                     <div style={{ whiteSpace: 'pre-wrap' }}>{ogTweet.grok_context}</div>
                   </div>
-                </>
+                </div>
               )}
 
               {/* No context yet - show fetch button */}
               {!ogTweet.grok_context && (
-                <>
+                <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
                   <div style={{ height: 1, background: 'var(--border)', margin: '0 12px' }} />
                   <div style={{
                     padding: '10px 14px',
@@ -510,7 +510,7 @@ function TopicSection({
                   }}>
                     <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
                   </div>
-                </>
+                </div>
               )}
             </div>
           )}
