@@ -9,7 +9,7 @@ from sqlalchemy.ext.compiler import compiles
 
 from app.db import Base, get_db
 from app.main import app
-from app.models import Tweet, Topic, Category, TweetAssignment  # noqa: F401
+from app.models import Tweet, Topic, TweetAssignment  # noqa: F401
 
 
 @compiles(JSONB, "sqlite")
@@ -83,19 +83,19 @@ async def _create_tweets(client, count=3):
 async def test_bulk_assign(client: AsyncClient):
     tweet_ids = await _create_tweets(client, 3)
     topic = (await client.post("/api/topics", json={"title": "Test", "date": "2026-02-20"})).json()
-    cat = (await client.post("/api/categories", json={"name": "commentary"})).json()
 
     resp = await client.post("/api/tweets/assign", json={
         "tweet_ids": tweet_ids,
         "topic_id": topic["id"],
-        "category_id": cat["id"],
+        "category": "hot-take",
     })
     assert resp.status_code == 200
     assert resp.json()["assigned"] == 3
 
-    # Verify tweets show up under the topic
+    # Verify tweets show up under the topic with category
     filtered = await client.get("/api/tweets", params={"topic_id": topic["id"]})
     assert len(filtered.json()) == 3
+    assert filtered.json()[0]["category"] == "hot-take"
 
 
 @pytest.mark.asyncio
@@ -123,23 +123,22 @@ async def test_bulk_unassign(client: AsyncClient):
 async def test_assign_updates_category(client: AsyncClient):
     tweet_ids = await _create_tweets(client, 1)
     topic = (await client.post("/api/topics", json={"title": "Test", "date": "2026-02-20"})).json()
-    cat1 = (await client.post("/api/categories", json={"name": "commentary"})).json()
-    cat2 = (await client.post("/api/categories", json={"name": "reaction"})).json()
 
-    # Assign with category 1
+    # Assign with category
     await client.post("/api/tweets/assign", json={
         "tweet_ids": tweet_ids,
         "topic_id": topic["id"],
-        "category_id": cat1["id"],
+        "category": "hot-take",
     })
 
-    # Re-assign with category 2
+    # Re-assign with different category
     await client.post("/api/tweets/assign", json={
         "tweet_ids": tweet_ids,
         "topic_id": topic["id"],
-        "category_id": cat2["id"],
+        "category": "kek",
     })
 
     # Should have only 1 assignment (updated, not duplicated)
     filtered = await client.get("/api/tweets", params={"topic_id": topic["id"]})
     assert len(filtered.json()) == 1
+    assert filtered.json()[0]["category"] == "kek"

@@ -8,7 +8,6 @@ from sqlalchemy.ext.compiler import compiles
 from app.db import Base
 from app.models.tweet import Tweet
 from app.models.topic import Topic
-from app.models.category import Category
 from app.models.assignment import TweetAssignment
 
 
@@ -60,27 +59,18 @@ async def test_create_topic(db):
 
 
 @pytest.mark.asyncio
-async def test_create_category(db):
-    cat = Category(name="commentary", color="#4ECDC4")
-    db.add(cat)
-    await db.commit()
-    await db.refresh(cat)
-    assert cat.id is not None
-
-
-@pytest.mark.asyncio
 async def test_assign_tweet_to_topic(db):
     tweet = Tweet(tweet_id="999", author_handle="test", text="test")
     topic = Topic(title="Test Topic", date=date(2026, 2, 20))
-    cat = Category(name="reaction", color="#FF0000")
-    db.add_all([tweet, topic, cat])
+    db.add_all([tweet, topic])
     await db.flush()
 
-    assignment = TweetAssignment(tweet_id=tweet.id, topic_id=topic.id, category_id=cat.id)
+    assignment = TweetAssignment(tweet_id=tweet.id, topic_id=topic.id, category="hot-take")
     db.add(assignment)
     await db.commit()
     await db.refresh(assignment)
     assert assignment.id is not None
+    assert assignment.category == "hot-take"
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,7 @@ from app.db import Base, get_db
 from app.main import app
 
 # Import all models so Base.metadata knows about them
-from app.models import Tweet, Topic, Category, TweetAssignment, WaitlistEntry  # noqa: F401
+from app.models import Tweet, Topic, TweetAssignment, WaitlistEntry  # noqa: F401
 
 
 @compiles(JSONB, "sqlite")
