@@ -110,6 +110,9 @@ function DraggableTweetInTopic({
     data: { tweet, sourceTopicId: topicId },
   })
   const [isHovered, setIsHovered] = useState(false)
+  const [starHovered, setStarHovered] = useState(false)
+
+  const isOg = tweet.id === ogTweetId
 
   return (
     <div
@@ -126,14 +129,16 @@ function DraggableTweetInTopic({
       <button
         onClick={(e) => {
           e.stopPropagation()
-          onSetOg(topicId, tweet.id === ogTweetId ? null : tweet.id)
+          onSetOg(topicId, isOg ? null : tweet.id)
         }}
-        title={tweet.id === ogTweetId ? 'Remove OG' : 'Set as OG Post'}
+        onMouseEnter={() => setStarHovered(true)}
+        onMouseLeave={() => setStarHovered(false)}
+        title={isOg ? 'Remove OG' : 'Set as OG Post'}
         style={{
           position: 'absolute',
           top: 6,
           left: 6,
-          background: tweet.id === ogTweetId ? '#F59E0B' : 'rgba(0,0,0,0.5)',
+          background: isOg ? '#F59E0B' : starHovered ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.5)',
           border: 'none',
           borderRadius: '50%',
           width: 24,
@@ -143,9 +148,9 @@ function DraggableTweetInTopic({
           justifyContent: 'center',
           cursor: 'pointer',
           fontSize: 12,
-          color: tweet.id === ogTweetId ? '#000' : '#888',
-          opacity: isHovered || tweet.id === ogTweetId ? 1 : 0,
-          transition: 'opacity 0.15s',
+          color: isOg ? '#000' : starHovered ? '#fff' : '#888',
+          opacity: isHovered || isOg ? 1 : 0,
+          transition: 'opacity 0.15s, color 0.15s, background 0.15s',
           zIndex: 2,
         }}
       >
