@@ -119,10 +119,11 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
 
           {/* Topic entries */}
           {topics.map((topic) => (
-            <TOCEntry
+            <TopicTOCEntry
               key={topic.id}
-              label={topic.title}
-              color={topic.color}
+              topic={topic}
+              date={date}
+              search={search}
               onClick={() => scrollToSection(`toc-topic-${topic.id}`)}
             />
           ))}
@@ -141,6 +142,30 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         </div>
       </div>
     </div>
+  )
+}
+
+function TopicTOCEntry({
+  topic,
+  date,
+  search,
+  onClick,
+}: {
+  topic: { id: number; title: string; color: string | null }
+  date: string
+  search: string
+  onClick: () => void
+}) {
+  const tweetsQuery = useTweets({ date, topic_id: topic.id, q: search || undefined })
+  const count = tweetsQuery.data?.length ?? 0
+
+  return (
+    <TOCEntry
+      label={topic.title}
+      color={topic.color}
+      count={count}
+      onClick={onClick}
+    />
   )
 }
 
