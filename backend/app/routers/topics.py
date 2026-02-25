@@ -111,8 +111,6 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
             except GrokAPIError:
                 pass  # Non-blocking: OG is set even if Grok fails
 
-    if "title" in data:
-        data["title"] = title_case(data["title"])
     for field, value in data.items():
         setattr(topic, field, value)
 
