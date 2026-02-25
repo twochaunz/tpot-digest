@@ -207,7 +207,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "SET_OG") { handleSetOg(message).then(sendResponse); return true; }
   if (message.type === "UPDATE_TWEET") { handleUpdateTweet(message).then(sendResponse); return true; }
   if (message.type === "CHECK_SAVED") { handleCheckSaved(message).then(sendResponse); return true; }
-  // Backward compat: old content.js may send GET_CATEGORIES (now hardcoded in content.js)
   if (message.type === "GET_CATEGORIES") { sendResponse({ categories: [] }); return false; }
 });
 
