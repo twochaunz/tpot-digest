@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { toPng } from 'html-to-image'
 import { Tweet as ReactTweet } from 'react-tweet'
 import type { Tweet } from '../api/tweets'
@@ -709,46 +710,150 @@ function MediaGrid({
   authorHandle: string
 }) {
   const images = media.filter((m) => m.type === 'photo' || m.type === 'animated_gif')
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   if (images.length === 0) return null
 
   const isSingle = images.length === 1
   const gridCols = isSingle ? '1fr' : '1fr 1fr'
 
   return (
+    <>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: gridCols,
+          gap: 4,
+          borderRadius: 'var(--radius-sm)',
+          overflow: 'hidden',
+          marginBottom: 10,
+        }}
+      >
+        {images.slice(0, 4).map((img, i) => (
+          <div
+            key={i}
+            onClick={(e) => { e.stopPropagation(); setLightboxIdx(i) }}
+            style={{ cursor: 'pointer', lineHeight: 0 }}
+          >
+            <img
+              src={img.url}
+              alt={`Media from @${authorHandle}`}
+              style={{
+                width: '100%',
+                ...(isSingle
+                  ? { maxHeight: 500, objectFit: 'contain' }
+                  : { height: 160, objectFit: 'cover' }),
+                display: 'block',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      {lightboxIdx !== null && (
+        <ImageLightbox
+          images={images.slice(0, 4)}
+          startIndex={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+        />
+      )}
+    </>
+  )
+}
+
+function ImageLightbox({
+  images,
+  startIndex,
+  onClose,
+}: {
+  images: { url: string }[]
+  startIndex: number
+  onClose: () => void
+}) {
+  const [idx, setIdx] = useState(startIndex)
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowLeft' && idx > 0) setIdx(idx - 1)
+      if (e.key === 'ArrowRight' && idx < images.length - 1) setIdx(idx + 1)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose, idx, images.length])
+
+  return createPortal(
     <div
+      onClick={onClose}
       style={{
-        display: 'grid',
-        gridTemplateColumns: gridCols,
-        gap: 4,
-        borderRadius: 'var(--radius-sm)',
-        overflow: 'hidden',
-        marginBottom: 10,
+        position: 'fixed',
+        inset: 0,
+        zIndex: 200,
+        background: 'rgba(0, 0, 0, 0.85)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
       }}
     >
-      {images.slice(0, 4).map((img, i) => (
-        <a
-          key={i}
-          href={img.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          style={{ display: 'block', lineHeight: 0 }}
-        >
-          <img
-            src={img.url}
-            alt={`Media from @${authorHandle}`}
-            style={{
-              width: '100%',
-              ...(isSingle
-                ? { maxHeight: 500, objectFit: 'contain' }
-                : { height: 160, objectFit: 'cover' }),
-              display: 'block',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          />
-        </a>
-      ))}
-    </div>
+      {/* Nav arrows */}
+      {images.length > 1 && idx > 0 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setIdx(idx - 1) }}
+          style={{
+            position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+            background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', fontSize: 28,
+            width: 44, height: 44, borderRadius: '50%', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >&#8249;</button>
+      )}
+      {images.length > 1 && idx < images.length - 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setIdx(idx + 1) }}
+          style={{
+            position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+            background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', fontSize: 28,
+            width: 44, height: 44, borderRadius: '50%', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >&#8250;</button>
+      )}
+
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        style={{
+          position: 'absolute', top: 16, right: 16,
+          background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', fontSize: 22,
+          width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >&times;</button>
+
+      <img
+        src={images[idx].url}
+        alt=""
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          objectFit: 'contain',
+          borderRadius: 8,
+          cursor: 'default',
+        }}
+      />
+
+      {/* Counter */}
+      {images.length > 1 && (
+        <div style={{
+          position: 'absolute', bottom: 20,
+          fontSize: 14, color: 'rgba(255,255,255,0.7)',
+        }}>
+          {idx + 1} / {images.length}
+        </div>
+      )}
+    </div>,
+    document.body,
   )
 }
 
