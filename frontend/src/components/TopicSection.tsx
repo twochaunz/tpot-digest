@@ -534,7 +534,23 @@ function TopicSection({
             </div>
           )}
 
-          {Array.from(tweetsByCategory.entries()).map(([catKey, group], idx) => (
+          {title.toLowerCase() === 'kek' ? (
+            /* Kek topics: render all tweets flat, no category grouping */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Array.from(tweetsByCategory.values()).flatMap((group) => group.tweets).map((t) => (
+                <DraggableTweetInTopic
+                  key={t.id}
+                  tweet={t}
+                  topicId={topicId}
+                  ogTweetId={ogTweetId}
+                  onSetOg={onSetOg}
+                  onTweetClick={onTweetClick}
+                  onContextMenu={onContextMenu}
+                />
+              ))}
+            </div>
+          ) : (
+            Array.from(tweetsByCategory.entries()).map(([catKey, group], idx) => (
             <div
               key={catKey ?? 'uncategorized'}
               id={`toc-cat-${topicId}-${catKey ?? 'uncategorized'}`}
@@ -572,7 +588,8 @@ function TopicSection({
                 ))}
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       )}
     </div>

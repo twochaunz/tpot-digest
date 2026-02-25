@@ -298,7 +298,11 @@ export function DayFeedPanel({
                 gap: 16,
               }}
             >
-              {topics.map((topic) => (
+              {[...topics].sort((a, b) => {
+                const aKek = a.title.toLowerCase() === 'kek' ? 1 : 0
+                const bKek = b.title.toLowerCase() === 'kek' ? 1 : 0
+                return aKek - bKek
+              }).map((topic) => (
                 <TopicSectionWithData
                   key={topic.id}
                   topicId={topic.id}
@@ -336,7 +340,10 @@ export function DayFeedPanel({
       )}
 
       {/* Context menu */}
-      {contextMenu && (
+      {contextMenu && (() => {
+        const ctxTopic = contextMenu.topicId ? topics.find(t => t.id === contextMenu.topicId) : null
+        const isKek = ctxTopic?.title.toLowerCase() === 'kek'
+        return (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
@@ -347,8 +354,10 @@ export function DayFeedPanel({
           onMoveToDate={handleMoveToDate}
           onSetOg={contextMenu.topicId ? handleSetOg : undefined}
           ogTweetId={contextMenu.ogTweetId ?? null}
-          onSetCategory={contextMenu.topicId ? handleSetCategory : undefined}
+          onSetCategory={contextMenu.topicId && !isKek ? handleSetCategory : undefined}
         />
+        )
+      })()}
       )}
 
       {/* Undo toast */}

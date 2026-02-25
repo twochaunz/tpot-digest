@@ -87,16 +87,17 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
-  async function loadTopicsForDate(dateStr, topicState, topicInput, topicDropdown, ogWarning) {
+  async function loadTopicsForDate(dateStr, topicState, topicInput, topicDropdown, ogWarning, onSelect) {
     const resp = await sendMessage({ type: "GET_TOPICS", date: dateStr });
     topicState.topics = (resp && resp.topics) || [];
     topicState.selectedId = null;
     topicState.selectedName = "";
     topicInput.value = "";
-    renderTopicDropdown(topicState, topicInput, topicDropdown, "", ogWarning);
+    renderTopicDropdown(topicState, topicInput, topicDropdown, "", ogWarning, onSelect);
+    if (onSelect) onSelect();
   }
 
-  function renderTopicDropdown(topicState, topicInput, topicDropdown, query, ogWarning) {
+  function renderTopicDropdown(topicState, topicInput, topicDropdown, query, ogWarning, onSelect) {
     topicDropdown.innerHTML = "";
     const q = (query || "").trim().toLowerCase();
     const matches = topicState.topics.filter((t) => !q || t.title.toLowerCase().includes(q));
@@ -123,6 +124,7 @@
             ogWarning.style.display = "none";
           }
         }
+        if (onSelect) onSelect();
       });
       topicDropdown.appendChild(item);
     });
@@ -139,6 +141,7 @@
         topicState.selectedName = query.trim();
         topicInput.value = query.trim();
         topicDropdown.style.display = "none";
+        if (onSelect) onSelect();
       });
       topicDropdown.appendChild(createItem);
     }
@@ -226,7 +229,7 @@
         presetIndex = (presetIndex + 1) % datePresets.length;
         dateInput.value = datePresets[presetIndex].date;
         updateToggleLabel();
-        loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown, ogWarning);
+        loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown, ogWarning, updateCategoryVisibility);
       });
     } else {
       dateToggle.style.display = "none";
@@ -238,7 +241,7 @@
 
     // Re-fetch topics when date input changes manually
     dateInput.addEventListener("change", () => {
-      loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown, ogWarning);
+      loadTopicsForDate(dateInput.value, topicState, topicInput, topicDropdown, ogWarning, updateCategoryVisibility);
     });
 
     // Topic combobox
@@ -262,11 +265,20 @@
     topicDropdown.style.cssText = "display:none;position:absolute;left:0;right:0;top:100%;background:#1a1a2e;border:1px solid #3a3a5c;border-radius:6px;max-height:160px;overflow-y:auto;z-index:999;margin-top:2px;";
     topicContainer.appendChild(topicDropdown);
 
-    topicInput.addEventListener("focus", () => renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value, ogWarning));
+    function updateCategoryVisibility() {
+      const name = topicState.selectedName || topicInput.value.trim();
+      const isKek = name.toLowerCase() === 'kek';
+      catLabel.style.display = isKek ? 'none' : '';
+      catSelect.style.display = isKek ? 'none' : '';
+      if (isKek) catSelect.value = '';
+    }
+
+    topicInput.addEventListener("focus", () => renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value, ogWarning, updateCategoryVisibility));
     topicInput.addEventListener("input", () => {
       topicState.selectedId = null;
       topicState.selectedName = "";
-      renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value, ogWarning);
+      renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value, ogWarning, updateCategoryVisibility);
+      updateCategoryVisibility();
     });
     topicInput.addEventListener("blur", () => {
       setTimeout(() => { topicDropdown.style.display = "none"; }, 150);
