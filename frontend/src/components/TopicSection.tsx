@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets, useFetchGrokContext } from '../api/tweets'
-import { EmbeddedTweet } from './EmbeddedTweet'
+import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 
@@ -181,8 +181,9 @@ function DraggableTweetInTopic({
           touchAction: 'none',
         }}
       >
-        <EmbeddedTweet
+        <TweetCard
           tweet={tweet}
+          selectable={false}
           onTweetClick={onTweetClick}
           onContextMenu={onContextMenu}
         />
@@ -459,7 +460,7 @@ function TopicSection({
                 onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
                 style={{ cursor: 'pointer' }}
               >
-                <EmbeddedTweet tweet={ogTweet} />
+                <TweetCard tweet={ogTweet} selectable={false} />
               </div>
 
               {/* Grok Context section */}
