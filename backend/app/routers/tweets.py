@@ -168,6 +168,66 @@ async def fetch_grok(
     return tweet
 
 
+@router.post("/{tweet_id}/refetch", response_model=TweetOut)
+async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
+    tweet = await db.get(Tweet, tweet_id)
+    if not tweet:
+        raise HTTPException(404, "Tweet not found")
+
+    from app.services.x_api import fetch_tweet, XAPIError
+    try:
+        api_data = await fetch_tweet(tweet.tweet_id)
+    except XAPIError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    tweet.author_handle = api_data["author_handle"]
+    tweet.author_display_name = api_data["author_display_name"]
+    tweet.author_avatar_url = api_data["author_avatar_url"]
+    tweet.author_verified = api_data["author_verified"]
+    tweet.text = api_data["text"]
+    tweet.media_urls = api_data["media_urls"]
+    tweet.engagement = api_data["engagement"]
+    tweet.url = api_data["url"]
+    if api_data.get("created_at"):
+        tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
+
+    await db.commit()
+    await db.refresh(tweet)
+    return tweet
+
+
+@router.post("/refetch-all", status_code=200)
+async def refetch_all_tweets(db: AsyncSession = Depends(get_db)):
+    """Refetch all tweets from X API to update text/engagement/media."""
+    import asyncio
+    from app.services.x_api import fetch_tweet, XAPIError
+
+    tweets = (await db.execute(select(Tweet))).scalars().all()
+    updated = 0
+    failed = 0
+    for tweet in tweets:
+        try:
+            api_data = await fetch_tweet(tweet.tweet_id)
+            tweet.text = api_data["text"]
+            tweet.author_handle = api_data["author_handle"]
+            tweet.author_display_name = api_data["author_display_name"]
+            tweet.author_avatar_url = api_data["author_avatar_url"]
+            tweet.author_verified = api_data["author_verified"]
+            tweet.media_urls = api_data["media_urls"]
+            tweet.engagement = api_data["engagement"]
+            tweet.url = api_data["url"]
+            if api_data.get("created_at"):
+                tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
+            updated += 1
+        except (XAPIError, Exception):
+            failed += 1
+        # Rate limit: small delay between requests
+        await asyncio.sleep(0.5)
+
+    await db.commit()
+    return {"updated": updated, "failed": failed, "total": len(tweets)}
+
+
 @router.post("/check", status_code=200)
 async def check_saved(body: TweetCheckRequest, db: AsyncSession = Depends(get_db)):
     if not body.tweet_ids:
