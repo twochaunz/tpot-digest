@@ -69,6 +69,13 @@ body {
   display: none !important;
 }
 
+/* react-tweet: remove outer wrapper border (double-border fix) */
+.react-tweet-theme {
+  border: none !important;
+  background: none !important;
+  padding: 0 !important;
+}
+
 /* react-tweet: compact quoted tweet embed */
 [data-theme="dark"] > div {
   margin: 0 !important;
