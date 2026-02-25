@@ -42,6 +42,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         is_reply=api_data["is_reply"],
         quoted_tweet_id=api_data["quoted_tweet_id"],
         reply_to_tweet_id=api_data.get("reply_to_tweet_id"),
+        reply_to_handle=api_data.get("reply_to_handle"),
         url=api_data["url"],
         created_at=datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00")) if api_data.get("created_at") else None,
         feed_source=body.feed_source,
@@ -192,6 +193,7 @@ async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
     tweet.is_reply = api_data["is_reply"]
     tweet.quoted_tweet_id = api_data.get("quoted_tweet_id")
     tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
+    tweet.reply_to_handle = api_data.get("reply_to_handle")
     if api_data.get("created_at"):
         tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
 
@@ -224,6 +226,7 @@ async def refetch_all_tweets(db: AsyncSession = Depends(get_db)):
             tweet.is_reply = api_data["is_reply"]
             tweet.quoted_tweet_id = api_data.get("quoted_tweet_id")
             tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
+            tweet.reply_to_handle = api_data.get("reply_to_handle")
             if api_data.get("created_at"):
                 tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
             updated += 1
