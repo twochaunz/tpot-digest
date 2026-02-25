@@ -237,7 +237,11 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
 
       {/* Set Category */}
       {onSetCategory && topicId && (
-        <div style={{ position: 'relative' }}>
+        <div
+          style={{ position: 'relative' }}
+          onMouseEnter={() => setShowCategories(true)}
+          onMouseLeave={() => setShowCategories(false)}
+        >
           <button
             onClick={(e) => { e.stopPropagation(); setShowCategories((v) => !v) }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
