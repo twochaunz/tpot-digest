@@ -446,34 +446,140 @@ function LegacyCard({ tweet }: { tweet: Tweet }) {
   )
 }
 
-/** Render tweet text with clickable links. Strips trailing t.co URLs when media or quoted tweet is present. */
-function TweetText({ text, hasMedia, hasQuotedTweet }: { text: string; hasMedia: boolean; hasQuotedTweet: boolean }) {
-  // Strip trailing t.co URLs if media is shown or quoted tweet is embedded (they're just links to the attachment)
+/** Build a map of t.co URL -> entity data for quick lookup */
+function buildUrlMap(urlEntities: Tweet['url_entities']): Map<string, { expanded_url: string; display_url: string }> {
+  const map = new Map<string, { expanded_url: string; display_url: string }>()
+  if (!urlEntities) return map
+  for (const e of urlEntities) {
+    if (e.url) map.set(e.url, { expanded_url: e.expanded_url || e.url, display_url: e.display_url || e.expanded_url || e.url })
+  }
+  return map
+}
+
+/** Render tweet text with clickable links. Uses url_entities to resolve t.co to real URLs. */
+function TweetText({ text, hasMedia, hasQuotedTweet, urlEntities }: { text: string; hasMedia: boolean; hasQuotedTweet: boolean; urlEntities: Tweet['url_entities'] }) {
+  const urlMap = buildUrlMap(urlEntities)
+
+  // Strip trailing t.co URLs if media is shown or quoted tweet is embedded
   let cleaned = text
   if (hasMedia || hasQuotedTweet) {
     cleaned = cleaned.replace(/\s*https:\/\/t\.co\/\w+\s*$/, '')
+  }
+
+  // Also strip t.co URLs that point to media (pic.x.com) — they're redundant with the media grid
+  const mediaUrls = new Set<string>()
+  if (urlEntities) {
+    for (const e of urlEntities) {
+      if (e.display_url?.startsWith('pic.x.com') || e.expanded_url?.includes('/photo/')) {
+        mediaUrls.add(e.url)
+      }
+    }
+  }
+  for (const mUrl of mediaUrls) {
+    cleaned = cleaned.replace(mUrl, '').trim()
   }
 
   // Split on URLs and render as links
   const parts = cleaned.split(/(https?:\/\/[^\s]+)/g)
   return (
     <>
-      {parts.map((part, i) =>
-        /^https?:\/\//.test(part) ? (
+      {parts.map((part, i) => {
+        if (!/^https?:\/\//.test(part)) return <span key={i}>{part}</span>
+        const entity = urlMap.get(part)
+        const href = entity?.expanded_url || part
+        const display = entity?.display_url || (part.startsWith('https://t.co/') ? 't.co/...' : part)
+        return (
           <a
             key={i}
-            href={part}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             style={{ color: 'var(--accent)', textDecoration: 'none' }}
           >
-            {part.startsWith('https://t.co/') ? part.replace('https://t.co/', 't.co/') : part}
+            {display}
           </a>
-        ) : (
-          <span key={i}>{part}</span>
         )
-      )}
+      })}
+    </>
+  )
+}
+
+/** Link preview card for URLs with title/description metadata */
+function LinkPreviewCards({ urlEntities }: { urlEntities: Tweet['url_entities'] }) {
+  if (!urlEntities) return null
+  const cards = urlEntities.filter(e => e.title && !e.display_url?.startsWith('pic.x.com'))
+  if (cards.length === 0) return null
+
+  return (
+    <>
+      {cards.map((card, i) => {
+        const href = card.unwound_url || card.expanded_url || card.url
+        const image = card.images?.[0]
+        return (
+          <a
+            key={i}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'block',
+              marginTop: 10,
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              overflow: 'hidden',
+              textDecoration: 'none',
+              color: 'inherit',
+              transition: 'border-color 0.15s ease',
+            }}
+          >
+            {image && (
+              <img
+                src={image.url}
+                alt=""
+                style={{
+                  width: '100%',
+                  maxHeight: 200,
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            )}
+            <div style={{ padding: '10px 12px' }}>
+              <div style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                lineHeight: 1.3,
+                marginBottom: card.description ? 4 : 0,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}>
+                {card.title}
+              </div>
+              {card.description && (
+                <div style={{
+                  fontSize: 13,
+                  color: 'var(--text-tertiary)',
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}>
+                  {card.description}
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                {card.display_url}
+              </div>
+            </div>
+          </a>
+        )
+      })}
     </>
   )
 }
@@ -561,15 +667,18 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
             whiteSpace: 'pre-wrap',
           }}
         >
-          <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} />
+          <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} urlEntities={tweet.url_entities} />
         </div>
 
-        {/* Media thumbnails */}
+        {/* Media */}
         {tweet.media_urls && tweet.media_urls.length > 0 && (
           <div style={{ marginTop: 10 }}>
             <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} />
           </div>
         )}
+
+        {/* Link preview cards */}
+        <LinkPreviewCards urlEntities={tweet.url_entities} />
 
         {/* Quoted tweet embed */}
         {tweet.quoted_tweet_id && (
@@ -602,8 +711,8 @@ function MediaGrid({
   const images = media.filter((m) => m.type === 'photo' || m.type === 'animated_gif')
   if (images.length === 0) return null
 
-  const gridCols = images.length === 1 ? '1fr' : '1fr 1fr'
-  const imgHeight = images.length === 1 ? 200 : 120
+  const isSingle = images.length === 1
+  const gridCols = isSingle ? '1fr' : '1fr 1fr'
 
   return (
     <div
@@ -617,18 +726,27 @@ function MediaGrid({
       }}
     >
       {images.slice(0, 4).map((img, i) => (
-        <img
+        <a
           key={i}
-          src={img.url}
-          alt={`Media from @${authorHandle}`}
-          style={{
-            width: '100%',
-            height: imgHeight,
-            objectFit: 'cover',
-            display: 'block',
-            borderRadius: 'var(--radius-sm)',
-          }}
-        />
+          href={img.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          style={{ display: 'block', lineHeight: 0 }}
+        >
+          <img
+            src={img.url}
+            alt={`Media from @${authorHandle}`}
+            style={{
+              width: '100%',
+              ...(isSingle
+                ? { maxHeight: 500, objectFit: 'contain' }
+                : { height: 160, objectFit: 'cover' }),
+              display: 'block',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          />
+        </a>
       ))}
     </div>
   )

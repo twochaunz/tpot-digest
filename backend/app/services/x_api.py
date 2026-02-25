@@ -104,6 +104,11 @@ async def fetch_tweet(tweet_id: str) -> dict:
                     reply_to_handle = reply_author.get("username")
                 break
 
+    # Extract URL entities (from note_tweet for long tweets, else from regular entities)
+    note_tweet = data.get("note_tweet", {})
+    entities = note_tweet.get("entities", {}) if note_tweet.get("text") else data.get("entities", {})
+    url_entities = _extract_url_entities(entities.get("urls", []))
+
     author_handle = author.get("username", "") if author else ""
 
     metrics = data.get("public_metrics", {})
@@ -126,6 +131,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "quoted_tweet_id": quoted_tweet_id,
         "reply_to_tweet_id": reply_to_tweet_id,
         "reply_to_handle": reply_to_handle,
+        "url_entities": url_entities,
         "created_at": data.get("created_at", ""),
     }
 
@@ -138,6 +144,30 @@ def _find_author(author_id: str | None, users: list[dict]) -> dict | None:
         if user.get("id") == author_id:
             return user
     return None
+
+
+def _extract_url_entities(urls: list[dict]) -> list[dict] | None:
+    """Extract URL entity data for frontend display (expanded URLs, link cards)."""
+    if not urls:
+        return None
+    result = []
+    for u in urls:
+        entry: dict = {
+            "url": u.get("url", ""),
+            "expanded_url": u.get("expanded_url", ""),
+            "display_url": u.get("display_url", ""),
+        }
+        # Link card metadata (title, description, image)
+        if u.get("title"):
+            entry["title"] = u["title"]
+        if u.get("description"):
+            entry["description"] = u["description"]
+        if u.get("images"):
+            entry["images"] = u["images"]
+        if u.get("unwound_url"):
+            entry["unwound_url"] = u["unwound_url"]
+        result.append(entry)
+    return result if result else None
 
 
 def _extract_media_urls(media_keys: list[str], media_list: list[dict]) -> list[dict] | None:

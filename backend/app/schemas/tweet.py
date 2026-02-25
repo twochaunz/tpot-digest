@@ -24,6 +24,7 @@ class TweetOut(BaseModel):
     text: str
     media_urls: Any | None
     engagement: dict | None
+    url_entities: Any | None
     is_quote_tweet: bool
     is_reply: bool
     quoted_tweet_id: str | None
