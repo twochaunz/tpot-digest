@@ -202,7 +202,7 @@ export function DayFeedPanel({
         overflowY: 'auto',
         height: '100%',
         padding: '0 16px 80px',
-        borderRadius: isActive ? undefined : 'var(--radius-lg)',
+        borderRadius: 'var(--radius-lg)',
       }}
     >
       {/* Loading state */}
