@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTopics } from '../api/topics'
 import { useTweets } from '../api/tweets'
+import { sortTopics } from '../utils/topics'
 
 interface TableOfContentsProps {
   date: string
@@ -118,7 +119,7 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
           )}
 
           {/* Topic entries */}
-          {topics.map((topic) => (
+          {sortTopics(topics).map((topic) => (
             <TopicTOCEntry
               key={topic.id}
               topic={topic}

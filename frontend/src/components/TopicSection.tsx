@@ -4,6 +4,7 @@ import { useTweets, useFetchGrokContext } from '../api/tweets'
 import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
+import { isKekTopic } from '../utils/topics'
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
@@ -534,7 +535,7 @@ function TopicSection({
             </div>
           )}
 
-          {title.toLowerCase() === 'kek' ? (
+          {isKekTopic(title) ? (
             /* Kek topics: render all tweets flat, no category grouping */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {Array.from(tweetsByCategory.values()).flatMap((group) => group.tweets).map((t) => (

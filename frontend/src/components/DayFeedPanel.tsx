@@ -18,6 +18,7 @@ import { CreateTopicForm } from './CreateTopicForm'
 import { UndoToast } from './UndoToast'
 import { DragOverlayCard } from './DragOverlayCard'
 import { ContextMenu } from './ContextMenu'
+import { sortTopics, isKekTopic } from '../utils/topics'
 
 interface DayFeedPanelProps {
   date: string
@@ -298,11 +299,7 @@ export function DayFeedPanel({
                 gap: 16,
               }}
             >
-              {[...topics].sort((a, b) => {
-                const aKek = a.title.toLowerCase() === 'kek' ? 1 : 0
-                const bKek = b.title.toLowerCase() === 'kek' ? 1 : 0
-                return aKek - bKek
-              }).map((topic) => (
+              {sortTopics(topics).map((topic) => (
                 <TopicSectionWithData
                   key={topic.id}
                   topicId={topic.id}
@@ -351,7 +348,7 @@ export function DayFeedPanel({
           onMoveToDate={handleMoveToDate}
           onSetOg={contextMenu.topicId ? handleSetOg : undefined}
           ogTweetId={contextMenu.ogTweetId ?? null}
-          onSetCategory={contextMenu.topicId && !topics.find(t => t.id === contextMenu.topicId && t.title.toLowerCase() === 'kek') ? handleSetCategory : undefined}
+          onSetCategory={contextMenu.topicId && !topics.find(t => t.id === contextMenu.topicId && isKekTopic(t.title)) ? handleSetCategory : undefined}
         />
       )}
 
