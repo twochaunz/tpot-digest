@@ -481,7 +481,7 @@ function TweetText({ text, hasMedia, hasQuotedTweet }: { text: string; hasMedia:
 /* Native card: X.com-style two-column layout (avatar | content) */
 function NativeCard({ tweet }: { tweet: Tweet }) {
   return (
-    <div style={{ display: 'flex', gap: 10, padding: '12px 16px' }}>
+    <div style={{ display: 'flex', gap: 10, padding: '12px 12px' }}>
       {/* Left column: avatar */}
       {tweet.author_avatar_url ? (
         <img
@@ -544,9 +544,9 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
         {/* Tweet text */}
         <div
           style={{
-            fontSize: 15,
+            fontSize: 17,
             color: 'var(--text-primary)',
-            lineHeight: 1.5,
+            lineHeight: 1.45,
             wordBreak: 'break-word',
             whiteSpace: 'pre-wrap',
           }}

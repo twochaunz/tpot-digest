@@ -414,7 +414,7 @@ function TopicSection({
 
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
-        <div ref={setNodeRef} style={{ padding: '12px 16px', minHeight: 60 }}>
+        <div ref={setNodeRef} style={{ padding: '12px 8px', minHeight: 60 }}>
           {totalTweets === 0 && (
             <div
               style={{
@@ -470,7 +470,7 @@ function TopicSection({
                   <div style={{ height: 1, background: 'var(--border)', margin: '0 12px' }} />
                   <div style={{
                     padding: '10px 14px',
-                    fontSize: 13,
+                    fontSize: 15,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.5,
                     background: 'var(--bg-subtle, rgba(0,0,0,0.1))',
