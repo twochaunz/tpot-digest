@@ -24,6 +24,7 @@ services:
       AUTH_PASS: ${AUTH_PASS}
       X_API_BEARER_TOKEN: ${X_API_BEARER_TOKEN}
       XAI_API_KEY: ${XAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     volumes:
       - app_data:/app/data
     depends_on:
