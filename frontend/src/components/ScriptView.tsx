@@ -326,7 +326,6 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
   const [mirrorPos, setMirrorPos] = useState<{ x: number; y: number } | null>(null)
   const [mirrorClicking, setMirrorClicking] = useState(false)
   const [drawStrokes, setDrawStrokes] = useState<Stroke[]>([])
-  const [isDrawing, setIsDrawing] = useState(false)
   const currentStroke = useRef<Point[]>([])
   const [leftSize, setLeftSize] = useState({ w: 0, h: 0 })
   const [rightSize, setRightSize] = useState({ w: 0, h: 0 })
@@ -414,7 +413,6 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button !== 2) return // right-click only
       e.preventDefault()
-      setIsDrawing(true)
       currentStroke.current = [toLocal(e)]
     }
 
@@ -433,7 +431,6 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
 
     const handleMouseUp = (e: MouseEvent) => {
       if (e.button !== 2 || !currentStroke.current.length) return
-      setIsDrawing(false)
       currentStroke.current = []
     }
 
