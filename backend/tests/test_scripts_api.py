@@ -236,3 +236,38 @@ async def test_day_batch_generate(client):
     resp = await client.get("/api/dates/2026-02-25/script")
     assert resp.status_code == 200
     assert len(resp.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_patch_script_content(client):
+    topic_id, _ = await _create_topic_with_tweets(client)
+
+    # Generate a script first
+    with patch("app.routers.scripts.generate_script", new_callable=AsyncMock) as mock_gen:
+        mock_gen.return_value = [{"type": "text", "text": "Original."}]
+        with patch("app.services.grok_api.fetch_grok_context", new_callable=AsyncMock) as mock_grok:
+            mock_grok.return_value = "Context."
+            await client.post(f"/api/topics/{topic_id}/script/generate", json={"model": "grok-3"})
+
+    # PATCH content
+    new_content = [
+        {"type": "text", "text": "Edited text."},
+        {"type": "tweet", "tweet_id": "111"},
+    ]
+    resp = await client.patch(f"/api/topics/{topic_id}/script", json={"content": new_content})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["version"] == 1  # version unchanged
+    assert data["content"][0]["text"] == "Edited text."
+    assert data["content"][1]["tweet_id"] == "111"
+
+
+@pytest.mark.asyncio
+async def test_patch_script_no_active_script(client):
+    topic_id, _ = await _create_topic_with_tweets(client)
+
+    resp = await client.patch(
+        f"/api/topics/{topic_id}/script",
+        json={"content": [{"type": "text", "text": "test"}]},
+    )
+    assert resp.status_code == 404

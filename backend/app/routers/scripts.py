@@ -11,6 +11,7 @@ from app.models.topic_script import TopicScript
 from app.models.tweet import Tweet
 from app.schemas.topic_script import (
     DayScriptGenerateRequest,
+    ScriptContentUpdate,
     ScriptGenerateRequest,
     ScriptOut,
     ScriptVersionSummary,
@@ -132,6 +133,15 @@ async def generate_topic_script(
         if b.get("type") != "tweet" or b.get("tweet_id") in valid_tweet_ids
     ]
 
+    # Ensure OG tweet block is present — append if model omitted it
+    if og_tweet:
+        og_present = any(
+            b.get("type") == "tweet" and b.get("tweet_id") == og_tweet.tweet_id
+            for b in blocks
+        )
+        if not og_present:
+            blocks.append({"type": "tweet", "tweet_id": og_tweet.tweet_id})
+
     # Deactivate previous versions
     prev_scripts = (await db.execute(
         select(TopicScript)
@@ -175,6 +185,26 @@ async def get_active_script(
     if not script:
         raise HTTPException(404, "No script found for this topic")
 
+    return script
+
+
+@router.patch("/api/topics/{topic_id}/script", response_model=ScriptOut)
+async def update_script_content(
+    topic_id: int,
+    body: ScriptContentUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    script = (await db.execute(
+        select(TopicScript)
+        .where(TopicScript.topic_id == topic_id, TopicScript.is_active.is_(True))
+    )).scalar_one_or_none()
+
+    if not script:
+        raise HTTPException(404, "No active script found for this topic")
+
+    script.content = [b.model_dump() for b in body.content]
+    await db.commit()
+    await db.refresh(script)
     return script
 
 

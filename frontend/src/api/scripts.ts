@@ -82,6 +82,22 @@ export function useGenerateScript() {
   })
 }
 
+export function useUpdateScript() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ topicId, content }: {
+      topicId: number
+      content: ScriptBlock[]
+    }) => {
+      const { data } = await api.patch(`/topics/${topicId}/script`, { content })
+      return data as TopicScript
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(['script', data.topic_id], data)
+    },
+  })
+}
+
 export function useGenerateDayScripts() {
   const qc = useQueryClient()
   return useMutation({

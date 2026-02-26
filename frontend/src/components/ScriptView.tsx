@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { type ScriptBlock, type TopicScript, AVAILABLE_MODELS, useGenerateScript } from '../api/scripts'
+import { useState, useCallback } from 'react'
+import { type ScriptBlock, type TopicScript, AVAILABLE_MODELS, useGenerateScript, useUpdateScript } from '../api/scripts'
 import { type Tweet } from '../api/tweets'
 import { TweetCard } from './TweetCard'
 
@@ -10,14 +10,76 @@ interface ScriptViewProps {
   showEngagement: boolean
 }
 
-function ScriptTextBlock({ text }: { text: string }) {
+function ScriptTextBlock({ text, blockIndex, script, topicId }: {
+  text: string
+  blockIndex: number
+  script: TopicScript
+  topicId: number
+}) {
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState(text)
+  const updateScript = useUpdateScript()
+
+  const commitEdit = useCallback(() => {
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed !== text) {
+      const updatedContent = script.content.map((b, i) =>
+        i === blockIndex ? { ...b, text: trimmed } : b
+      )
+      updateScript.mutate({ topicId, content: updatedContent })
+    } else {
+      setEditValue(text)
+    }
+    setEditing(false)
+  }, [editValue, text, blockIndex, script.content, topicId, updateScript])
+
+  if (editing) {
+    return (
+      <textarea
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) commitEdit()
+          if (e.key === 'Escape') {
+            setEditValue(text)
+            setEditing(false)
+          }
+        }}
+        onBlur={commitEdit}
+        autoFocus
+        style={{
+          width: '100%',
+          padding: '8px 6px',
+          fontSize: '15px',
+          lineHeight: 1.6,
+          color: 'var(--text-primary)',
+          background: 'var(--bg-base)',
+          border: '1px solid var(--accent)',
+          borderRadius: 'var(--radius-sm)',
+          outline: 'none',
+          fontFamily: 'var(--font-body)',
+          resize: 'vertical',
+          minHeight: 60,
+          boxSizing: 'border-box',
+        }}
+      />
+    )
+  }
+
   return (
-    <div style={{
-      padding: '8px 0',
-      fontSize: '15px',
-      lineHeight: 1.6,
-      color: 'var(--text-primary)',
-    }}>
+    <div
+      onClick={() => {
+        setEditValue(text)
+        setEditing(true)
+      }}
+      style={{
+        padding: '8px 0',
+        fontSize: '15px',
+        lineHeight: 1.6,
+        color: 'var(--text-primary)',
+        cursor: 'text',
+      }}
+    >
       {text}
     </div>
   )
@@ -102,7 +164,7 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
       <div style={{ padding: '8px 16px' }}>
         {script.content.map((block: ScriptBlock, i: number) => {
           if (block.type === 'text' && block.text) {
-            return <ScriptTextBlock key={i} text={block.text} />
+            return <ScriptTextBlock key={i} text={block.text} blockIndex={i} script={script} topicId={topicId} />
           }
           if (block.type === 'tweet' && block.tweet_id) {
             return <ScriptTweetBlock key={i} tweetId={block.tweet_id} tweets={tweets} />

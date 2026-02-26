@@ -41,6 +41,10 @@ class ScriptVersionSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ScriptContentUpdate(BaseModel):
+    content: list[ScriptBlock]
+
+
 class DayScriptGenerateRequest(BaseModel):
     model: str = "grok-4-1-fast-reasoning"
     fetch_grok_context: bool = True
