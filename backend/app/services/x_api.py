@@ -8,6 +8,8 @@ from app.config import settings
 
 X_API_BASE = "https://api.x.com/2"
 
+_client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
+
 TWEET_FIELDS = "text,note_tweet,created_at,public_metrics,entities,referenced_tweets"
 EXPANSIONS = "author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.author_id"
 USER_FIELDS = "profile_image_url,verified,verified_type,name,username"
@@ -44,13 +46,11 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "Authorization": f"Bearer {settings.x_api_bearer_token}",
     }
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{X_API_BASE}/tweets/{tweet_id}",
-            params=params,
-            headers=headers,
-            timeout=10.0,
-        )
+    response = await _client.get(
+        f"{X_API_BASE}/tweets/{tweet_id}",
+        params=params,
+        headers=headers,
+    )
 
     # Handle HTTP-level errors
     if response.status_code == 429:

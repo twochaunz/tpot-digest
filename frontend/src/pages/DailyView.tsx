@@ -20,6 +20,7 @@ export function DailyView() {
   const navigate = useNavigate()
   const [date, setDate] = useState(defaultDateStr)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
 
@@ -85,6 +86,11 @@ export function DailyView() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
 
   return (
     <div
@@ -209,7 +215,7 @@ export function DailyView() {
       <DayCarousel
         date={date}
         onDateChange={setDate}
-        search={search}
+        search={debouncedSearch}
       />
 
       {/* TOC FAB button */}
@@ -245,7 +251,7 @@ export function DailyView() {
       {tocOpen && (
         <TableOfContents
           date={date}
-          search={search}
+          search={debouncedSearch}
           onClose={() => setTocOpen(false)}
         />
       )}

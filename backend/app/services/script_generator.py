@@ -16,6 +16,9 @@ from app.config import settings
 XAI_API_BASE = "https://api.x.ai/v1"
 ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 
+_grok_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
+_anthropic_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
+
 CATEGORY_ORDER = ["context", "kek", "signal-boost", "pushback", "hot-take"]
 
 DEFAULT_STYLE_GUIDE = """- Present discourse objectively — show what different sides said without editorializing
@@ -135,18 +138,17 @@ async def _call_grok(model: str, prompt: str) -> list[dict]:
     if not settings.xai_api_key:
         raise ScriptGeneratorError("XAI_API_KEY is not configured")
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(
-            f"{XAI_API_BASE}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.xai_api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-        )
+    resp = await _grok_client.post(
+        f"{XAI_API_BASE}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {settings.xai_api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+    )
 
     if resp.status_code != 200:
         raise ScriptGeneratorError(f"Grok API returned {resp.status_code}: {resp.text}")
@@ -163,20 +165,19 @@ async def _call_claude(model: str, prompt: str) -> list[dict]:
     if not settings.anthropic_api_key:
         raise ScriptGeneratorError("ANTHROPIC_API_KEY is not configured")
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(
-            f"{ANTHROPIC_API_BASE}/messages",
-            headers={
-                "x-api-key": settings.anthropic_api_key,
-                "anthropic-version": "2023-06-01",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model,
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-        )
+    resp = await _anthropic_client.post(
+        f"{ANTHROPIC_API_BASE}/messages",
+        headers={
+            "x-api-key": settings.anthropic_api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "max_tokens": 4096,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+    )
 
     if resp.status_code != 200:
         raise ScriptGeneratorError(f"Anthropic API returned {resp.status_code}: {resp.text}")

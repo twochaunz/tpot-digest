@@ -104,13 +104,8 @@ async def test_fetch_tweet_success():
     with patch("app.services.x_api.settings") as mock_settings:
         mock_settings.x_api_bearer_token = "test-bearer-token"
 
-        with patch("app.services.x_api.httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client_instance
-            )
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.x_api._client") as mock_client:
+            mock_client.get = AsyncMock(return_value=mock_response)
 
             result = await fetch_tweet("123456")
 
@@ -148,13 +143,8 @@ async def test_fetch_tweet_not_found():
     with patch("app.services.x_api.settings") as mock_settings:
         mock_settings.x_api_bearer_token = "test-bearer-token"
 
-        with patch("app.services.x_api.httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client_instance
-            )
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.x_api._client") as mock_client:
+            mock_client.get = AsyncMock(return_value=mock_response)
 
             with pytest.raises(XAPIError, match="not found"):
                 await fetch_tweet("999999999")
@@ -168,13 +158,8 @@ async def test_fetch_tweet_rate_limited():
     with patch("app.services.x_api.settings") as mock_settings:
         mock_settings.x_api_bearer_token = "test-bearer-token"
 
-        with patch("app.services.x_api.httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client_instance
-            )
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.x_api._client") as mock_client:
+            mock_client.get = AsyncMock(return_value=mock_response)
 
             with pytest.raises(XAPIError, match="rate limit"):
                 await fetch_tweet("123456")
@@ -198,13 +183,8 @@ async def test_fetch_tweet_minimal_response():
     with patch("app.services.x_api.settings") as mock_settings:
         mock_settings.x_api_bearer_token = "test-bearer-token"
 
-        with patch("app.services.x_api.httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client_instance
-            )
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.x_api._client") as mock_client:
+            mock_client.get = AsyncMock(return_value=mock_response)
 
             result = await fetch_tweet("789")
 

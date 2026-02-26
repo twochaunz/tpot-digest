@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { toPng } from 'html-to-image'
 import { Tweet as ReactTweet } from 'react-tweet'
@@ -53,7 +53,7 @@ function isLegacyTweet(tweet: Tweet): boolean {
   return !tweet.text && !!tweet.screenshot_path
 }
 
-export function TweetCard({
+export const TweetCard = memo(function TweetCard({
   tweet,
   selected = false,
   onToggle,
@@ -370,7 +370,7 @@ export function TweetCard({
       )}
     </>
   )
-}
+})
 
 /* Legacy card: screenshot thumbnail (for tweets without X API data) */
 function LegacyCard({ tweet }: { tweet: Tweet }) {

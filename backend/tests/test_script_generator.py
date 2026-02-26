@@ -16,11 +16,8 @@ async def test_generate_script_grok():
         mock_settings.xai_api_key = "test-key"
         mock_settings.anthropic_api_key = ""
 
-        with patch("app.services.script_generator.httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_client.post.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.script_generator._grok_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
 
             result = await generate_script(
                 model="grok-4-1-fast-reasoning",
@@ -45,11 +42,8 @@ async def test_generate_script_claude():
         mock_settings.xai_api_key = ""
         mock_settings.anthropic_api_key = "test-key"
 
-        with patch("app.services.script_generator.httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_client.post.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.script_generator._anthropic_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
 
             result = await generate_script(
                 model="claude-opus-4-6",
