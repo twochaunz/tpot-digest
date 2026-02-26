@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
+import app.db as db_module
 from app.db import Base, get_db
 from app.main import app
 
@@ -49,12 +50,15 @@ MOCK_X_API_RESULT = {
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
     app.dependency_overrides[get_db] = override_get_db
+    _orig_session = db_module.async_session
+    db_module.async_session = async_session  # backfill task uses this
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     app.dependency_overrides.pop(get_db, None)
+    db_module.async_session = _orig_session
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -81,7 +85,11 @@ async def test_save_tweet(client: AsyncClient):
     assert resp.status_code == 201
     data = resp.json()
     assert data["tweet_id"] == "123456"
-    assert data["author_handle"] == "karpathy"
+    assert data["id"]  # DB id returned immediately
+
+    # Backfill runs as background task; verify via list
+    tweets = (await client.get("/api/tweets")).json()
+    assert tweets[0]["author_handle"] == "karpathy"
 
 
 @pytest.mark.asyncio
@@ -165,8 +173,9 @@ async def test_save_tweet_url_from_api(client: AsyncClient):
     payload = {"tweet_id": "url1"}
     resp = await client.post("/api/tweets", json=payload)
     assert resp.status_code == 201
-    # URL comes from mock X API data
-    assert resp.json()["url"] == "https://x.com/karpathy/status/123456"
+    # URL is backfilled from X API; verify via list
+    tweets = (await client.get("/api/tweets")).json()
+    assert tweets[0]["url"] == "https://x.com/karpathy/status/123456"
 
 
 @pytest.mark.asyncio
@@ -200,13 +209,18 @@ async def test_list_thread_tweets(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_x_api_failure_returns_502(client: AsyncClient, mock_fetch_tweet):
+async def test_x_api_failure_still_saves_placeholder(client: AsyncClient, mock_fetch_tweet):
     from app.services.x_api import XAPIError
     mock_fetch_tweet.side_effect = XAPIError("X API rate limit exceeded")
 
     resp = await client.post("/api/tweets", json={"tweet_id": "fail1"})
-    assert resp.status_code == 502
-    assert "rate limit" in resp.json()["detail"]
+    # Save returns 201 immediately; X API failure is logged but non-blocking
+    assert resp.status_code == 201
+    assert resp.json()["tweet_id"] == "fail1"
+    # Tweet exists in DB as placeholder (empty text)
+    tweets = (await client.get("/api/tweets")).json()
+    assert len(tweets) == 1
+    assert tweets[0]["text"] == ""
 
 
 @pytest.mark.asyncio

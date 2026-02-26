@@ -20,6 +20,7 @@ export function useDayBundle(date: string) {
       const { data } = await api.get(`/days/${date}/bundle`)
       return data
     },
+    staleTime: 5 * 60 * 1000, // 5 min — avoids refetch when carousel shifts dates
   })
 }
 

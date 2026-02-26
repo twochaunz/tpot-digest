@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useTopics } from '../api/topics'
-import { useTweets } from '../api/tweets'
+import { useDayBundle } from '../api/dayBundle'
 import { sortTopics } from '../utils/topics'
 
 interface TableOfContentsProps {
@@ -11,11 +10,21 @@ interface TableOfContentsProps {
 
 export function TableOfContents({ date, search, onClose }: TableOfContentsProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
-  const topicsQuery = useTopics(date)
-  const unsortedQuery = useTweets({ date, unassigned: true, q: search || undefined })
+  const bundleQuery = useDayBundle(date)
+  const bundle = bundleQuery.data
 
-  const topics = topicsQuery.data ?? []
-  const unsortedTweets = unsortedQuery.data ?? []
+  const topics = bundle?.topics ?? []
+  const unsortedTweets = bundle?.unsorted ?? []
+
+  // Client-side search filtering (counts only)
+  const q = search?.toLowerCase() || ''
+  const filteredUnsorted = q
+    ? unsortedTweets.filter((t) =>
+        t.text.toLowerCase().includes(q) ||
+        t.author_handle.toLowerCase().includes(q) ||
+        (t.author_display_name?.toLowerCase().includes(q) ?? false)
+      )
+    : unsortedTweets
 
   // Escape to close
   useEffect(() => {
@@ -110,27 +119,36 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         {/* Entries */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Unsorted entry (only if tweets exist) */}
-          {unsortedTweets.length > 0 && (
+          {filteredUnsorted.length > 0 && (
             <TOCEntry
               label="Unsorted"
-              count={unsortedTweets.length}
+              count={filteredUnsorted.length}
               onClick={() => scrollToSection('toc-unsorted')}
             />
           )}
 
           {/* Topic entries */}
-          {sortTopics(topics).map((topic) => (
-            <TopicTOCEntry
-              key={topic.id}
-              topic={topic}
-              date={date}
-              search={search}
-              onClick={() => scrollToSection(`toc-topic-${topic.id}`)}
-            />
-          ))}
+          {sortTopics(topics).map((topic) => {
+            const count = q
+              ? topic.tweets.filter((t) =>
+                  t.text.toLowerCase().includes(q) ||
+                  t.author_handle.toLowerCase().includes(q) ||
+                  (t.author_display_name?.toLowerCase().includes(q) ?? false)
+                ).length
+              : topic.tweets.length
+            return (
+              <TOCEntry
+                key={topic.id}
+                label={topic.title}
+                color={topic.color}
+                count={count}
+                onClick={() => scrollToSection(`toc-topic-${topic.id}`)}
+              />
+            )
+          })}
 
           {/* Empty state */}
-          {unsortedTweets.length === 0 && topics.length === 0 && (
+          {filteredUnsorted.length === 0 && topics.length === 0 && (
             <div style={{
               padding: '20px',
               textAlign: 'center',
@@ -143,30 +161,6 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         </div>
       </div>
     </div>
-  )
-}
-
-function TopicTOCEntry({
-  topic,
-  date,
-  search,
-  onClick,
-}: {
-  topic: { id: number; title: string; color: string | null }
-  date: string
-  search: string
-  onClick: () => void
-}) {
-  const tweetsQuery = useTweets({ date, topic_id: topic.id, q: search || undefined })
-  const count = tweetsQuery.data?.length ?? 0
-
-  return (
-    <TOCEntry
-      label={topic.title}
-      color={topic.color}
-      count={count}
-      onClick={onClick}
-    />
   )
 }
 

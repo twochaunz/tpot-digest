@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
@@ -5,13 +6,61 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 
+import app.db as db_module
 from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.tweet import Tweet
 from app.schemas.tweet import TweetAssignRequest, TweetCheckRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
+
+
+async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, category: str | None):
+    """Background task: fetch X API data and update the placeholder tweet."""
+    from app.services.x_api import fetch_tweet, XAPIError
+
+    try:
+        api_data = await fetch_tweet(tweet_x_id)
+    except XAPIError as e:
+        logger.warning("X API backfill failed for %s: %s", tweet_x_id, e)
+        return
+
+    async with db_module.async_session() as db:
+        tweet = await db.get(Tweet, tweet_id)
+        if not tweet:
+            return
+
+        tweet.author_handle = api_data["author_handle"]
+        tweet.author_display_name = api_data["author_display_name"]
+        tweet.author_avatar_url = api_data["author_avatar_url"]
+        tweet.author_verified = api_data["author_verified"]
+        tweet.text = api_data["text"]
+        tweet.media_urls = api_data["media_urls"]
+        tweet.engagement = api_data["engagement"]
+        tweet.is_quote_tweet = api_data["is_quote_tweet"]
+        tweet.is_reply = api_data["is_reply"]
+        tweet.quoted_tweet_id = api_data["quoted_tweet_id"]
+        tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
+        tweet.reply_to_handle = api_data.get("reply_to_handle")
+        tweet.url_entities = api_data.get("url_entities")
+        tweet.url = api_data["url"]
+        if api_data.get("created_at"):
+            tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
+
+        if topic_id:
+            existing = (await db.execute(
+                select(TweetAssignment).where(
+                    TweetAssignment.tweet_id == tweet_id,
+                    TweetAssignment.topic_id == topic_id,
+                )
+            )).scalar_one_or_none()
+            if not existing:
+                db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id, category=category))
+
+        await db.commit()
 
 
 @router.post("", status_code=201)
@@ -24,29 +73,11 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         out.status = "duplicate"
         return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
 
-    from app.services.x_api import fetch_tweet, XAPIError
-    try:
-        api_data = await fetch_tweet(body.tweet_id)
-    except XAPIError as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-    kwargs = dict(
+    # Create placeholder immediately, backfill from X API in background
+    kwargs: dict = dict(
         tweet_id=body.tweet_id,
-        author_handle=api_data["author_handle"],
-        author_display_name=api_data["author_display_name"],
-        author_avatar_url=api_data["author_avatar_url"],
-        author_verified=api_data["author_verified"],
-        text=api_data["text"],
-        media_urls=api_data["media_urls"],
-        engagement=api_data["engagement"],
-        is_quote_tweet=api_data["is_quote_tweet"],
-        is_reply=api_data["is_reply"],
-        quoted_tweet_id=api_data["quoted_tweet_id"],
-        reply_to_tweet_id=api_data.get("reply_to_tweet_id"),
-        reply_to_handle=api_data.get("reply_to_handle"),
-        url_entities=api_data.get("url_entities"),
-        url=api_data["url"],
-        created_at=datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00")) if api_data.get("created_at") else None,
+        author_handle="",
+        text="",
         feed_source=body.feed_source,
         thread_id=body.thread_id,
         thread_position=body.thread_position,
@@ -55,19 +86,12 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
         kwargs["saved_at"] = body.saved_at
     tweet = Tweet(**kwargs)
     db.add(tweet)
-    await db.flush()
-
-    if body.topic_id:
-        assignment = TweetAssignment(
-            tweet_id=tweet.id, topic_id=body.topic_id, category=body.category
-        )
-        db.add(assignment)
-
     await db.commit()
-    await db.refresh(tweet)
+
     return JSONResponse(
-        content=TweetOut.model_validate(tweet).model_dump(mode="json"),
+        content={"id": tweet.id, "tweet_id": body.tweet_id, "status": "saved"},
         status_code=201,
+        background=BackgroundTask(_backfill_tweet, tweet.id, body.tweet_id, body.topic_id, body.category),
     )
 
 
