@@ -125,6 +125,10 @@ def build_prompt(
     parts.append('  BAD: "The timeline was in turmoil after a bombshell dropped from..."')
     parts.append('  GOOD: "OpenAI launched o3." / "Writer Sam Kriss made waves in tech profiling SF\'s AI startup chaos."')
     parts.append("- Do NOT repeat the OG tweet's text. Paraphrase naturally.")
+    if og_tweet:
+        og_id = og_tweet.get("tweet_id", "")
+        parts.append(f'- You MUST include the OG tweet as a {{"type": "tweet", "tweet_id": "{og_id}"}} block somewhere in the script.')
+        parts.append("  Placement: if the news itself is the main story, place the OG tweet early (after the opening line). If reactions are the main story, lead with reaction tweets and place the OG tweet later for context.")
     parts.append("- Place tweets as evidence — they prove what the script claims.")
     parts.append("- Use category groupings to guide flow (context first, then reactions, pushback, hot takes) but don't force category names where they don't fit naturally. Change order if it tells a better story.")
     parts.append("- You do NOT need every tweet. Aggregate similar sentiment into short phrases ('the consensus was...', 'critics argued...') and embed only 2-3 representative tweets.")

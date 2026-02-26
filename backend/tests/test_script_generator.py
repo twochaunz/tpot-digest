@@ -107,6 +107,27 @@ def test_build_prompt_with_feedback():
     assert "make it better" in prompt
 
 
+def test_build_prompt_includes_og_tweet_block_requirement():
+    prompt = build_prompt(
+        topic_title="Test",
+        og_tweet={"text": "OG text", "url": "https://x.com/u/status/99", "tweet_id": "99"},
+        tweets=[],
+        style_guide="",
+    )
+    assert 'You MUST include the OG tweet' in prompt
+    assert '"tweet_id": "99"' in prompt
+
+
+def test_build_prompt_no_og_tweet_block_requirement():
+    prompt = build_prompt(
+        topic_title="Test",
+        og_tweet=None,
+        tweets=[],
+        style_guide="",
+    )
+    assert 'You MUST include the OG tweet' not in prompt
+
+
 def test_parse_blocks_with_markdown_fences():
     """Test that _parse_blocks handles markdown code fences."""
     from app.services.script_generator import _parse_blocks
