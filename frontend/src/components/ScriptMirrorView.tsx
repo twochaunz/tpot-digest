@@ -1,11 +1,10 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, type RefObject } from 'react'
 import type { TopicBundle } from '../api/dayBundle'
 import {
   FADE_MS,
   type DrawTool,
   type TimedPoint,
   type StyledStroke,
-  ColorWheelPicker,
   DrawCanvas,
   InlineImageOverlay,
   MirrorCursor,
@@ -15,25 +14,19 @@ import {
 
 interface ScriptMirrorViewProps {
   topics: TopicBundle[]
+  drawToolRef: RefObject<DrawTool>
+  drawColorRef: RefObject<string>
+  drawOpacityRef: RefObject<number>
 }
 
-export function ScriptMirrorView({ topics }: ScriptMirrorViewProps) {
+export function ScriptMirrorView({ topics, drawToolRef, drawColorRef, drawOpacityRef }: ScriptMirrorViewProps) {
   /* ---- Drawing state ---- */
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [mirrorPos, setMirrorPos] = useState<{ x: number; y: number } | null>(null)
   const [mirrorClicking, setMirrorClicking] = useState(false)
   const [drawStrokes, setDrawStrokes] = useState<StyledStroke[]>([])
   const [photoStrokes, setPhotoStrokes] = useState<StyledStroke[]>([])
-  const [drawTool, setDrawTool] = useState<DrawTool>('pen')
-  const [drawColor, setDrawColor] = useState('#FF4444')
-  const [drawOpacity, setDrawOpacity] = useState(1)
   const currentStrokeRef = useRef<TimedPoint[]>([])
-  const drawToolRef = useRef<DrawTool>(drawTool)
-  const drawColorRef = useRef(drawColor)
-  const drawOpacityRef = useRef(drawOpacity)
-  drawToolRef.current = drawTool
-  drawColorRef.current = drawColor
-  drawOpacityRef.current = drawOpacity
 
   const [leftSize, setLeftSize] = useState({ w: 0, h: 0 })
   const [rightSize, setRightSize] = useState({ w: 0, h: 0 })
@@ -286,16 +279,6 @@ export function ScriptMirrorView({ topics }: ScriptMirrorViewProps) {
       }))
     : []
 
-  const toolBtnStyle = (active: boolean): React.CSSProperties => ({
-    background: active ? 'var(--accent)' : 'none',
-    color: active ? '#fff' : 'var(--text-secondary)',
-    border: active ? 'none' : '1px solid var(--border)',
-    fontSize: 12,
-    cursor: 'pointer',
-    padding: '4px 10px',
-    borderRadius: 'var(--radius-sm)',
-  })
-
   /* ---- Render ---- */
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -303,25 +286,6 @@ export function ScriptMirrorView({ topics }: ScriptMirrorViewProps) {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes mirror-click-ripple { from { transform: translate(-6px,-6px) scale(0.5); opacity: 1; } to { transform: translate(-6px,-6px) scale(2); opacity: 0; } }
       `}</style>
-
-      {/* Drawing tools header bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 8,
-        padding: '6px 16px',
-        borderBottom: '1px solid var(--border)',
-        flexShrink: 0,
-      }}>
-        <button onClick={() => setDrawTool('pen')} style={toolBtnStyle(drawTool === 'pen')}>Pen</button>
-        <button onClick={() => setDrawTool('highlighter')} style={toolBtnStyle(drawTool === 'highlighter')}>Highlighter</button>
-        <ColorWheelPicker color={drawColor} opacity={drawOpacity} onColorChange={setDrawColor} onOpacityChange={setDrawOpacity} />
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-          {topics.length} topic{topics.length !== 1 ? 's' : ''}
-        </span>
-      </div>
 
       {/* Two-column layout */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -342,7 +306,7 @@ export function ScriptMirrorView({ topics }: ScriptMirrorViewProps) {
                 <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>{topic.title}</span>
               </div>
               {/* Script content */}
-              <TopicScriptSection topicId={topic.id} tweets={topic.tweets} onImageClick={setExpandedImage} onScriptStatus={handleScriptStatus} />
+              <TopicScriptSection topicId={topic.id} tweets={topic.tweets} onImageClick={setExpandedImage} onScriptStatus={handleScriptStatus} hideControls />
               {/* Divider between topics */}
               {idx < topics.length - 1 && <div style={{ height: 1, background: 'var(--border)', margin: '16px 0' }} />}
             </div>

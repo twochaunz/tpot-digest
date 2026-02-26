@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { TopicBundle } from '../api/dayBundle'
 import { sortTopics } from '../utils/topics'
 import { TopicManagerView } from './TopicManagerView'
 import { ScriptMirrorView } from './ScriptMirrorView'
+import { ColorWheelPicker, type DrawTool } from './DayScriptView'
 
 interface ScriptPanelProps {
   date: string
@@ -74,6 +75,27 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
   const deselectAll = useCallback(() => {
     setSelectedTopicIds(new Set())
   }, [])
+
+  // Drawing tool state (lifted here so controls appear in header)
+  const [drawTool, setDrawTool] = useState<DrawTool>('pen')
+  const [drawColor, setDrawColor] = useState('#FF4444')
+  const [drawOpacity, setDrawOpacity] = useState(1)
+  const drawToolRef = useRef<DrawTool>(drawTool)
+  const drawColorRef = useRef(drawColor)
+  const drawOpacityRef = useRef(drawOpacity)
+  drawToolRef.current = drawTool
+  drawColorRef.current = drawColor
+  drawOpacityRef.current = drawOpacity
+
+  const toolBtnStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? 'var(--accent)' : 'none',
+    color: active ? '#fff' : 'var(--text-secondary)',
+    border: active ? 'none' : '1px solid var(--border)',
+    fontSize: 12,
+    cursor: 'pointer',
+    padding: '4px 10px',
+    borderRadius: 'var(--radius-sm)',
+  })
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -164,6 +186,15 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
           Script
         </button>
 
+        {/* Drawing tools (visible only in script view) */}
+        {activeView === 'script' && (
+          <>
+            <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
+            <button onClick={() => setDrawTool('pen')} style={toolBtnStyle(drawTool === 'pen')}>Pen</button>
+            <button onClick={() => setDrawTool('highlighter')} style={toolBtnStyle(drawTool === 'highlighter')}>Highlighter</button>
+            <ColorWheelPicker color={drawColor} opacity={drawOpacity} onColorChange={setDrawColor} onOpacityChange={setDrawOpacity} />
+          </>
+        )}
       </div>
 
       {/* Child views — both always mounted, toggled with display for instant switching */}
@@ -192,7 +223,12 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
         minHeight: 0,
         overflow: 'hidden',
       }}>
-        <ScriptMirrorView topics={selectedTopics} />
+        <ScriptMirrorView
+          topics={selectedTopics}
+          drawToolRef={drawToolRef}
+          drawColorRef={drawColorRef}
+          drawOpacityRef={drawOpacityRef}
+        />
       </div>
     </div>,
     document.body,

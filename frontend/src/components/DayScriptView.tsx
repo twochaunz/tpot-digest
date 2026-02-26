@@ -516,14 +516,6 @@ export function ScriptTextBlock({ text, blockIndex, script, topicId }: {
   )
 }
 
-/* ---- Helpers ---- */
-export function chunk<T>(arr: T[], size: number): T[][] {
-  const result: T[][] = []
-  for (let i = 0; i < arr.length; i += size) {
-    result.push(arr.slice(i, i + size))
-  }
-  return result
-}
 
 export type GroupedBlock =
   | { type: 'text'; index: number; block: ScriptBlock }
@@ -553,8 +545,6 @@ export function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
   tweets: Tweet[]
   onImageClick?: (url: string) => void
 }) {
-  const rows = chunk(blocks, 3)
-
   const handleContainerClick = onImageClick ? (e: React.MouseEvent) => {
     const target = e.target as HTMLElement
     if (target.tagName === 'IMG') {
@@ -569,26 +559,12 @@ export function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
 
   return (
     <div style={{ margin: '8px 0' }} onClickCapture={handleContainerClick}>
-      {rows.map((row, ri) => {
-        const isSingle = row.length === 1
+      {blocks.map((b, i) => {
+        const tweet = tweets.find(t => t.tweet_id === b.tweet_id)
+        if (!tweet) return null
         return (
-          <div key={ri} style={{
-            display: isSingle ? 'block' : 'flex',
-            gap: isSingle ? 0 : 10,
-            marginBottom: ri < rows.length - 1 ? 10 : 0,
-          }}>
-            {row.map((b, j) => {
-              const tweet = tweets.find(t => t.tweet_id === b.tweet_id)
-              if (!tweet) return null
-              return (
-                <div key={`${startIndex}-${ri}-${j}`} style={{
-                  flex: isSingle ? undefined : 1,
-                  minWidth: 0,
-                }}>
-                  <TweetCard tweet={tweet} selectable={false} />
-                </div>
-              )
-            })}
+          <div key={`${startIndex}-${i}`} style={{ marginBottom: i < blocks.length - 1 ? 10 : 0 }}>
+            <TweetCard tweet={tweet} selectable={false} />
           </div>
         )
       })}
@@ -597,11 +573,12 @@ export function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
 }
 
 /* ---- Per-topic script section ---- */
-export function TopicScriptSection({ topicId, tweets, onImageClick, onScriptStatus }: {
+export function TopicScriptSection({ topicId, tweets, onImageClick, onScriptStatus, hideControls }: {
   topicId: number
   tweets: Tweet[]
   onImageClick: (url: string) => void
   onScriptStatus: (topicId: number, hasScript: boolean) => void
+  hideControls?: boolean
 }) {
   const { data: script, isLoading } = useTopicScript(topicId)
   const generateScript = useGenerateScript()
@@ -661,44 +638,46 @@ export function TopicScriptSection({ topicId, tweets, onImageClick, onScriptStat
           })}
 
           {/* Script info + regeneration controls */}
-          <div style={{
-            marginTop: 8,
-            padding: '8px 0',
-            borderTop: '1px solid var(--border)',
-          }}>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>
-              v{script.version} · {script.model_used} · {new Date(script.created_at).toLocaleString()}
+          {!hideControls && (
+            <div style={{
+              marginTop: 8,
+              padding: '8px 0',
+              borderTop: '1px solid var(--border)',
+            }}>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                v{script.version} · {script.model_used} · {new Date(script.created_at).toLocaleString()}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <select value={model} onChange={(e) => setModel(e.target.value)} style={{
+                  background: 'var(--bg-raised)', color: 'var(--text-primary)',
+                  border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12, flexShrink: 0,
+                }}>
+                  {AVAILABLE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                </select>
+                <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Feedback..."
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleRegenerate() }}
+                  style={{
+                    flex: 1, background: 'var(--bg-raised)', color: 'var(--text-primary)',
+                    border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12,
+                  }}
+                />
+                <button onClick={handleRegenerate} disabled={generateScript.isPending} style={{
+                  background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6,
+                  padding: '4px 12px', fontSize: 12,
+                  cursor: generateScript.isPending ? 'wait' : 'pointer',
+                  opacity: generateScript.isPending ? 0.6 : 1, flexShrink: 0,
+                }}>
+                  {generateScript.isPending ? 'Generating...' : 'Regenerate'}
+                </button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <select value={model} onChange={(e) => setModel(e.target.value)} style={{
-                background: 'var(--bg-raised)', color: 'var(--text-primary)',
-                border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12, flexShrink: 0,
-              }}>
-                {AVAILABLE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
-              <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Feedback..."
-                onKeyDown={(e) => { if (e.key === 'Enter') handleRegenerate() }}
-                style={{
-                  flex: 1, background: 'var(--bg-raised)', color: 'var(--text-primary)',
-                  border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12,
-                }}
-              />
-              <button onClick={handleRegenerate} disabled={generateScript.isPending} style={{
-                background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6,
-                padding: '4px 12px', fontSize: 12,
-                cursor: generateScript.isPending ? 'wait' : 'pointer',
-                opacity: generateScript.isPending ? 0.6 : 1, flexShrink: 0,
-              }}>
-                {generateScript.isPending ? 'Generating...' : 'Regenerate'}
-              </button>
-            </div>
-          </div>
+          )}
         </>
       )}
 
       {/* No script — show generate controls */}
-      {!script && !isLoading && (
+      {!script && !isLoading && !hideControls && (
         <div style={{ padding: '12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
           <select value={model} onChange={(e) => setModel(e.target.value)} style={{
             background: 'var(--bg-raised)', color: 'var(--text-primary)',
