@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import type { TopicBundle } from '../api/dayBundle'
 import { sortTopics } from '../utils/topics'
+import { TopicManagerView } from './TopicManagerView'
 
 interface ScriptPanelProps {
   date: string
@@ -179,19 +180,16 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
         minHeight: 0,
         overflow: 'hidden',
       }}>
-        {/* TopicManagerView placeholder — Task 2 will replace with actual component */}
-        <div style={{ padding: 20 }}>
-          <div>Topic Manager Placeholder ({selectedTopics.length} selected of {topics.length})</div>
-          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            <button onClick={selectAll}>Select All</button>
-            <button onClick={deselectAll}>Deselect All</button>
-            {orderedTopicIds.map(id => (
-              <button key={id} onClick={() => toggleTopic(id)} data-date={date}>
-                {topicMap.get(id)?.title ?? id} {selectedTopicIds.has(id) ? '(on)' : '(off)'}
-              </button>
-            ))}
-          </div>
-        </div>
+        <TopicManagerView
+          date={date}
+          topics={topics}
+          orderedTopicIds={orderedTopicIds}
+          setOrderedTopicIds={setOrderedTopicIds}
+          selectedTopicIds={selectedTopicIds}
+          toggleTopic={toggleTopic}
+          selectAll={selectAll}
+          deselectAll={deselectAll}
+        />
       </div>
 
       <div style={{
@@ -200,8 +198,10 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
         minHeight: 0,
         overflow: 'hidden',
       }}>
-        {/* ScriptMirrorView placeholder — Task 3 will use: date, selectedTopics */}
-        <div>Script Mirror Placeholder</div>
+        {/* ScriptMirrorView placeholder — Task 3 will replace */}
+        <div style={{ padding: 20, color: 'var(--text-tertiary)', fontSize: 13 }}>
+          Script Mirror — {selectedTopics.length} topic{selectedTopics.length !== 1 ? 's' : ''} selected for {date}
+        </div>
       </div>
     </div>,
     document.body,
