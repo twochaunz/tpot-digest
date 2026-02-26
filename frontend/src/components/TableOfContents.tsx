@@ -206,16 +206,34 @@ function TOCEntry({
         (e.currentTarget as HTMLElement).style.background = 'none'
       }}
     >
-      {/* Color dot for topics */}
-      {color && (
+      {/* Color dot with count */}
+      {color && count !== undefined ? (
         <span style={{
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
+          minWidth: 20,
+          height: 20,
+          borderRadius: 10,
           background: color,
           flexShrink: 0,
-        }} />
-      )}
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 10,
+          fontWeight: 700,
+          color: '#fff',
+          padding: '0 5px',
+        }}>
+          {count}
+        </span>
+      ) : count !== undefined ? (
+        <span style={{
+          fontSize: 12,
+          color: 'var(--text-tertiary)',
+          fontWeight: 500,
+          flexShrink: 0,
+        }}>
+          {count}
+        </span>
+      ) : null}
       <span style={{
         flex: 1,
         overflow: 'hidden',
@@ -224,15 +242,6 @@ function TOCEntry({
       }}>
         {label}
       </span>
-      {count !== undefined && (
-        <span style={{
-          fontSize: 12,
-          color: 'var(--text-tertiary)',
-          fontWeight: 500,
-        }}>
-          {count}
-        </span>
-      )}
     </button>
   )
 }
