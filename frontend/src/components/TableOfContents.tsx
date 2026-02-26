@@ -201,12 +201,12 @@ function TOCEntry({
       }}
     >
       {/* Color dot with count */}
-      {color && count !== undefined ? (
+      {count !== undefined && (
         <span style={{
           minWidth: 20,
           height: 20,
           borderRadius: 10,
-          background: color,
+          background: color || 'var(--accent)',
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
@@ -218,16 +218,7 @@ function TOCEntry({
         }}>
           {count}
         </span>
-      ) : count !== undefined ? (
-        <span style={{
-          fontSize: 12,
-          color: 'var(--text-tertiary)',
-          fontWeight: 500,
-          flexShrink: 0,
-        }}>
-          {count}
-        </span>
-      ) : null}
+      )}
       <span style={{
         flex: 1,
         overflow: 'hidden',
