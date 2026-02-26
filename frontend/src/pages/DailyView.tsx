@@ -36,6 +36,7 @@ export function DailyView() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
+  const [keysOpen, setKeysOpen] = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -47,6 +48,10 @@ export function DailyView() {
       if ((e.key === 't' || e.key === 'T') && !isInput) {
         e.preventDefault()
         setTocOpen(prev => !prev)
+      }
+      if (e.key === '?' && !isInput) {
+        e.preventDefault()
+        setKeysOpen(prev => !prev)
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
@@ -134,8 +139,30 @@ export function DailyView() {
             alignItems: 'center',
           }}
         >
-          {/* Left: empty for balance */}
-          <div style={{ flex: 1 }} />
+          {/* Left: keyboard shortcuts */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={() => setKeysOpen(true)}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                width: 34,
+                height: 34,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                fontSize: 16,
+                transition: 'all 0.15s ease',
+              }}
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+            >
+              &#9000;
+            </button>
+          </div>
 
           {/* Center: date picker */}
           <DatePicker value={date} onChange={setDate} maxDate={today} />
@@ -269,6 +296,103 @@ export function DailyView() {
         />
       )}
 
+      {/* Keyboard shortcuts modal */}
+      {keysOpen && (
+        <KeyboardShortcutsModal onClose={() => setKeysOpen(false)} />
+      )}
+
+    </div>
+  )
+}
+
+const SHORTCUTS: [string, string][] = [
+  ['h / \u2190', 'Previous date'],
+  ['l / \u2192', 'Next date'],
+  ['j / \u2193', 'Next category section'],
+  ['k / \u2191', 'Previous category section'],
+  ['Enter', 'Next topic'],
+  ['Shift + Enter', 'Previous topic'],
+  ['t', 'Toggle table of contents'],
+  ['\u2318K', 'Focus search'],
+  ['Esc', 'Blur search / close overlay'],
+  ['?', 'Toggle this help'],
+]
+
+function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); onClose() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        background: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          background: 'var(--bg-raised)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '20px 24px',
+          minWidth: 300,
+          maxWidth: 400,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+            Keyboard Shortcuts
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-tertiary)',
+              fontSize: 18,
+              cursor: 'pointer',
+              padding: '0 4px',
+              lineHeight: 1,
+            }}
+          >
+            &times;
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {SHORTCUTS.map(([key, desc]) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{desc}</span>
+              <kbd style={{
+                fontSize: 11,
+                fontFamily: 'var(--font-body)',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '2px 8px',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}>
+                {key}
+              </kbd>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
