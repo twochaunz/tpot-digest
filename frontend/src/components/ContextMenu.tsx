@@ -16,6 +16,8 @@ interface ContextMenuProps {
   onSetCategory?: (tweetId: number, topicId: number, category: string | null) => void
   topics?: { id: number; title: string; color: string | null }[]
   onMoveToTopic?: (tweetId: number, fromTopicId: number, toTopicId: number) => void
+  onCreateTopicAndMove?: (tweetId: number, fromTopicId: number, title: string) => void
+  date?: string
 }
 
 export interface TopicContextMenuProps {
@@ -224,15 +226,17 @@ function HoverButton({ style, onClick, children }: { style?: React.CSSProperties
 
 // ── Tweet Context Menu ──
 
-export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory, topics, onMoveToTopic }: ContextMenuProps) {
+export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory, topics, onMoveToTopic, onCreateTopicAndMove, date }: ContextMenuProps) {
   const [showCalendar, setShowCalendar] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [focusedCatIndex, setFocusedCatIndex] = useState(-1)
   const [showTopics, setShowTopics] = useState(false)
   const [focusedTopicIndex, setFocusedTopicIndex] = useState(-1)
+  const [topicSearch, setTopicSearch] = useState('')
+  const topicInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const pos = useMenuPosition(x, y, menuRef, [showCalendar])
+  const pos = useMenuPosition(x, y, menuRef, [showCalendar, showTopics])
 
   // Reset focused index when submenu opens/closes
   useEffect(() => {
@@ -247,19 +251,28 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
   useEffect(() => {
     if (showTopics) {
       setFocusedTopicIndex(0)
+      setTopicSearch('')
+      setTimeout(() => topicInputRef.current?.focus(), 0)
     } else {
       setFocusedTopicIndex(-1)
+      setTopicSearch('')
     }
   }, [showTopics])
 
   // Total items in category submenu (categories + optional "Remove" item)
   const catItemCount = CATEGORIES.length + (tweet.category ? 1 : 0)
 
-  // Filtered topics for move submenu (exclude current topic)
-  const filteredTopics = (topics ?? []).filter((t) => t.id !== topicId)
-  const showMoveToTopic = !!(onMoveToTopic && filteredTopics.length + (topicId ? 1 : 0) > 0)
-  // Total items: filtered topics + optional "Move to unsorted"
-  const topicItemCount = filteredTopics.length + (topicId ? 1 : 0)
+  // Filtered topics for move submenu (exclude current topic, filter by search)
+  const allFilteredTopics = (topics ?? []).filter((t) => t.id !== topicId)
+  const searchFilteredTopics = topicSearch
+    ? allFilteredTopics.filter((t) => t.title.toLowerCase().includes(topicSearch.toLowerCase()))
+    : allFilteredTopics
+  const showMoveToTopic = !!(onMoveToTopic && (allFilteredTopics.length + (topicId ? 1 : 0) > 0 || onCreateTopicAndMove))
+  // Check if search matches any existing topic exactly (case-insensitive)
+  const exactMatch = topicSearch && allFilteredTopics.some((t) => t.title.toLowerCase() === topicSearch.toLowerCase().trim())
+  const showCreateOption = !!(topicSearch.trim() && !exactMatch && onCreateTopicAndMove)
+  // Total items: filtered topics + optional "Create new" + optional "Move to unsorted"
+  const topicItemCount = searchFilteredTopics.length + (showCreateOption ? 1 : 0) + (topicId && !topicSearch ? 1 : 0)
 
   // Close on outside click or Escape; arrow/enter for category submenu
   useEffect(() => {
@@ -302,18 +315,24 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
       if (showTopics) {
         if (e.key === 'ArrowDown') {
           e.preventDefault()
-          setFocusedTopicIndex((i) => (i + 1) % topicItemCount)
+          setFocusedTopicIndex((i) => Math.min(i + 1, topicItemCount - 1))
         } else if (e.key === 'ArrowUp') {
           e.preventDefault()
-          setFocusedTopicIndex((i) => (i - 1 + topicItemCount) % topicItemCount)
+          setFocusedTopicIndex((i) => Math.max(i - 1, 0))
         } else if (e.key === 'Enter') {
           e.preventDefault()
-          if (focusedTopicIndex >= 0 && focusedTopicIndex < filteredTopics.length) {
-            onMoveToTopic?.(tweet.id, topicId ?? 0, filteredTopics[focusedTopicIndex].id)
+          if (focusedTopicIndex >= 0 && focusedTopicIndex < searchFilteredTopics.length) {
+            onMoveToTopic?.(tweet.id, topicId ?? 0, searchFilteredTopics[focusedTopicIndex].id)
             onClose()
-          } else if (focusedTopicIndex === filteredTopics.length && topicId) {
-            onMoveToTopic?.(tweet.id, topicId, 0)
+          } else if (focusedTopicIndex === searchFilteredTopics.length && showCreateOption) {
+            onCreateTopicAndMove?.(tweet.id, topicId ?? 0, topicSearch.trim())
             onClose()
+          } else {
+            const unsortedIdx = searchFilteredTopics.length + (showCreateOption ? 1 : 0)
+            if (focusedTopicIndex === unsortedIdx && topicId) {
+              onMoveToTopic?.(tweet.id, topicId, 0)
+              onClose()
+            }
           }
         }
       }
@@ -324,27 +343,54 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
-  }, [onClose, showCategories, catItemCount, focusedCatIndex, showTopics, topicItemCount, focusedTopicIndex, filteredTopics, tweet.id, tweet.category, topicId, onSetCategory, onMoveToTopic])
+  }, [onClose, showCategories, catItemCount, focusedCatIndex, showTopics, topicItemCount, focusedTopicIndex, searchFilteredTopics, showCreateOption, topicSearch, tweet.id, tweet.category, topicId, onSetCategory, onMoveToTopic, onCreateTopicAndMove])
+
+  const submenuStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: '100%',
+    top: 0,
+    zIndex: 101,
+    background: 'var(--bg-raised)',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 'var(--radius-lg)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+    padding: 4,
+    minWidth: 160,
+  }
 
   const menu = (
     <div
       ref={menuRef}
       style={{ ...menuContainerStyle, left: pos.x, top: pos.y }}
     >
-      {/* Move to date */}
-      <HoverButton onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}>
-        <span style={iconStyle}>&#128197;</span>
-        Move to date...
-      </HoverButton>
+      {/* Move to date (hover submenu) */}
+      <div
+        style={{ position: 'relative' }}
+        onMouseEnter={() => setShowCalendar(true)}
+        onMouseLeave={() => setShowCalendar(false)}
+      >
+        <HoverButton
+          onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}
+          style={{ justifyContent: 'space-between' }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={iconStyle}>&#128197;</span>
+            Move to
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
+        </HoverButton>
 
-      {showCalendar && (
-        <MiniCalendar
-          onPick={(date) => {
-            onMoveToDate(tweet.id, date)
-            onClose()
-          }}
-        />
-      )}
+        {showCalendar && (
+          <div style={{ ...submenuStyle, minWidth: 220 }}>
+            <MiniCalendar
+              onPick={(d) => {
+                onMoveToDate(tweet.id, d)
+                onClose()
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Set / Remove OG Post */}
       {onSetOg && topicId && (
@@ -376,21 +422,31 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           </HoverButton>
 
           {showTopics && (
-            <div
-              style={{
-                position: 'absolute',
-                left: '100%',
-                top: 0,
-                zIndex: 101,
-                background: 'var(--bg-raised)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                padding: 4,
-                minWidth: 160,
-              }}
-            >
-              {filteredTopics.map((topic, idx) => (
+            <div style={submenuStyle}>
+              {/* Search / create input */}
+              <div style={{ padding: '4px 4px 4px' }}>
+                <input
+                  ref={topicInputRef}
+                  type="text"
+                  placeholder="Search or create..."
+                  value={topicSearch}
+                  onChange={(e) => { setTopicSearch(e.target.value); setFocusedTopicIndex(0) }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '5px 8px',
+                    color: 'var(--text-primary)',
+                    fontSize: 12,
+                    outline: 'none',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                />
+              </div>
+
+              {searchFilteredTopics.map((topic, idx) => (
                 <button
                   key={topic.id}
                   onClick={() => {
@@ -415,8 +471,34 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                 </button>
               ))}
 
+              {/* Create new topic option */}
+              {showCreateOption && (
+                <>
+                  {searchFilteredTopics.length > 0 && (
+                    <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
+                  )}
+                  <button
+                    onClick={() => {
+                      onCreateTopicAndMove!(tweet.id, topicId ?? 0, topicSearch.trim())
+                      onClose()
+                    }}
+                    onMouseEnter={() => setFocusedTopicIndex(searchFilteredTopics.length)}
+                    onMouseLeave={() => setFocusedTopicIndex(-1)}
+                    style={{
+                      ...itemStyle,
+                      color: 'var(--accent)',
+                      fontWeight: 500,
+                      background: focusedTopicIndex === searchFilteredTopics.length ? 'var(--bg-hover)' : 'none',
+                    }}
+                  >
+                    <span style={iconStyle}>+</span>
+                    Create &ldquo;{topicSearch.trim()}&rdquo;
+                  </button>
+                </>
+              )}
+
               {/* Move to unsorted option */}
-              {topicId && (
+              {topicId && !topicSearch && (
                 <>
                   <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
                   <button
@@ -424,12 +506,12 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                       onMoveToTopic!(tweet.id, topicId, 0)
                       onClose()
                     }}
-                    onMouseEnter={() => setFocusedTopicIndex(filteredTopics.length)}
+                    onMouseEnter={() => setFocusedTopicIndex(searchFilteredTopics.length + (showCreateOption ? 1 : 0))}
                     onMouseLeave={() => setFocusedTopicIndex(-1)}
                     style={{
                       ...itemStyle,
                       color: 'var(--text-tertiary)',
-                      background: focusedTopicIndex === filteredTopics.length ? 'var(--bg-hover)' : 'none',
+                      background: focusedTopicIndex === searchFilteredTopics.length + (showCreateOption ? 1 : 0) ? 'var(--bg-hover)' : 'none',
                     }}
                   >
                     <span style={iconStyle}>&#10005;</span>
@@ -461,20 +543,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           </HoverButton>
 
           {showCategories && (
-            <div
-              style={{
-                position: 'absolute',
-                left: '100%',
-                top: 0,
-                zIndex: 101,
-                background: 'var(--bg-raised)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                padding: 4,
-                minWidth: 160,
-              }}
-            >
+            <div style={submenuStyle}>
               {CATEGORIES.map((cat, idx) => (
                 <button
                   key={cat.key}
