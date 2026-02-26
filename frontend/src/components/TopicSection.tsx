@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, memo } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets, useFetchGrokContext } from '../api/tweets'
 import { TweetCard } from './TweetCard'
@@ -168,7 +168,7 @@ export function TopicSectionWithData({
 }
 
 // --- Draggable tweet card within a topic ---
-function DraggableTweetInTopic({
+const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   tweet,
   topicId,
   ogTweetId,
@@ -249,7 +249,7 @@ function DraggableTweetInTopic({
       </div>
     </div>
   )
-}
+})
 
 // --- Presentational component ---
 
