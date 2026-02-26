@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import type { TopicBundle } from '../api/dayBundle'
 import { useUpdateTopic } from '../api/topics'
-import { AVAILABLE_MODELS, useTopicScript, useGenerateDayScripts } from '../api/scripts'
+import { AVAILABLE_MODELS, useTopicScript, useGenerateScript, useGenerateDayScripts } from '../api/scripts'
 import {
   DndContext,
   PointerSensor,
@@ -29,17 +29,14 @@ interface TopicManagerViewProps {
   deselectAll: () => void
 }
 
-/* ---- Script status badge (per-topic) ---- */
-function ScriptStatusBadge({ topicId }: { topicId: number }) {
+/* ---- Script status badge with per-topic generate button ---- */
+function ScriptStatusBadge({ topicId, model }: { topicId: number; model: string }) {
   const { data, isLoading, isError } = useTopicScript(topicId)
+  const generateScript = useGenerateScript()
 
   if (isLoading) {
     return (
-      <span style={{
-        fontSize: 11,
-        color: 'var(--text-tertiary)',
-        padding: '2px 6px',
-      }}>
+      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px' }}>
         ...
       </span>
     )
@@ -47,34 +44,36 @@ function ScriptStatusBadge({ topicId }: { topicId: number }) {
 
   if (isError || !data) {
     return (
-      <span style={{
-        fontSize: 11,
-        color: 'var(--text-tertiary)',
-        padding: '2px 6px',
-      }}>
-        No script
-      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); generateScript.mutate({ topicId, model, fetchGrokContext: true }) }}
+        disabled={generateScript.isPending}
+        style={{
+          background: generateScript.isPending ? 'var(--bg-elevated)' : 'var(--accent)',
+          color: generateScript.isPending ? 'var(--text-tertiary)' : '#fff',
+          border: 'none', borderRadius: 'var(--radius-sm)',
+          padding: '2px 8px', fontSize: 11, fontWeight: 500,
+          cursor: generateScript.isPending ? 'wait' : 'pointer',
+        }}
+      >
+        {generateScript.isPending ? 'Generating...' : 'Generate'}
+      </button>
     )
   }
 
   return (
-    <span style={{
-      fontSize: 11,
-      color: '#22c55e',
-      padding: '2px 6px',
-      fontWeight: 500,
-    }}>
+    <span style={{ fontSize: 11, color: '#22c55e', padding: '2px 6px', fontWeight: 500 }}>
       &#10003; Script
     </span>
   )
 }
 
 /* ---- Sortable topic row ---- */
-function SortableTopicRow({ topicId, topic, isSelected, onToggle }: {
+function SortableTopicRow({ topicId, topic, isSelected, onToggle, model }: {
   topicId: number
   topic: TopicBundle
   isSelected: boolean
   onToggle: () => void
+  model: string
 }) {
   const {
     attributes,
@@ -140,7 +139,7 @@ function SortableTopicRow({ topicId, topic, isSelected, onToggle }: {
       </span>
 
       {/* Script status badge */}
-      <ScriptStatusBadge topicId={topicId} />
+      <ScriptStatusBadge topicId={topicId} model={model} />
 
       {/* Drag handle */}
       <span
@@ -285,6 +284,7 @@ export function TopicManagerView({
                   topic={topic}
                   isSelected={selectedTopicIds.has(id)}
                   onToggle={() => toggleTopic(id)}
+                  model={model}
                 />
               )
             })}

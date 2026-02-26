@@ -164,14 +164,6 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
           Script
         </button>
 
-        {/* Keyboard hint */}
-        <span style={{
-          fontSize: 11,
-          color: 'var(--text-tertiary)',
-          marginLeft: 4,
-        }}>
-          (g)
-        </span>
       </div>
 
       {/* Child views — both always mounted, toggled with display for instant switching */}
@@ -195,6 +187,7 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
 
       <div style={{
         display: activeView === 'script' ? 'flex' : 'none',
+        flexDirection: 'column',
         flex: 1,
         minHeight: 0,
         overflow: 'hidden',
