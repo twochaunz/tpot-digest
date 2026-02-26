@@ -111,6 +111,21 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
             except GrokAPIError:
                 pass  # Non-blocking: OG is set even if Grok fails
 
+    # When date changes, move all assigned tweets to the new date
+    if "date" in data and data["date"] != topic.date:
+        from datetime import datetime, timezone
+        new_date = data["date"]
+        new_saved_at = datetime(new_date.year, new_date.month, new_date.day, 12, 0, 0, tzinfo=timezone.utc)
+        assigned = (await db.execute(
+            select(TweetAssignment.tweet_id).where(TweetAssignment.topic_id == topic_id)
+        )).scalars().all()
+        if assigned:
+            tweet_rows = (await db.execute(
+                select(Tweet).where(Tweet.id.in_(assigned))
+            )).scalars().all()
+            for tw in tweet_rows:
+                tw.saved_at = new_saved_at
+
     for field, value in data.items():
         setattr(topic, field, value)
 
