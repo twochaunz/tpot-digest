@@ -27,6 +27,8 @@ interface DayFeedPanelProps {
   isActive: boolean
   activeDragTweet: Tweet | null
   setActiveDragTweet: (tweet: Tweet | null) => void
+  genPanelOpen: boolean
+  onGenPanelClose: () => void
 }
 
 export function DayFeedPanel({
@@ -35,6 +37,8 @@ export function DayFeedPanel({
   isActive,
   activeDragTweet,
   setActiveDragTweet,
+  genPanelOpen,
+  onGenPanelClose,
 }: DayFeedPanelProps) {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number; ogTweetId?: number | null } | null>(null)
@@ -73,27 +77,14 @@ export function DayFeedPanel({
   const generateAll = useGenerateDayScripts()
   const generateScript = useGenerateScript()
   const [genModel, setGenModel] = useState<string>(AVAILABLE_MODELS[0].id)
-  const [showGenPanel, setShowGenPanel] = useState(false)
   const [selectedTopicIds, setSelectedTopicIds] = useState<Set<number>>(new Set())
-  const genPanelRef = useRef<HTMLDivElement>(null)
 
-  // Reset selection to all when panel opens
-  const openGenPanel = useCallback(() => {
-    setSelectedTopicIds(new Set(topics.map((t) => t.id)))
-    setShowGenPanel(true)
-  }, [topics])
-
-  // Close panel on outside click
+  // Reset selection to all when modal opens
   useEffect(() => {
-    if (!showGenPanel) return
-    const handler = (e: MouseEvent) => {
-      if (genPanelRef.current && !genPanelRef.current.contains(e.target as Node)) {
-        setShowGenPanel(false)
-      }
+    if (genPanelOpen) {
+      setSelectedTopicIds(new Set(topics.map((t) => t.id)))
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showGenPanel])
+  }, [genPanelOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const allSelected = selectedTopicIds.size === topics.length && topics.length > 0
   const toggleTopicId = useCallback((id: number) => {
@@ -346,154 +337,10 @@ export function DayFeedPanel({
       {/* Content when loaded */}
       {!isLoading && (
         <>
-        {/* Generate scripts button + popover */}
-        {topics.length > 0 && (
-          <div style={{ position: 'relative', padding: '8px 0', marginBottom: 8 }}>
-            <button
-              onClick={openGenPanel}
-              disabled={generateAll.isPending}
-              style={{
-                fontSize: 12,
-                padding: '4px 12px',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                background: generateAll.isPending ? 'var(--bg-secondary)' : 'var(--accent)',
-                color: generateAll.isPending ? 'var(--text-tertiary)' : '#fff',
-                cursor: generateAll.isPending ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              {generateAll.isPending ? 'Generating...' : 'Generate Scripts'}
-            </button>
-            {showGenPanel && (
-              <div
-                ref={genPanelRef}
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  zIndex: 50,
-                  marginTop: 4,
-                  padding: 12,
-                  borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-primary)',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
-                  minWidth: 260,
-                  maxWidth: 360,
-                }}
-              >
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                  Select topics
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                  {sortTopics(topics).map((topic) => {
-                    const isSelected = selectedTopicIds.has(topic.id)
-                    return (
-                      <label
-                        key={topic.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          fontSize: 13,
-                          cursor: 'pointer',
-                          padding: '3px 4px',
-                          borderRadius: 4,
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-secondary)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleTopicId(topic.id)}
-                          style={{ accentColor: 'var(--accent)' }}
-                        />
-                        <span
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: topic.color || 'var(--text-tertiary)',
-                            flexShrink: 0,
-                          }}
-                        />
-                        <span style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          color: 'var(--text-primary)',
-                        }}>
-                          {topic.title}
-                        </span>
-                      </label>
-                    )
-                  })}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <button
-                    onClick={() => {
-                      if (allSelected) setSelectedTopicIds(new Set())
-                      else setSelectedTopicIds(new Set(topics.map((t) => t.id)))
-                    }}
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--text-tertiary)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: 0,
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    {allSelected ? 'Deselect All' : 'Select All'}
-                  </button>
-                  <select
-                    value={genModel}
-                    onChange={(e) => setGenModel(e.target.value)}
-                    style={{
-                      fontSize: 11,
-                      padding: '3px 6px',
-                      borderRadius: 4,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {AVAILABLE_MODELS.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  onClick={() => {
-                    generateAll.mutate({
-                      date,
-                      model: genModel,
-                      topicIds: allSelected ? undefined : Array.from(selectedTopicIds),
-                    })
-                    setShowGenPanel(false)
-                  }}
-                  disabled={selectedTopicIds.size === 0}
-                  style={{
-                    width: '100%',
-                    fontSize: 12,
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: selectedTopicIds.size === 0 ? 'var(--bg-secondary)' : 'var(--accent)',
-                    color: selectedTopicIds.size === 0 ? 'var(--text-tertiary)' : '#fff',
-                    cursor: selectedTopicIds.size === 0 ? 'not-allowed' : 'pointer',
-                    fontWeight: 500,
-                  }}
-                >
-                  {`Generate ${allSelected ? 'All' : selectedTopicIds.size} Script${allSelected || selectedTopicIds.size !== 1 ? 's' : ''}`}
-                </button>
-              </div>
-            )}
+        {/* Generating indicator */}
+        {generateAll.isPending && (
+          <div style={{ padding: '8px 0', marginBottom: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
+            Generating scripts...
           </div>
         )}
 
@@ -637,6 +484,231 @@ export function DayFeedPanel({
         onUndo={undo.undoLast}
         onDismiss={undo.dismissToast}
       />
+
+      {/* Generate scripts modal */}
+      {genPanelOpen && topics.length > 0 && (
+        <GenerateScriptsModal
+          topics={sortTopics(topics)}
+          selectedTopicIds={selectedTopicIds}
+          allSelected={allSelected}
+          genModel={genModel}
+          isPending={generateAll.isPending}
+          onToggleTopic={toggleTopicId}
+          onToggleAll={() => {
+            if (allSelected) setSelectedTopicIds(new Set())
+            else setSelectedTopicIds(new Set(topics.map((t) => t.id)))
+          }}
+          onModelChange={setGenModel}
+          onGenerate={() => {
+            generateAll.mutate({
+              date,
+              model: genModel,
+              topicIds: allSelected ? undefined : Array.from(selectedTopicIds),
+            })
+            onGenPanelClose()
+          }}
+          onClose={onGenPanelClose}
+        />
+      )}
+    </div>
+  )
+}
+
+function GenerateScriptsModal({
+  topics,
+  selectedTopicIds,
+  allSelected,
+  genModel,
+  isPending,
+  onToggleTopic,
+  onToggleAll,
+  onModelChange,
+  onGenerate,
+  onClose,
+}: {
+  topics: { id: number; title: string; color: string | null }[]
+  selectedTopicIds: Set<number>
+  allSelected: boolean
+  genModel: string
+  isPending: boolean
+  onToggleTopic: (id: number) => void
+  onToggleAll: () => void
+  onModelChange: (model: string) => void
+  onGenerate: () => void
+  onClose: () => void
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        background: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          background: 'var(--bg-raised)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '20px 24px',
+          minWidth: 340,
+          maxWidth: 440,
+          width: '100%',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+            Generate Scripts
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-tertiary)',
+              fontSize: 18,
+              cursor: 'pointer',
+              padding: '0 4px',
+              lineHeight: 1,
+            }}
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Select/Deselect All */}
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+            padding: '6px 8px',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 4,
+            color: 'var(--text-primary)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        >
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={onToggleAll}
+            style={{ accentColor: 'var(--accent)' }}
+          />
+          {allSelected ? 'Deselect All' : 'Select All'}
+        </label>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '4px 0 4px' }} />
+
+        {/* Topic list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16, maxHeight: 320, overflowY: 'auto' }}>
+          {topics.map((topic) => {
+            const isSelected = selectedTopicIds.has(topic.id)
+            return (
+              <label
+                key={topic.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  padding: '6px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleTopic(topic.id)}
+                  style={{ accentColor: 'var(--accent)' }}
+                />
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: topic.color || 'var(--text-tertiary)',
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  color: 'var(--text-primary)',
+                }}>
+                  {topic.title}
+                </span>
+              </label>
+            )
+          })}
+        </div>
+
+        {/* Model + Generate */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <select
+            value={genModel}
+            onChange={(e) => onModelChange(e.target.value)}
+            style={{
+              flex: 1,
+              fontSize: 12,
+              padding: '6px 8px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            {AVAILABLE_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={onGenerate}
+            disabled={selectedTopicIds.size === 0 || isPending}
+            style={{
+              fontSize: 13,
+              padding: '6px 16px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              background: selectedTopicIds.size === 0 || isPending ? 'var(--bg-elevated)' : 'var(--accent)',
+              color: selectedTopicIds.size === 0 || isPending ? 'var(--text-tertiary)' : '#fff',
+              cursor: selectedTopicIds.size === 0 || isPending ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {`Generate ${allSelected ? 'All' : selectedTopicIds.size} Script${allSelected || selectedTopicIds.size !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
