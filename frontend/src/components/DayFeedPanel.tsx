@@ -423,7 +423,6 @@ export function DayFeedPanel({
                     ogTweetId={topic.og_tweet_id}
                     tweets={filteredTweets}
                     onUpdateTitle={handleUpdateTopicTitle}
-                    onSetOg={handleSetOg}
                     onContextMenu={handleContextMenu}
                     onTopicContextMenu={handleTopicContextMenu}
                   />
