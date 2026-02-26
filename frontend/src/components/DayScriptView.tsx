@@ -617,10 +617,8 @@ function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
 }
 
 /* ---- Per-topic script section ---- */
-function TopicScriptSection({ topicId, topicTitle, topicColor, tweets, onImageClick, onScriptStatus }: {
+function TopicScriptSection({ topicId, tweets, onImageClick, onScriptStatus }: {
   topicId: number
-  topicTitle: string
-  topicColor: string | null
   tweets: Tweet[]
   onImageClick: (url: string) => void
   onScriptStatus: (topicId: number, hasScript: boolean) => void
@@ -747,9 +745,8 @@ function TopicScriptSection({ topicId, topicTitle, topicColor, tweets, onImageCl
 }
 
 /* ---- Read-only mirror of a topic's script (right column) ---- */
-function TopicScriptSectionMirror({ topicId, topicColor, tweets, allTweets, onImageClick }: {
+function TopicScriptSectionMirror({ topicId, tweets, allTweets, onImageClick }: {
   topicId: number
-  topicColor: string | null
   tweets: Tweet[]
   allTweets: Tweet[]
   onImageClick: (url: string) => void
@@ -758,9 +755,6 @@ function TopicScriptSectionMirror({ topicId, topicColor, tweets, allTweets, onIm
 
   const groupedBlocks = script ? groupBlocks(script.content) : []
   const tweetPool = [...tweets, ...allTweets]
-
-  // Suppress unused variable warning — topicColor used for consistency with left column
-  void topicColor
 
   return (
     <div style={{ marginBottom: 8 }}>
@@ -898,8 +892,6 @@ function SortableTopicItem({ topic, editable, allTweets, onImageClick, onScriptS
       {editable ? (
         <TopicScriptSection
           topicId={topic.id}
-          topicTitle={topic.title}
-          topicColor={topic.color}
           tweets={topic.tweets}
           onImageClick={onImageClick}
           onScriptStatus={onScriptStatus}
@@ -907,7 +899,6 @@ function SortableTopicItem({ topic, editable, allTweets, onImageClick, onScriptS
       ) : (
         <TopicScriptSectionMirror
           topicId={topic.id}
-          topicColor={topic.color}
           tweets={topic.tweets}
           allTweets={allTweets}
           onImageClick={onImageClick}
