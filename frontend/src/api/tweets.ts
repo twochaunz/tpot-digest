@@ -35,13 +35,14 @@ export function useTweets(params: {
   unassigned?: boolean
   q?: string
   thread_id?: string
-}) {
+}, options?: { enabled?: boolean }) {
   return useQuery<Tweet[]>({
     queryKey: ['tweets', params],
     queryFn: async () => {
       const { data } = await api.get('/tweets', { params })
       return data
     },
+    enabled: options?.enabled,
   })
 }
 
