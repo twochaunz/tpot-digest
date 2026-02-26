@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useGenerateScript, useGenerateDayScripts, AVAILABLE_MODELS } from '../api/scripts'
 import {
   DndContext,
@@ -73,6 +73,23 @@ export function DayFeedPanel({
   const generateAll = useGenerateDayScripts()
   const generateScript = useGenerateScript()
   const [genModel, setGenModel] = useState<string>(AVAILABLE_MODELS[0].id)
+  const [selectedTopicIds, setSelectedTopicIds] = useState<Set<number>>(new Set())
+
+  // Reset selection to all when topic set changes (add/remove/date change)
+  const topicIdsKey = topics.map((t) => t.id).sort((a, b) => a - b).join(',')
+  useEffect(() => {
+    setSelectedTopicIds(new Set(topics.map((t) => t.id)))
+  }, [topicIdsKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const allSelected = selectedTopicIds.size === topics.length
+  const toggleTopicId = useCallback((id: number) => {
+    setSelectedTopicIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   // DnD sensors: 8px activation distance so clicks still work
   const sensors = useSensors(
@@ -315,51 +332,105 @@ export function DayFeedPanel({
       {/* Content when loaded */}
       {!isLoading && (
         <>
-        {/* Generate all scripts */}
+        {/* Generate scripts with topic selection */}
         {topics.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 0',
-              marginBottom: 8,
-            }}
-          >
-            <select
-              value={genModel}
-              onChange={(e) => setGenModel(e.target.value)}
-              style={{
-                fontSize: 12,
-                padding: '4px 8px',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              {AVAILABLE_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => generateAll.mutate({ date, model: genModel })}
-              disabled={generateAll.isPending}
-              style={{
-                fontSize: 12,
-                padding: '4px 12px',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                background: generateAll.isPending ? 'var(--bg-secondary)' : 'var(--accent)',
-                color: generateAll.isPending ? 'var(--text-tertiary)' : '#fff',
-                cursor: generateAll.isPending ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              {generateAll.isPending ? 'Generating...' : 'Generate All Scripts'}
-            </button>
+          <div style={{ padding: '8px 0', marginBottom: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {sortTopics(topics).map((topic) => {
+                const isSelected = selectedTopicIds.has(topic.id)
+                return (
+                  <button
+                    key={topic.id}
+                    onClick={() => toggleTopicId(topic.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 12,
+                      padding: '3px 10px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      background: isSelected ? 'var(--bg-secondary)' : 'transparent',
+                      color: 'var(--text-primary)',
+                      opacity: isSelected ? 1 : 0.4,
+                      cursor: 'pointer',
+                      maxWidth: 180,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: topic.color || 'var(--text-tertiary)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    {topic.title}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => {
+                  if (allSelected) setSelectedTopicIds(new Set())
+                  else setSelectedTopicIds(new Set(topics.map((t) => t.id)))
+                }}
+                style={{
+                  fontSize: 11,
+                  color: 'var(--text-tertiary)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  textDecoration: 'underline',
+                }}
+              >
+                {allSelected ? 'Deselect All' : 'Select All'}
+              </button>
+              <select
+                value={genModel}
+                onChange={(e) => setGenModel(e.target.value)}
+                style={{
+                  fontSize: 12,
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {AVAILABLE_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => generateAll.mutate({
+                  date,
+                  model: genModel,
+                  topicIds: allSelected ? undefined : Array.from(selectedTopicIds),
+                })}
+                disabled={generateAll.isPending || selectedTopicIds.size === 0}
+                style={{
+                  fontSize: 12,
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: generateAll.isPending || selectedTopicIds.size === 0 ? 'var(--bg-secondary)' : 'var(--accent)',
+                  color: generateAll.isPending || selectedTopicIds.size === 0 ? 'var(--text-tertiary)' : '#fff',
+                  cursor: generateAll.isPending || selectedTopicIds.size === 0 ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {generateAll.isPending ? 'Generating...' : `Generate ${allSelected ? 'All' : selectedTopicIds.size} Script${selectedTopicIds.size !== 1 ? 's' : ''}`}
+              </button>
+            </div>
           </div>
         )}
 

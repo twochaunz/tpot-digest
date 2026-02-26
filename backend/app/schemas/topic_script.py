@@ -44,3 +44,4 @@ class ScriptVersionSummary(BaseModel):
 class DayScriptGenerateRequest(BaseModel):
     model: str = "grok-4-1-fast-reasoning"
     fetch_grok_context: bool = True
+    topic_ids: list[int] | None = None  # None = all topics

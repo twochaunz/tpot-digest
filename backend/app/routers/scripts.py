@@ -201,6 +201,10 @@ async def generate_day_scripts(
         select(Topic).where(Topic.date == date).order_by(Topic.position)
     )).scalars().all()
 
+    if body.topic_ids:
+        allowed = set(body.topic_ids)
+        topics = [t for t in topics if t.id in allowed]
+
     results = []
     for topic in topics:
         req = ScriptGenerateRequest(model=body.model, fetch_grok_context=body.fetch_grok_context)
