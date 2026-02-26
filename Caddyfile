@@ -7,7 +7,12 @@
 
 	# API routes (must be before frontend catch-all)
 	handle /api/* {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8000 {
+			transport http {
+				response_header_timeout 120s
+				dial_timeout 10s
+			}
+		}
 	}
 
 	# Frontend (catch-all)
