@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useGenerateDayScripts, AVAILABLE_MODELS } from '../api/scripts'
 import {
   DndContext,
   DragOverlay,
@@ -56,6 +57,10 @@ export function DayFeedPanel({
 
   // Undo
   const undo = useUndo(date)
+
+  // Generate all scripts
+  const generateAll = useGenerateDayScripts()
+  const [genModel, setGenModel] = useState(AVAILABLE_MODELS[0].id)
 
   // DnD sensors: 8px activation distance so clicks still work
   const sensors = useSensors(
@@ -241,6 +246,55 @@ export function DayFeedPanel({
 
       {/* Content when loaded */}
       {!isLoading && (
+        <>
+        {/* Generate all scripts */}
+        {topics.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 0',
+              marginBottom: 8,
+            }}
+          >
+            <select
+              value={genModel}
+              onChange={(e) => setGenModel(e.target.value)}
+              style={{
+                fontSize: 12,
+                padding: '4px 8px',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              {AVAILABLE_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => generateAll.mutate({ date, model: genModel })}
+              disabled={generateAll.isPending}
+              style={{
+                fontSize: 12,
+                padding: '4px 12px',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: generateAll.isPending ? 'var(--bg-secondary)' : 'var(--accent)',
+                color: generateAll.isPending ? 'var(--text-tertiary)' : '#fff',
+                cursor: generateAll.isPending ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              {generateAll.isPending ? 'Generating...' : 'Generate All Scripts'}
+            </button>
+          </div>
+        )}
+
         <DndContext
           sensors={sensors}
           collisionDetection={pointerWithin}
@@ -330,6 +384,7 @@ export function DayFeedPanel({
             {activeDragTweet ? <DragOverlayCard tweet={activeDragTweet} /> : null}
           </DragOverlay>
         </DndContext>
+        </>
       )}
 
       {/* Context menu */}
