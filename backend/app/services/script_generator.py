@@ -22,18 +22,19 @@ _anthropic_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 CATEGORY_ORDER = ["context", "kek", "signal-boost", "pushback", "hot-take"]
 
 DEFAULT_STYLE_GUIDE = """PURPOSE:
-- This is a value add — within 20 seconds the viewer should get MORE than if they read all the tweets and articles themselves
-- Be interesting. Scratch an itch, don't give a full blown massage
-- Not sensationalism nor embellishment, not boring regurgitation. Don't ask rhetorical questions. Don't give the viewer exercises like "Imagine a world..."
+- This is a value add — this summary should be <20-30 seconds to give a reader MORE than if they read all the tweets and articles themselves
+- This should not be sensationalism nor embellishment. This should not be boring regurgitation.
 
 STRUCTURE:
 - Don't parrot the headline or tweet text — explain what's actually going on
-- If the topic is obscure or super niche, give background on the OG post, the author, or any relevant parties so the viewer understands why it matters
+- Don't ask rhetorical questions.
+- Don't give the viewer exercises like "Imagine a world...". If you are going to compare, use previous day topics or common discourse/sentiment in tech specifically like "...as opposed to how people felt about Anthropic's latest model this past week" (You should have a reputable source)
+- If the topic is obscure or super niche, give a brief background on the OG post, the author, or any relevant parties so the viewer understands why it matters
 - Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof
 
 CATEGORIES ARE INTERNAL ONLY:
 - The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles — NEVER use these words in the script
-- Describe reactions naturally: "people celebrated...", "critics pushed back...", "the joke that took off was...", "one spicy take stood out..."
+- Describe reactions naturally: "people celebrated...", "critics pushed back...", "people had crazy reactions to...", "one spicy take stood out..."
 - Reference specific people/entities when they're central to the story"""
 
 
@@ -109,13 +110,13 @@ def build_prompt(
     parts.append('- {"type": "tweet", "tweet_id": "123456"}')
     parts.append("")
     parts.append("INSTRUCTIONS:")
-    parts.append("- Start with a hook — make the viewer immediately curious or invested")
-    parts.append("- Do NOT repeat the OG tweet's text — instead explain the background and why it matters")
+    parts.append('- The hook should be a straightforward statement about people\'s reaction like "The timeline was in turmoil after..." or about the news itself like "OpenAi launched a...". It could also be something like the name of a trending article (if the name is self explanatory or provoking).')
+    parts.append("- Do NOT repeat the OG tweet's text. Should paraphrase (not forced) and follow our style guide")
     parts.append("- Place tweets as evidence at natural moments in the narrative")
-    parts.append("- Use the category groupings to shape flow (context first, then reactions, pushback, hot takes) but NEVER mention category names in prose")
-    parts.append("- You do NOT need every tweet. Aggregate similar sentiment into natural phrases ('the consensus was...', 'critics argued...') and embed only 1-2 representative tweets as proof")
-    parts.append("- Every sentence must earn its place: educate, evoke, or entertain — strip anything that doesn't")
-    parts.append("- Only reference tweet_ids from the list above")
+    parts.append("- Use the category groupings to guide flow (context first, then reactions, pushback, hot takes) but NEVER mention category names in prose. You can change the order if it makes a story more compelling.")
+    parts.append("- You do NOT need every tweet. Aggregate similar sentiment into natural phrases ('the consensus was...', 'critics argued...') and embed only 2-3 representative tweets as proof")
+    parts.append("- While following the style guide, the script should educate, evoke, and/or entertain — strip anything that doesn't")
+    parts.append('- Only reference tweet_ids from the list above, except in interesting comparison situations that tech would know (like "their previous week\'s launch did better...")')
     parts.append("- Return ONLY the JSON array, no other text")
 
     return "\n".join(parts)
