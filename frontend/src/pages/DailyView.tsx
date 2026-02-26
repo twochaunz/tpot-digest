@@ -37,6 +37,7 @@ export function DailyView() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
   const [keysOpen, setKeysOpen] = useState(false)
+  const [genPanelOpen, setGenPanelOpen] = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -153,8 +154,8 @@ export function DailyView() {
             alignItems: 'center',
           }}
         >
-          {/* Left: keyboard shortcuts */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          {/* Left: keyboard shortcuts + generate scripts */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={() => setKeysOpen(true)}
               style={{
@@ -175,6 +176,27 @@ export function DailyView() {
               title="Keyboard shortcuts (?)"
             >
               &#9000;
+            </button>
+            <button
+              onClick={() => setGenPanelOpen(true)}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                width: 34,
+                height: 34,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                fontSize: 16,
+                transition: 'all 0.15s ease',
+              }}
+              aria-label="Generate scripts"
+              title="Generate scripts"
+            >
+              &#9998;
             </button>
           </div>
 
@@ -270,6 +292,8 @@ export function DailyView() {
         date={date}
         onDateChange={setDate}
         search={debouncedSearch}
+        genPanelOpen={genPanelOpen}
+        onGenPanelClose={() => setGenPanelOpen(false)}
       />
 
       {/* TOC FAB button */}

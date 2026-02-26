@@ -1,7 +1,8 @@
+import html
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class TweetSave(BaseModel):
@@ -43,6 +44,11 @@ class TweetOut(BaseModel):
     status: str = "saved"
 
     model_config = {"from_attributes": True}
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def unescape_text(cls, v: str) -> str:
+        return html.unescape(v) if v else v
 
 
 class TweetUpdate(BaseModel):

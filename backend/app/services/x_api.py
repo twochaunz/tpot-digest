@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+
 import httpx
 
 from app.config import settings
@@ -118,7 +120,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "author_display_name": author.get("name", "") if author else "",
         "author_avatar_url": author.get("profile_image_url", "") if author else "",
         "author_verified": (author.get("verified", False) or bool(author.get("verified_type"))) if author else False,
-        "text": data.get("note_tweet", {}).get("text") or data.get("text", ""),
+        "text": html.unescape(data.get("note_tweet", {}).get("text") or data.get("text", "")),
         "url": f"https://x.com/{author_handle}/status/{tweet_id}" if author_handle else f"https://x.com/i/status/{tweet_id}",
         "media_urls": media_urls,
         "engagement": {
