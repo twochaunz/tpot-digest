@@ -246,3 +246,36 @@ async def test_grok_endpoint(client: AsyncClient):
 async def test_grok_endpoint_not_found(client: AsyncClient):
     resp = await client.post("/api/tweets/99999/grok")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_day_bundle(client: AsyncClient):
+    # Save 3 tweets
+    for i in range(3):
+        await client.post("/api/tweets", json={"tweet_id": f"bundle_{i}"})
+
+    # Create a topic for today
+    from datetime import date
+    today = date.today().isoformat()
+    topic_resp = await client.post("/api/topics", json={"title": "Test Topic", "date": today})
+    assert topic_resp.status_code == 201
+    topic_id = topic_resp.json()["id"]
+
+    # Assign tweet 0 to topic with a category
+    tweets = (await client.get("/api/tweets")).json()
+    tweet_id = tweets[0]["id"]
+    await client.post("/api/tweets/assign", json={
+        "tweet_ids": [tweet_id], "topic_id": topic_id, "category": "commentary",
+    })
+
+    # Fetch bundle
+    resp = await client.get(f"/api/days/{today}/bundle")
+    assert resp.status_code == 200
+    bundle = resp.json()
+
+    # Should have 1 topic with 1 tweet and 2 unsorted
+    assert len(bundle["topics"]) == 1
+    assert bundle["topics"][0]["id"] == topic_id
+    assert len(bundle["topics"][0]["tweets"]) == 1
+    assert bundle["topics"][0]["tweets"][0]["category"] == "commentary"
+    assert len(bundle["unsorted"]) == 2
