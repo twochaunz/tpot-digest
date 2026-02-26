@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, memo } from 'react'
+import { createPortal } from 'react-dom'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets, useFetchGrokContext } from '../api/tweets'
 import { TweetCard } from './TweetCard'
@@ -282,16 +283,6 @@ function TopicSection({
         borderRadius: 'var(--radius-lg)',
         transition: 'border 0.15s ease',
         scrollSnapAlign: 'start' as const,
-        ...(viewMode === 'script' ? {
-          position: 'fixed' as const,
-          top: 66,
-          left: 0,
-          width: '100vw',
-          height: 'calc(100vh - 66px)',
-          zIndex: 60,
-          borderRadius: 0,
-          border: 'none',
-        } : {}),
       }}
     >
       {/* Header */}
@@ -436,20 +427,74 @@ function TopicSection({
 
       </div>
 
-      {/* Body (droppable) - collapsible */}
-      {!collapsed && (
-        <div ref={setNodeRef} style={{
-          padding: viewMode === 'script' ? 0 : '12px 8px',
-          minHeight: 60,
-          ...(viewMode === 'script' ? { flex: 1, display: 'flex', flexDirection: 'column' as const, minHeight: 0 } : {}),
+      {/* Script overlay — portal to body so it covers full viewport */}
+      {viewMode === 'script' && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 66,
+          left: 0,
+          width: '100vw',
+          height: 'calc(100vh - 66px)',
+          zIndex: 60,
+          background: 'var(--bg-raised)',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
-          {viewMode === 'script' ? (
+          {/* Script header bar with topic title + close */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '8px 20px',
+            borderBottom: '1px solid var(--border)',
+            gap: 12,
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
+              {title}
+            </span>
+            <button
+              onClick={onToggleViewMode}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                color: 'var(--text-secondary)',
+                fontSize: 12,
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              Back to Edit
+            </button>
+          </div>
+          <div style={{ flex: 1, minHeight: 0 }}>
             <ScriptView
               topicId={topicId}
               script={activeScript}
               tweets={allTweets}
               showEngagement={showEngagement}
             />
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* Body (droppable) - collapsible */}
+      {!collapsed && (
+        <div ref={setNodeRef} style={{
+          padding: '12px 8px',
+          minHeight: 60,
+        }}>
+          {viewMode === 'script' ? (
+            /* Placeholder when script overlay is open */
+            <div style={{
+              padding: '24px 0',
+              textAlign: 'center',
+              color: 'var(--text-tertiary)',
+              fontSize: 13,
+            }}>
+              Script view is open
+            </div>
           ) : (
             <>
               {totalTweets === 0 && (
