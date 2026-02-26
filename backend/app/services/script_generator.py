@@ -25,6 +25,7 @@ DEFAULT_STYLE_GUIDE = """PURPOSE:
 - This is a value add — within 20 seconds the viewer should get MORE than if they read all the tweets and articles themselves
 - Be interesting. Scratch an itch, don't give a full blown massage
 - Not sensationalism, not boring regurgitation
+- No rhetorical questions. No embellishment. Just deliver the information straight
 
 STRUCTURE:
 - Don't parrot the headline or tweet text — explain what's actually going on
