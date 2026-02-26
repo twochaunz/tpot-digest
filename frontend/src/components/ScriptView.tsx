@@ -35,7 +35,7 @@ function ScriptTweetBlock({ tweetId, tweets }: { tweetId: string; tweets: Tweet[
 }
 
 export default function ScriptView({ topicId, script, tweets }: ScriptViewProps) {
-  const [model, setModel] = useState(AVAILABLE_MODELS[0].id)
+  const [model, setModel] = useState<string>(AVAILABLE_MODELS[0].id)
   const [feedback, setFeedback] = useState('')
   const generateScript = useGenerateScript()
 
