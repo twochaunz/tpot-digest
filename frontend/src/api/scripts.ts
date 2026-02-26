@@ -85,14 +85,16 @@ export function useGenerateScript() {
 export function useGenerateDayScripts() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ date, model, fetchGrokContext }: {
+    mutationFn: async ({ date, model, fetchGrokContext, topicIds }: {
       date: string
       model: string
       fetchGrokContext?: boolean
+      topicIds?: number[]
     }) => {
       const { data } = await api.post(`/dates/${date}/script/generate`, {
         model,
         fetch_grok_context: fetchGrokContext ?? true,
+        topic_ids: topicIds ?? null,
       })
       return data as TopicScript[]
     },
