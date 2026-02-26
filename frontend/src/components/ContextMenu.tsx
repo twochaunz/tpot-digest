@@ -27,7 +27,6 @@ export interface TopicContextMenuProps {
   onClose: () => void
   onDelete: (topicId: number) => void
   onMoveToDate: (topicId: number, date: string) => void
-  onGenerateScript: (topicId: number) => void
 }
 
 const MONTH_NAMES = [
@@ -673,7 +672,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
 
 // ── Topic Context Menu ──
 
-export function TopicContextMenu({ x, y, topicId, topicTitle, onClose, onDelete, onMoveToDate, onGenerateScript }: TopicContextMenuProps) {
+export function TopicContextMenu({ x, y, topicId, topicTitle, onClose, onDelete, onMoveToDate }: TopicContextMenuProps) {
   const [showCalendar, setShowCalendar] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -685,12 +684,6 @@ export function TopicContextMenu({ x, y, topicId, topicTitle, onClose, onDelete,
       ref={menuRef}
       style={{ ...menuContainerStyle, left: pos.x, top: pos.y }}
     >
-      {/* Generate Script */}
-      <HoverButton onClick={() => { onGenerateScript(topicId); onClose() }}>
-        <span style={iconStyle}>&#9999;&#65039;</span>
-        Generate Script
-      </HoverButton>
-
       {/* Move to date (hover submenu) */}
       <div
         style={{ position: 'relative' }}
