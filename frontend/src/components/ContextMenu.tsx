@@ -362,47 +362,80 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
       ref={menuRef}
       style={{ ...menuContainerStyle, left: pos.x, top: pos.y }}
     >
-      {/* Move to date (hover submenu) */}
-      <div
-        style={{ position: 'relative' }}
-        onMouseEnter={() => setShowCalendar(true)}
-        onMouseLeave={() => setShowCalendar(false)}
-      >
-        <HoverButton
-          onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}
-          style={{ justifyContent: 'space-between' }}
+      {/* 1. Category */}
+      {onSetCategory && topicId && (
+        <div
+          style={{ position: 'relative' }}
+          onMouseEnter={() => setShowCategories(true)}
+          onMouseLeave={() => setShowCategories(false)}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={iconStyle}>&#128197;</span>
-            Move to
-          </span>
-          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
-        </HoverButton>
+          <HoverButton
+            onClick={(e) => { e.stopPropagation(); setShowCategories((v) => !v) }}
+            style={{ justifyContent: 'space-between' }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={iconStyle}>&#127991;</span>
+              Category
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
+          </HoverButton>
 
-        {showCalendar && (
-          <div style={{ ...submenuStyle, minWidth: 220 }}>
-            <MiniCalendar
-              onPick={(d) => {
-                onMoveToDate(tweet.id, d)
-                onClose()
-              }}
-            />
-          </div>
-        )}
-      </div>
+          {showCategories && (
+            <div style={submenuStyle}>
+              {CATEGORIES.map((cat, idx) => (
+                <button
+                  key={cat.key}
+                  onClick={() => {
+                    onSetCategory(tweet.id, topicId, cat.key)
+                    onClose()
+                  }}
+                  onMouseEnter={() => setFocusedCatIndex(idx)}
+                  onMouseLeave={() => setFocusedCatIndex(-1)}
+                  style={{
+                    ...itemStyle,
+                    fontWeight: tweet.category === cat.key ? 600 : 400,
+                    background: focusedCatIndex === idx ? 'var(--bg-hover)' : 'none',
+                  }}
+                >
+                  <span style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: cat.color,
+                    flexShrink: 0,
+                  }} />
+                  {cat.label}
+                </button>
+              ))}
 
-      {/* Set / Remove OG Post */}
-      {onSetOg && topicId && (
-        <HoverButton
-          onClick={() => { onSetOg(topicId, ogTweetId === tweet.id ? null : tweet.id); onClose() }}
-          style={{ color: '#F59E0B' }}
-        >
-          <span style={iconStyle}>{ogTweetId === tweet.id ? '\u2716' : '\u2B50'}</span>
-          {ogTweetId === tweet.id ? 'Remove OG' : 'Set as OG Post'}
-        </HoverButton>
+              {/* Remove category option */}
+              {tweet.category && (
+                <>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
+                  <button
+                    onClick={() => {
+                      onSetCategory(tweet.id, topicId, null)
+                      onClose()
+                    }}
+                    onMouseEnter={() => setFocusedCatIndex(CATEGORIES.length)}
+                    onMouseLeave={() => setFocusedCatIndex(-1)}
+                    style={{
+                      ...itemStyle,
+                      color: 'var(--text-tertiary)',
+                      background: focusedCatIndex === CATEGORIES.length ? 'var(--bg-hover)' : 'none',
+                    }}
+                  >
+                    <span style={iconStyle}>&#10005;</span>
+                    Remove Category
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Move to topic */}
+      {/* 2. Topic */}
       {showMoveToTopic && (
         <div
           style={{ position: 'relative' }}
@@ -523,81 +556,48 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
         </div>
       )}
 
-      {/* Set Category */}
-      {onSetCategory && topicId && (
-        <div
-          style={{ position: 'relative' }}
-          onMouseEnter={() => setShowCategories(true)}
-          onMouseLeave={() => setShowCategories(false)}
+      {/* 3. Date (hover submenu) */}
+      <div
+        style={{ position: 'relative' }}
+        onMouseEnter={() => setShowCalendar(true)}
+        onMouseLeave={() => setShowCalendar(false)}
+      >
+        <HoverButton
+          onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}
+          style={{ justifyContent: 'space-between' }}
         >
-          <HoverButton
-            onClick={(e) => { e.stopPropagation(); setShowCategories((v) => !v) }}
-            style={{ justifyContent: 'space-between' }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={iconStyle}>&#127991;</span>
-              Category
-            </span>
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
-          </HoverButton>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={iconStyle}>&#128197;</span>
+            Date
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
+        </HoverButton>
 
-          {showCategories && (
-            <div style={submenuStyle}>
-              {CATEGORIES.map((cat, idx) => (
-                <button
-                  key={cat.key}
-                  onClick={() => {
-                    onSetCategory(tweet.id, topicId, cat.key)
-                    onClose()
-                  }}
-                  onMouseEnter={() => setFocusedCatIndex(idx)}
-                  onMouseLeave={() => setFocusedCatIndex(-1)}
-                  style={{
-                    ...itemStyle,
-                    fontWeight: tweet.category === cat.key ? 600 : 400,
-                    background: focusedCatIndex === idx ? 'var(--bg-hover)' : 'none',
-                  }}
-                >
-                  <span style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: cat.color,
-                    flexShrink: 0,
-                  }} />
-                  {cat.label}
-                </button>
-              ))}
-
-              {/* Remove category option */}
-              {tweet.category && (
-                <>
-                  <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
-                  <button
-                    onClick={() => {
-                      onSetCategory(tweet.id, topicId, null)
-                      onClose()
-                    }}
-                    onMouseEnter={() => setFocusedCatIndex(CATEGORIES.length)}
-                    onMouseLeave={() => setFocusedCatIndex(-1)}
-                    style={{
-                      ...itemStyle,
-                      color: 'var(--text-tertiary)',
-                      background: focusedCatIndex === CATEGORIES.length ? 'var(--bg-hover)' : 'none',
-                    }}
-                  >
-                    <span style={iconStyle}>&#10005;</span>
-                    Remove Category
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        {showCalendar && (
+          <div style={{ ...submenuStyle, minWidth: 220 }}>
+            <MiniCalendar
+              onPick={(d) => {
+                onMoveToDate(tweet.id, d)
+                onClose()
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Divider */}
       <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
+
+      {/* Set / Remove OG Post */}
+      {onSetOg && topicId && (
+        <HoverButton
+          onClick={() => { onSetOg(topicId, ogTweetId === tweet.id ? null : tweet.id); onClose() }}
+          style={{ color: '#F59E0B' }}
+        >
+          <span style={iconStyle}>{ogTweetId === tweet.id ? '\u2716' : '\u2B50'}</span>
+          {ogTweetId === tweet.id ? 'Remove OG' : 'Set as OG Post'}
+        </HoverButton>
+      )}
 
       {/* Open on X */}
       {tweet.url && (
@@ -638,20 +638,45 @@ export function TopicContextMenu({ x, y, topicId, topicTitle, onClose, onDelete,
         Generate Script
       </HoverButton>
 
-      {/* Move to date */}
-      <HoverButton onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}>
-        <span style={iconStyle}>&#128197;</span>
-        Move to date...
-      </HoverButton>
+      {/* Move to date (hover submenu) */}
+      <div
+        style={{ position: 'relative' }}
+        onMouseEnter={() => setShowCalendar(true)}
+        onMouseLeave={() => setShowCalendar(false)}
+      >
+        <HoverButton
+          onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}
+          style={{ justifyContent: 'space-between' }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={iconStyle}>&#128197;</span>
+            Move to date
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
+        </HoverButton>
 
-      {showCalendar && (
-        <MiniCalendar
-          onPick={(date) => {
-            onMoveToDate(topicId, date)
-            onClose()
-          }}
-        />
-      )}
+        {showCalendar && (
+          <div style={{
+            position: 'absolute',
+            left: '100%',
+            top: 0,
+            zIndex: 101,
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+            padding: 4,
+            minWidth: 220,
+          }}>
+            <MiniCalendar
+              onPick={(date) => {
+                onMoveToDate(topicId, date)
+                onClose()
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Divider */}
       <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />

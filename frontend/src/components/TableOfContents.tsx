@@ -117,7 +117,7 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         </div>
 
         {/* Entries */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div key={date} style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Unsorted entry (only if tweets exist) */}
           {filteredUnsorted.length > 0 && (
             <TOCEntry
