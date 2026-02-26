@@ -18,6 +18,17 @@ interface ContextMenuProps {
   onMoveToTopic?: (tweetId: number, fromTopicId: number, toTopicId: number) => void
 }
 
+export interface TopicContextMenuProps {
+  x: number
+  y: number
+  topicId: number
+  topicTitle: string
+  onClose: () => void
+  onDelete: (topicId: number) => void
+  onMoveToDate: (topicId: number, date: string) => void
+  onGenerateScript: (topicId: number) => void
+}
+
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
@@ -133,15 +144,37 @@ function MiniCalendar({ onPick }: { onPick: (date: string) => void }) {
   )
 }
 
-export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory, topics, onMoveToTopic }: ContextMenuProps) {
-  const [showCalendar, setShowCalendar] = useState(false)
-  const [showCategories, setShowCategories] = useState(false)
-  const [focusedCatIndex, setFocusedCatIndex] = useState(-1)
-  const [showTopics, setShowTopics] = useState(false)
-  const [focusedTopicIndex, setFocusedTopicIndex] = useState(-1)
-  const menuRef = useRef<HTMLDivElement>(null)
+const itemStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  padding: '7px 12px',
+  background: 'none',
+  border: 'none',
+  color: 'var(--text-primary)',
+  fontSize: 13,
+  cursor: 'pointer',
+  textAlign: 'left',
+  fontFamily: 'var(--font-body)',
+  borderRadius: 'var(--radius-sm)',
+  transition: 'background 0.1s ease',
+}
 
-  // Position with edge detection
+const menuContainerStyle: React.CSSProperties = {
+  position: 'fixed',
+  zIndex: 100,
+  background: 'var(--bg-raised)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 'var(--radius-lg)',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+  padding: 4,
+  minWidth: 180,
+}
+
+const iconStyle: React.CSSProperties = { fontSize: 14, width: 18, textAlign: 'center' }
+
+function useMenuPosition(x: number, y: number, menuRef: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
   const [pos, setPos] = useState({ x, y })
   useEffect(() => {
     const el = menuRef.current
@@ -153,7 +186,53 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
     if (nx < 8) nx = 8
     if (ny < 8) ny = 8
     setPos({ x: nx, y: ny })
-  }, [x, y, showCalendar])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [x, y, ...deps])
+  return pos
+}
+
+function useMenuClose(menuRef: React.RefObject<HTMLDivElement | null>, onClose: () => void, onKey?: (e: KeyboardEvent) => void) {
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose()
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { onClose(); return }
+      onKey?.(e)
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  })
+}
+
+function HoverButton({ style, onClick, children }: { style?: React.CSSProperties; onClick?: (e: React.MouseEvent) => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+      style={{ ...itemStyle, ...style }}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ── Tweet Context Menu ──
+
+export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory, topics, onMoveToTopic }: ContextMenuProps) {
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [showCategories, setShowCategories] = useState(false)
+  const [focusedCatIndex, setFocusedCatIndex] = useState(-1)
+  const [showTopics, setShowTopics] = useState(false)
+  const [focusedTopicIndex, setFocusedTopicIndex] = useState(-1)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const pos = useMenuPosition(x, y, menuRef, [showCalendar])
 
   // Reset focused index when submenu opens/closes
   useEffect(() => {
@@ -247,49 +326,16 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
     }
   }, [onClose, showCategories, catItemCount, focusedCatIndex, showTopics, topicItemCount, focusedTopicIndex, filteredTopics, tweet.id, tweet.category, topicId, onSetCategory, onMoveToTopic])
 
-  const itemStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    padding: '7px 12px',
-    background: 'none',
-    border: 'none',
-    color: 'var(--text-primary)',
-    fontSize: 13,
-    cursor: 'pointer',
-    textAlign: 'left',
-    fontFamily: 'var(--font-body)',
-    borderRadius: 'var(--radius-sm)',
-    transition: 'background 0.1s ease',
-  }
-
   const menu = (
     <div
       ref={menuRef}
-      style={{
-        position: 'fixed',
-        left: pos.x,
-        top: pos.y,
-        zIndex: 100,
-        background: 'var(--bg-raised)',
-        border: '1px solid var(--border-strong)',
-        borderRadius: 'var(--radius-lg)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-        padding: 4,
-        minWidth: 180,
-      }}
+      style={{ ...menuContainerStyle, left: pos.x, top: pos.y }}
     >
       {/* Move to date */}
-      <button
-        onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-        style={itemStyle}
-      >
-        <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#128197;</span>
+      <HoverButton onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}>
+        <span style={iconStyle}>&#128197;</span>
         Move to date...
-      </button>
+      </HoverButton>
 
       {showCalendar && (
         <MiniCalendar
@@ -302,18 +348,13 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
 
       {/* Set / Remove OG Post */}
       {onSetOg && topicId && (
-        <button
-          onClick={() => {
-            onSetOg(topicId, ogTweetId === tweet.id ? null : tweet.id)
-            onClose()
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-          style={{ ...itemStyle, color: '#F59E0B' }}
+        <HoverButton
+          onClick={() => { onSetOg(topicId, ogTweetId === tweet.id ? null : tweet.id); onClose() }}
+          style={{ color: '#F59E0B' }}
         >
-          <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>{ogTweetId === tweet.id ? '\u2716' : '\u2B50'}</span>
+          <span style={iconStyle}>{ogTweetId === tweet.id ? '\u2716' : '\u2B50'}</span>
           {ogTweetId === tweet.id ? 'Remove OG' : 'Set as OG Post'}
-        </button>
+        </HoverButton>
       )}
 
       {/* Move to topic */}
@@ -323,18 +364,16 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           onMouseEnter={() => setShowTopics(true)}
           onMouseLeave={() => setShowTopics(false)}
         >
-          <button
+          <HoverButton
             onClick={(e) => { e.stopPropagation(); setShowTopics((v) => !v) }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-            style={{ ...itemStyle, justifyContent: 'space-between' }}
+            style={{ justifyContent: 'space-between' }}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#128194;</span>
+              <span style={iconStyle}>&#128194;</span>
               Move to topic
             </span>
             <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
-          </button>
+          </HoverButton>
 
           {showTopics && (
             <div
@@ -393,7 +432,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                       background: focusedTopicIndex === filteredTopics.length ? 'var(--bg-hover)' : 'none',
                     }}
                   >
-                    <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#10005;</span>
+                    <span style={iconStyle}>&#10005;</span>
                     Move to unsorted
                   </button>
                 </>
@@ -410,18 +449,16 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           onMouseEnter={() => setShowCategories(true)}
           onMouseLeave={() => setShowCategories(false)}
         >
-          <button
+          <HoverButton
             onClick={(e) => { e.stopPropagation(); setShowCategories((v) => !v) }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-            style={{ ...itemStyle, justifyContent: 'space-between' }}
+            style={{ justifyContent: 'space-between' }}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#9776;</span>
+              <span style={iconStyle}>&#127991;</span>
               {tweet.category ? getCategoryDef(tweet.category).label : 'Set Category'}
             </span>
             <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
-          </button>
+          </HoverButton>
 
           {showCategories && (
             <div
@@ -481,7 +518,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                       background: focusedCatIndex === CATEGORIES.length ? 'var(--bg-hover)' : 'none',
                     }}
                   >
-                    <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#10005;</span>
+                    <span style={iconStyle}>&#10005;</span>
                     Remove Category
                   </button>
                 </>
@@ -496,27 +533,73 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
 
       {/* Open on X */}
       {tweet.url && (
-        <button
-          onClick={() => { window.open(tweet.url!, '_blank', 'noopener,noreferrer'); onClose() }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-          style={itemStyle}
-        >
-          <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#8599;</span>
+        <HoverButton onClick={() => { window.open(tweet.url!, '_blank', 'noopener,noreferrer'); onClose() }}>
+          <span style={iconStyle}>&#8599;</span>
           Open on X
-        </button>
+        </HoverButton>
       )}
 
       {/* Delete */}
-      <button
-        onClick={() => { onDelete(tweet.id); onClose() }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-        style={{ ...itemStyle, color: 'var(--danger, #e53e3e)' }}
-      >
-        <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>&#128465;</span>
+      <HoverButton onClick={() => { onDelete(tweet.id); onClose() }} style={{ color: 'var(--danger, #e53e3e)' }}>
+        <span style={iconStyle}>&#128465;&#65039;</span>
         Delete
-      </button>
+      </HoverButton>
+    </div>
+  )
+
+  return createPortal(menu, document.body)
+}
+
+// ── Topic Context Menu ──
+
+export function TopicContextMenu({ x, y, topicId, topicTitle, onClose, onDelete, onMoveToDate, onGenerateScript }: TopicContextMenuProps) {
+  const [showCalendar, setShowCalendar] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const pos = useMenuPosition(x, y, menuRef, [showCalendar])
+  useMenuClose(menuRef, onClose)
+
+  const menu = (
+    <div
+      ref={menuRef}
+      style={{ ...menuContainerStyle, left: pos.x, top: pos.y }}
+    >
+      {/* Generate Script */}
+      <HoverButton onClick={() => { onGenerateScript(topicId); onClose() }}>
+        <span style={iconStyle}>&#9999;&#65039;</span>
+        Generate Script
+      </HoverButton>
+
+      {/* Move to date */}
+      <HoverButton onClick={(e) => { e.stopPropagation(); setShowCalendar((v) => !v) }}>
+        <span style={iconStyle}>&#128197;</span>
+        Move to date...
+      </HoverButton>
+
+      {showCalendar && (
+        <MiniCalendar
+          onPick={(date) => {
+            onMoveToDate(topicId, date)
+            onClose()
+          }}
+        />
+      )}
+
+      {/* Divider */}
+      <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
+
+      {/* Delete */}
+      <HoverButton
+        onClick={() => {
+          if (window.confirm(`Delete topic "${topicTitle}"? Tweets will be unassigned.`))
+            onDelete(topicId)
+          onClose()
+        }}
+        style={{ color: 'var(--danger, #e53e3e)' }}
+      >
+        <span style={iconStyle}>&#128465;&#65039;</span>
+        Delete
+      </HoverButton>
     </div>
   )
 

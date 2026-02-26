@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { useGenerateDayScripts, AVAILABLE_MODELS } from '../api/scripts'
+import { useGenerateScript, useGenerateDayScripts, AVAILABLE_MODELS } from '../api/scripts'
 import {
   DndContext,
   DragOverlay,
@@ -18,7 +18,7 @@ import { TopicSectionWithData } from './TopicSection'
 import { CreateTopicForm } from './CreateTopicForm'
 import { UndoToast } from './UndoToast'
 import { DragOverlayCard } from './DragOverlayCard'
-import { ContextMenu } from './ContextMenu'
+import { ContextMenu, TopicContextMenu } from './ContextMenu'
 import { sortTopics, isKekTopic } from '../utils/topics'
 
 interface DayFeedPanelProps {
@@ -38,6 +38,7 @@ export function DayFeedPanel({
 }: DayFeedPanelProps) {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number; ogTweetId?: number | null } | null>(null)
+  const [topicContextMenu, setTopicContextMenu] = useState<{ x: number; y: number; topicId: number; title: string } | null>(null)
 
   // Data fetching — single bundle query replaces N+1 queries
   const bundleQuery = useDayBundle(date)
@@ -68,8 +69,9 @@ export function DayFeedPanel({
   // Undo
   const undo = useUndo(date)
 
-  // Generate all scripts
+  // Script generation
   const generateAll = useGenerateDayScripts()
+  const generateScript = useGenerateScript()
   const [genModel, setGenModel] = useState<string>(AVAILABLE_MODELS[0].id)
 
   // DnD sensors: 8px activation distance so clicks still work
@@ -166,6 +168,29 @@ export function DayFeedPanel({
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY, tweet, topicId, ogTweetId })
   }, [])
+
+  const handleTopicContextMenu = useCallback((e: React.MouseEvent, topicId: number, title: string) => {
+    e.preventDefault()
+    setTopicContextMenu({ x: e.clientX, y: e.clientY, topicId, title })
+  }, [])
+
+  const handleTopicMoveToDate = useCallback(
+    (topicId: number, targetDate: string) => {
+      updateTopicMutation.mutate({ id: topicId, date: targetDate })
+      undo.push({
+        label: 'Topic moved to ' + targetDate,
+        undo: () => updateTopicMutation.mutate({ id: topicId, date }),
+      })
+    },
+    [updateTopicMutation, undo, date],
+  )
+
+  const handleTopicGenerateScript = useCallback(
+    (topicId: number) => {
+      generateScript.mutate({ topicId, model: genModel })
+    },
+    [generateScript, genModel],
+  )
 
   const handleMoveToDate = useCallback(
     (tweetId: number, targetDate: string) => {
@@ -397,10 +422,10 @@ export function DayFeedPanel({
                     search=""
                     ogTweetId={topic.og_tweet_id}
                     tweets={filteredTweets}
-                    onDelete={handleDeleteTopic}
                     onUpdateTitle={handleUpdateTopicTitle}
                     onSetOg={handleSetOg}
                     onContextMenu={handleContextMenu}
+                    onTopicContextMenu={handleTopicContextMenu}
                   />
                 )
               })}
@@ -426,7 +451,7 @@ export function DayFeedPanel({
         </>
       )}
 
-      {/* Context menu */}
+      {/* Tweet context menu */}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
@@ -441,6 +466,20 @@ export function DayFeedPanel({
           onSetCategory={contextMenu.topicId && !topics.find(t => t.id === contextMenu.topicId && isKekTopic(t.title)) ? handleSetCategory : undefined}
           topics={topics}
           onMoveToTopic={handleMoveToTopic}
+        />
+      )}
+
+      {/* Topic context menu */}
+      {topicContextMenu && (
+        <TopicContextMenu
+          x={topicContextMenu.x}
+          y={topicContextMenu.y}
+          topicId={topicContextMenu.topicId}
+          topicTitle={topicContextMenu.title}
+          onClose={() => setTopicContextMenu(null)}
+          onDelete={handleDeleteTopic}
+          onMoveToDate={handleTopicMoveToDate}
+          onGenerateScript={handleTopicGenerateScript}
         />
       )}
 
