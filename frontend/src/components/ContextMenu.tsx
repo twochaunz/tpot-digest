@@ -479,11 +479,14 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                 />
               </div>
 
-              {searchFilteredTopics.map((topic, idx) => (
+              {searchFilteredTopics.map((topic, idx) => {
+                const matchedCats = CATEGORIES.filter(c => topic.categories?.includes(c.key))
+                const hasCats = matchedCats.length > 0
+                return (
                 <div
                   key={topic.id}
                   style={{ position: 'relative' }}
-                  onMouseEnter={() => { setFocusedTopicIndex(idx); setHoveredTopicId(topic.id) }}
+                  onMouseEnter={() => { setFocusedTopicIndex(idx); if (hasCats) setHoveredTopicId(topic.id) }}
                   onMouseLeave={() => { setFocusedTopicIndex(-1); setHoveredTopicId(null) }}
                 >
                   <button
@@ -507,13 +510,13 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                       }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.title}</span>
                     </span>
-                    {topic.categories && topic.categories.length > 0 && (
+                    {hasCats && (
                       <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
                     )}
                   </button>
 
                   {/* Nested category submenu */}
-                  {hoveredTopicId === topic.id && topic.categories && topic.categories.length > 0 && (
+                  {hoveredTopicId === topic.id && hasCats && (
                     <div style={{
                       position: 'absolute',
                       left: '100%',
@@ -526,7 +529,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                       padding: 4,
                       minWidth: 140,
                     }}>
-                      {CATEGORIES.filter(c => topic.categories!.includes(c.key)).map((cat) => (
+                      {matchedCats.map((cat) => (
                         <button
                           key={cat.key}
                           onClick={() => {
@@ -550,7 +553,8 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
 
               {/* Create new topic option */}
               {showCreateOption && (
