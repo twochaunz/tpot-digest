@@ -480,7 +480,6 @@ export function DayFeedPanel({
           topics={topics}
           onMoveToTopic={handleMoveToTopic}
           onCreateTopicAndMove={handleCreateTopicAndMove}
-          date={date}
         />
       )}
 

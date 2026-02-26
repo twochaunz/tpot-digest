@@ -17,7 +17,6 @@ interface ContextMenuProps {
   topics?: { id: number; title: string; color: string | null }[]
   onMoveToTopic?: (tweetId: number, fromTopicId: number, toTopicId: number) => void
   onCreateTopicAndMove?: (tweetId: number, fromTopicId: number, title: string) => void
-  date?: string
 }
 
 export interface TopicContextMenuProps {
@@ -226,7 +225,7 @@ function HoverButton({ style, onClick, children }: { style?: React.CSSProperties
 
 // ── Tweet Context Menu ──
 
-export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory, topics, onMoveToTopic, onCreateTopicAndMove, date }: ContextMenuProps) {
+export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToDate, onSetOg, ogTweetId, onSetCategory, topics, onMoveToTopic, onCreateTopicAndMove }: ContextMenuProps) {
   const [showCalendar, setShowCalendar] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [focusedCatIndex, setFocusedCatIndex] = useState(-1)
