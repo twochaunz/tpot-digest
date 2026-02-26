@@ -15,13 +15,8 @@ async def test_fetch_grok_context_success():
     with patch("app.services.grok_api.settings") as mock_settings:
         mock_settings.xai_api_key = "test-api-key"
 
-        with patch("app.services.grok_api.httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.post.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client_instance
-            )
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.grok_api._client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
 
             result = await fetch_grok_context("https://x.com/user/status/123")
 

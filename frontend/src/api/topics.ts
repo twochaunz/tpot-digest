@@ -28,7 +28,7 @@ export function useCreateTopic() {
       const { data } = await api.post('/topics', body)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'], refetchType: 'active' }),
   })
 }
 
@@ -39,9 +39,11 @@ export function useUpdateTopic() {
       const { data } = await api.patch(`/topics/${id}`, body)
       return data
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['topics'] })
-      qc.invalidateQueries({ queryKey: ['tweets'] })
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['topics'], refetchType: 'active' })
+      if ('og_tweet_id' in variables) {
+        qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' })
+      }
     },
   })
 }
@@ -52,6 +54,6 @@ export function useDeleteTopic() {
     mutationFn: async (id: number) => {
       await api.delete(`/topics/${id}`)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'], refetchType: 'active' }),
   })
 }

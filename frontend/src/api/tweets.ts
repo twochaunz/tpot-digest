@@ -52,7 +52,7 @@ export function useAssignTweets() {
       const { data } = await api.post('/tweets/assign', body)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
   })
 }
 
@@ -63,7 +63,7 @@ export function useUnassignTweets() {
       const { data } = await api.post('/tweets/unassign', body)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
   })
 }
 
@@ -74,7 +74,7 @@ export function usePatchTweet() {
       const { data } = await api.patch(`/tweets/${id}`, body)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
   })
 }
 
@@ -84,7 +84,7 @@ export function useDeleteTweet() {
     mutationFn: async (id: number) => {
       await api.delete(`/tweets/${id}`)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
   })
 }
 
@@ -95,6 +95,6 @@ export function useFetchGrokContext() {
       const { data } = await api.post(`/tweets/${tweetId}/grok`)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
   })
 }

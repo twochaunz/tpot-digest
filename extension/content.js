@@ -460,6 +460,13 @@
   const savedTweets = new Map();
   let checkPending = false;
 
+  function capSavedTweets() {
+    if (savedTweets.size > 500) {
+      const keys = [...savedTweets.keys()];
+      for (let i = 0; i < 200; i++) savedTweets.delete(keys[i]);
+    }
+  }
+
   async function checkSavedStatus() {
     if (checkPending) return;
     const articles = document.querySelectorAll('article[data-testid="tweet"]');
@@ -481,6 +488,7 @@
         for (const [tid, dbId] of Object.entries(resp.saved)) {
           savedTweets.set(tid, dbId);
         }
+        capSavedTweets();
       }
       // Update buttons that are now known to be saved
       articles.forEach((article) => {
@@ -643,7 +651,7 @@
   let scanTimer = null;
   new MutationObserver(() => {
     clearTimeout(scanTimer);
-    scanTimer = setTimeout(scan, 150);
+    scanTimer = setTimeout(scan, 500);
   }).observe(document.body, { childList: true, subtree: true });
   scan();
 })();

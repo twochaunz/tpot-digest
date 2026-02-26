@@ -1,8 +1,9 @@
-from datetime import date, datetime
+from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -92,13 +93,18 @@ async def list_tweets(
         stmt = select(Tweet)
 
     if date:
-        from sqlalchemy import func, text
-        local_date = func.date(func.timezone(text("'America/Los_Angeles'"), Tweet.saved_at))
-        stmt = stmt.where(local_date == date)
+        la = ZoneInfo('America/Los_Angeles')
+        day_start = datetime.combine(date, time.min, tzinfo=la).astimezone(timezone.utc)
+        day_end = datetime.combine(date, time.max, tzinfo=la).astimezone(timezone.utc)
+        stmt = stmt.where(Tweet.saved_at >= day_start, Tweet.saved_at <= day_end)
 
     if unassigned:
-        all_assigned = select(TweetAssignment.tweet_id)
-        stmt = stmt.where(Tweet.id.not_in(all_assigned))
+        stmt = stmt.where(
+            ~exists(
+                select(TweetAssignment.tweet_id)
+                .where(TweetAssignment.tweet_id == Tweet.id)
+            )
+        )
 
     if q:
         stmt = stmt.where(Tweet.text.ilike(f"%{q}%"))
