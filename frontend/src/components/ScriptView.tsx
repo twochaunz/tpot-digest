@@ -228,10 +228,49 @@ function InlineImageOverlay({ url, onClose, containerRef }: {
   )
 }
 
+/** Mirrored cursor rendered on the right column */
+function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null; clicking: boolean }) {
+  if (!pos) return null
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: pos.x,
+        top: pos.y,
+        pointerEvents: 'none',
+        zIndex: 100,
+        transform: 'translate(-2px, -2px)',
+        transition: 'left 0.03s linear, top 0.03s linear',
+      }}
+    >
+      {/* Cursor arrow */}
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
+        <path d="M5 3l14 8.5L12 14l-3 7L5 3z" fill="white" stroke="black" strokeWidth="1.5" />
+      </svg>
+      {/* Click ripple */}
+      {clicking && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: 24,
+          height: 24,
+          borderRadius: '50%',
+          border: '2px solid var(--accent)',
+          animation: 'mirror-click-ripple 0.4s ease-out forwards',
+          transform: 'translate(-6px, -6px)',
+        }} />
+      )}
+    </div>
+  )
+}
+
 export default function ScriptView({ topicId, script, tweets }: ScriptViewProps) {
   const [model, setModel] = useState<string>(AVAILABLE_MODELS[0].id)
   const [feedback, setFeedback] = useState('')
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [mirrorPos, setMirrorPos] = useState<{ x: number; y: number } | null>(null)
+  const [mirrorClicking, setMirrorClicking] = useState(false)
   const generateScript = useGenerateScript()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
@@ -261,6 +300,41 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
     return () => {
       left.removeEventListener('scroll', leftHandler)
       right.removeEventListener('scroll', rightHandler)
+    }
+  }, [script])
+
+  // Mirror mouse from left column to right column
+  useEffect(() => {
+    const left = leftRef.current
+    const right = rightRef.current
+    if (!left || !right) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const leftRect = left.getBoundingClientRect()
+      const rightRect = right.getBoundingClientRect()
+      // Relative position within left column (accounting for scroll)
+      const relX = (e.clientX - leftRect.left) / leftRect.width
+      const relY = e.clientY - leftRect.top + left.scrollTop
+      // Map to right column position (accounting for its scroll)
+      const mirrorX = relX * rightRect.width
+      const mirrorY = relY - right.scrollTop
+      setMirrorPos({ x: mirrorX, y: mirrorY })
+    }
+
+    const handleMouseLeave = () => setMirrorPos(null)
+
+    const handleClick = () => {
+      setMirrorClicking(true)
+      setTimeout(() => setMirrorClicking(false), 400)
+    }
+
+    left.addEventListener('mousemove', handleMouseMove)
+    left.addEventListener('mouseleave', handleMouseLeave)
+    left.addEventListener('click', handleClick, true)
+    return () => {
+      left.removeEventListener('mousemove', handleMouseMove)
+      left.removeEventListener('mouseleave', handleMouseLeave)
+      left.removeEventListener('click', handleClick, true)
     }
   }, [script])
 
@@ -381,8 +455,11 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
             overflowY: 'auto',
             overflowX: 'hidden',
             padding: '12px 16px',
+            position: 'relative',
           }}
         >
+          <MirrorCursor pos={mirrorPos} clicking={mirrorClicking} />
+          <style>{`@keyframes mirror-click-ripple { from { transform: translate(-6px,-6px) scale(0.5); opacity: 1; } to { transform: translate(-6px,-6px) scale(2); opacity: 0; } }`}</style>
           {groupedBlocks.map((group) => {
             if (group.type === 'text' && group.block.text) {
               // Divider placeholder matching left-side text height
