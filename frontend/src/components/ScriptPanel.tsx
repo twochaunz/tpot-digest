@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { TopicBundle } from '../api/dayBundle'
 import { sortTopics } from '../utils/topics'
 import { TopicManagerView } from './TopicManagerView'
+import { ScriptMirrorView } from './ScriptMirrorView'
 
 interface ScriptPanelProps {
   date: string
@@ -198,10 +199,7 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
         minHeight: 0,
         overflow: 'hidden',
       }}>
-        {/* ScriptMirrorView placeholder — Task 3 will replace */}
-        <div style={{ padding: 20, color: 'var(--text-tertiary)', fontSize: 13 }}>
-          Script Mirror — {selectedTopics.length} topic{selectedTopics.length !== 1 ? 's' : ''} selected for {date}
-        </div>
+        <ScriptMirrorView date={date} topics={selectedTopics} />
       </div>
     </div>,
     document.body,

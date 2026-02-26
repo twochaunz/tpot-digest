@@ -32,12 +32,12 @@ import { TweetCard } from './TweetCard'
 import { sortTopics } from '../utils/topics'
 
 /* ---- Drawing types ---- */
-const FADE_MS = 2000
-type DrawTool = 'pen' | 'highlighter'
-type TimedPoint = { x: number; y: number; t: number }
-type StyledStroke = { points: TimedPoint[]; color: string; tool: DrawTool; opacity: number }
+export const FADE_MS = 2000
+export type DrawTool = 'pen' | 'highlighter'
+export type TimedPoint = { x: number; y: number; t: number }
+export type StyledStroke = { points: TimedPoint[]; color: string; tool: DrawTool; opacity: number }
 
-function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) || 0
   const g = parseInt(hex.slice(3, 5), 16) || 0
   const b = parseInt(hex.slice(5, 7), 16) || 0
@@ -58,7 +58,7 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
 /* ---- Circular color wheel picker ---- */
 const WHEEL_SIZE = 140
 
-function ColorWheelPicker({ color, opacity, onColorChange, onOpacityChange }: {
+export function ColorWheelPicker({ color, opacity, onColorChange, onOpacityChange }: {
   color: string
   opacity: number
   onColorChange: (c: string) => void
@@ -213,7 +213,7 @@ function ColorWheelPicker({ color, opacity, onColorChange, onOpacityChange }: {
 }
 
 /* ---- Draw canvas ---- */
-function DrawCanvas({ strokes, width, height }: {
+export function DrawCanvas({ strokes, width, height }: {
   strokes: StyledStroke[]
   width: number
   height: number
@@ -302,7 +302,7 @@ function DrawCanvas({ strokes, width, height }: {
 }
 
 /* ---- Image overlay with drawing ---- */
-function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawStrokes, onDrawStrokes, toolRef, colorRef, opacityRef }: {
+export function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawStrokes, onDrawStrokes, toolRef, colorRef, opacityRef }: {
   url: string
   onClose: () => void
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -426,7 +426,7 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
 }
 
 /* ---- Mirror cursor ---- */
-function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null; clicking: boolean }) {
+export function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null; clicking: boolean }) {
   if (!pos) return null
   return createPortal(
     <div
@@ -461,7 +461,7 @@ function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null;
 }
 
 /* ---- Script text block (editable) ---- */
-function ScriptTextBlock({ text, blockIndex, script, topicId }: {
+export function ScriptTextBlock({ text, blockIndex, script, topicId }: {
   text: string
   blockIndex: number
   script: TopicScript
@@ -537,7 +537,7 @@ function ScriptTextBlock({ text, blockIndex, script, topicId }: {
 }
 
 /* ---- Helpers ---- */
-function chunk<T>(arr: T[], size: number): T[][] {
+export function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = []
   for (let i = 0; i < arr.length; i += size) {
     result.push(arr.slice(i, i + size))
@@ -545,11 +545,11 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return result
 }
 
-type GroupedBlock =
+export type GroupedBlock =
   | { type: 'text'; index: number; block: ScriptBlock }
   | { type: 'tweet_group'; startIndex: number; blocks: ScriptBlock[] }
 
-function groupBlocks(content: ScriptBlock[]): GroupedBlock[] {
+export function groupBlocks(content: ScriptBlock[]): GroupedBlock[] {
   const groups: GroupedBlock[] = []
   for (let i = 0; i < content.length; i++) {
     const block = content[i]
@@ -567,7 +567,7 @@ function groupBlocks(content: ScriptBlock[]): GroupedBlock[] {
   return groups
 }
 
-function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
+export function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
   blocks: ScriptBlock[]
   startIndex: number
   tweets: Tweet[]
@@ -617,7 +617,7 @@ function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
 }
 
 /* ---- Per-topic script section ---- */
-function TopicScriptSection({ topicId, tweets, onImageClick, onScriptStatus }: {
+export function TopicScriptSection({ topicId, tweets, onImageClick, onScriptStatus }: {
   topicId: number
   tweets: Tweet[]
   onImageClick: (url: string) => void
@@ -745,7 +745,7 @@ function TopicScriptSection({ topicId, tweets, onImageClick, onScriptStatus }: {
 }
 
 /* ---- Read-only mirror of a topic's script (right column) ---- */
-function TopicScriptSectionMirror({ topicId, tweets, allTweets, onImageClick }: {
+export function TopicScriptSectionMirror({ topicId, tweets, allTweets, onImageClick }: {
   topicId: number
   tweets: Tweet[]
   allTweets: Tweet[]
