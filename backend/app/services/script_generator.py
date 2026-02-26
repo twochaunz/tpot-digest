@@ -101,7 +101,8 @@ def build_prompt(
     parts.append('- {"type": "tweet", "tweet_id": "123456"}')
     parts.append("")
     parts.append("Place tweets at moments where they serve as evidence for what the script is saying.")
-    parts.append("Use the category ordering to shape narrative flow: context \u2192 kek \u2192 signal-boost \u2192 pushback \u2192 hot-take.")
+    parts.append("Use the category ordering to shape narrative flow: context → kek → signal-boost → pushback → hot-take.")
+    parts.append("You do NOT need to use every tweet. When many tweets express similar sentiment, summarize them in prose (e.g. 'many people loved...', 'the consensus was...') and only embed 1-2 representative tweets as evidence. Prioritize a tight, readable narrative over completeness.")
     parts.append("Only reference tweet_ids from the list above.")
     parts.append("Return ONLY the JSON array, no other text.")
 
