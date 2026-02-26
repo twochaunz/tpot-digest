@@ -60,7 +60,7 @@ export function DayFeedPanel({
 
   // Generate all scripts
   const generateAll = useGenerateDayScripts()
-  const [genModel, setGenModel] = useState(AVAILABLE_MODELS[0].id)
+  const [genModel, setGenModel] = useState<string>(AVAILABLE_MODELS[0].id)
 
   // DnD sensors: 8px activation distance so clicks still work
   const sensors = useSensors(
