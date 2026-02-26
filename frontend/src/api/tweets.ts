@@ -95,6 +95,6 @@ export function useFetchGrokContext() {
       const { data } = await api.post(`/tweets/${tweetId}/grok`)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['day-bundle'] }),
   })
 }

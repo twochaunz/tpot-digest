@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useGenerateDayScripts, AVAILABLE_MODELS } from '../api/scripts'
 import {
   DndContext,
@@ -9,9 +9,9 @@ import {
   pointerWithin,
 } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
-import { useTweets, useAssignTweets, useUnassignTweets, useDeleteTweet, usePatchTweet } from '../api/tweets'
 import type { Tweet } from '../api/tweets'
-import { useTopics, useCreateTopic, useDeleteTopic, useUpdateTopic } from '../api/topics'
+import { useCreateTopic, useDeleteTopic, useUpdateTopic } from '../api/topics'
+import { useDayBundle, useOptimisticAssign, useOptimisticUnassign, useOptimisticDeleteTweet, useOptimisticPatchTweet } from '../api/dayBundle'
 import { useUndo } from '../hooks/useUndo'
 import { UnsortedSection } from './UnsortedSection'
 import { TopicSectionWithData } from './TopicSection'
@@ -39,21 +39,31 @@ export function DayFeedPanel({
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number; ogTweetId?: number | null } | null>(null)
 
-  // Data fetching
-  const topicsQuery = useTopics(date)
-  const unsortedQuery = useTweets({ date, unassigned: true, q: search || undefined })
+  // Data fetching — single bundle query replaces N+1 queries
+  const bundleQuery = useDayBundle(date)
+  const bundle = bundleQuery.data
 
-  const topics = topicsQuery.data ?? []
-  const unsortedTweets = unsortedQuery.data ?? []
+  // Derive topics and unsorted from bundle, with client-side search filtering
+  const topics = bundle?.topics ?? []
+  const unsortedTweets = useMemo(() => {
+    const list = bundle?.unsorted ?? []
+    if (!search) return list
+    const q = search.toLowerCase()
+    return list.filter((t) =>
+      t.text.toLowerCase().includes(q) ||
+      t.author_handle.toLowerCase().includes(q) ||
+      (t.author_display_name?.toLowerCase().includes(q) ?? false)
+    )
+  }, [bundle?.unsorted, search])
 
   // Mutations
-  const assignMutation = useAssignTweets()
-  const unassignMutation = useUnassignTweets()
+  const assignMutation = useOptimisticAssign()
+  const unassignMutation = useOptimisticUnassign()
   const createTopicMutation = useCreateTopic()
-  const deleteTweetMutation = useDeleteTweet()
+  const deleteTweetMutation = useOptimisticDeleteTweet()
   const deleteTopicMutation = useDeleteTopic()
   const updateTopicMutation = useUpdateTopic()
-  const patchTweetMutation = usePatchTweet()
+  const patchTweetMutation = useOptimisticPatchTweet()
 
   // Undo
   const undo = useUndo(date)
@@ -217,7 +227,7 @@ export function DayFeedPanel({
     [handleAssign, handleUnassign, assignMutation, unassignMutation, undo, setActiveDragTweet],
   )
 
-  const isLoading = topicsQuery.isLoading || unsortedQuery.isLoading
+  const isLoading = bundleQuery.isLoading
 
   return (
     <div
@@ -369,21 +379,31 @@ export function DayFeedPanel({
                 gap: 16,
               }}
             >
-              {sortTopics(topics).map((topic) => (
-                <TopicSectionWithData
-                  key={topic.id}
-                  topicId={topic.id}
-                  title={topic.title}
-                  color={topic.color}
-                  date={date}
-                  search={search}
-                  ogTweetId={topic.og_tweet_id}
-                  onDelete={handleDeleteTopic}
-                  onUpdateTitle={handleUpdateTopicTitle}
-                  onSetOg={handleSetOg}
-                        onContextMenu={handleContextMenu}
-                />
-              ))}
+              {sortTopics(topics).map((topic) => {
+                const filteredTweets = search
+                  ? topic.tweets.filter((t) =>
+                      t.text.toLowerCase().includes(search.toLowerCase()) ||
+                      t.author_handle.toLowerCase().includes(search.toLowerCase()) ||
+                      (t.author_display_name?.toLowerCase().includes(search.toLowerCase()) ?? false)
+                    )
+                  : topic.tweets
+                return (
+                  <TopicSectionWithData
+                    key={topic.id}
+                    topicId={topic.id}
+                    title={topic.title}
+                    color={topic.color}
+                    date={date}
+                    search=""
+                    ogTweetId={topic.og_tweet_id}
+                    tweets={filteredTweets}
+                    onDelete={handleDeleteTopic}
+                    onUpdateTitle={handleUpdateTopicTitle}
+                    onSetOg={handleSetOg}
+                    onContextMenu={handleContextMenu}
+                  />
+                )
+              })}
             </div>
           )}
 
