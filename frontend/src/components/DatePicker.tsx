@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 interface DatePickerProps {
   value: string // YYYY-MM-DD
   onChange: (date: string) => void
+  maxDate?: string // YYYY-MM-DD — dates after this are disabled
 }
 
 function formatDisplay(dateStr: string): string {
@@ -55,7 +56,7 @@ const MONTH_NAMES = [
 
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-export function DatePicker({ value, onChange }: DatePickerProps) {
+export function DatePicker({ value, onChange, maxDate }: DatePickerProps) {
   const [hovered, setHovered] = useState<'prev' | 'next' | null>(null)
   const [dateHovered, setDateHovered] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -66,7 +67,11 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
   const calRef = useRef<HTMLDivElement>(null)
 
   const goPrev = useCallback(() => onChange(shiftDate(value, -1)), [value, onChange])
-  const goNext = useCallback(() => onChange(shiftDate(value, 1)), [value, onChange])
+  const isAtMax = !!(maxDate && value >= maxDate)
+  const goNext = useCallback(() => {
+    if (isAtMax) return
+    onChange(shiftDate(value, 1))
+  }, [value, onChange, isAtMax])
 
   // Reset viewYear/viewMonth when calendar opens
   useEffect(() => {
@@ -295,13 +300,15 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
                 const isToday =
                   viewYear === todayYear && viewMonth === todayMonth && day === todayDay
                 const isHovered = hoveredDay === day
+                const dayStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                const isFuture = !!(maxDate && dayStr > maxDate)
 
                 let bg = 'transparent'
-                let color = 'var(--text-primary)'
+                let color = isFuture ? 'var(--text-tertiary)' : 'var(--text-primary)'
                 if (isSelected) {
                   bg = 'var(--accent)'
                   color = '#fff'
-                } else if (isHovered) {
+                } else if (isHovered && !isFuture) {
                   bg = 'var(--bg-hover)'
                 } else if (isToday) {
                   bg = 'var(--bg-elevated)'
@@ -310,8 +317,8 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
                 return (
                   <div
                     key={day}
-                    onClick={() => selectDay(day)}
-                    onMouseEnter={() => setHoveredDay(day)}
+                    onClick={() => !isFuture && selectDay(day)}
+                    onMouseEnter={() => !isFuture && setHoveredDay(day)}
                     onMouseLeave={() => setHoveredDay(null)}
                     style={{
                       width: 36,
@@ -324,7 +331,8 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
                       fontWeight: isSelected || isToday ? 600 : 400,
                       color,
                       background: bg,
-                      cursor: 'pointer',
+                      cursor: isFuture ? 'not-allowed' : 'pointer',
+                      opacity: isFuture ? 0.4 : 1,
                       transition: 'all 0.1s ease',
                       userSelect: 'none',
                     }}
@@ -342,10 +350,13 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
         onClick={goNext}
         onMouseEnter={() => setHovered('next')}
         onMouseLeave={() => setHovered(null)}
+        disabled={isAtMax}
         style={{
           ...arrowBtn,
-          borderColor: hovered === 'next' ? 'var(--border-strong)' : 'var(--border)',
-          color: hovered === 'next' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          borderColor: isAtMax ? 'var(--border)' : hovered === 'next' ? 'var(--border-strong)' : 'var(--border)',
+          color: isAtMax ? 'var(--text-tertiary)' : hovered === 'next' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          cursor: isAtMax ? 'not-allowed' : 'pointer',
+          opacity: isAtMax ? 0.4 : 1,
         }}
         aria-label="Next day"
       >
