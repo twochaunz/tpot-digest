@@ -282,7 +282,7 @@ function TopicSection({
         borderRadius: 'var(--radius-lg)',
         transition: 'border 0.15s ease',
         scrollSnapAlign: 'start' as const,
-        ...(viewMode === 'script' ? { flex: 1, minHeight: 0, overflow: 'hidden' } : {}),
+        ...(viewMode === 'script' ? { height: 'calc(100vh - 90px)', minHeight: 0, overflow: 'hidden' } : {}),
       }}
     >
       {/* Header */}
