@@ -21,23 +21,20 @@ _anthropic_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 
 CATEGORY_ORDER = ["context", "kek", "signal-boost", "pushback", "hot-take"]
 
-DEFAULT_STYLE_GUIDE = """VOICE & TONE:
-- Every sentence must educate, evoke, or entertain — if it doesn't, cut it
-- Open with a hook that makes the viewer care (a surprising fact, a bold claim, a tension)
-- Conversational but informative — not academic, not meme-speak
-- Natural prose, full sentences, clear and accessible
+DEFAULT_STYLE_GUIDE = """PURPOSE:
+- This is a value add — within 20 seconds the viewer should get MORE than if they read all the tweets and articles themselves
+- Be interesting. Scratch an itch, don't give a full blown massage
+- Not sensationalism, not boring regurgitation
 
 STRUCTURE:
-- Lead with WHY this story matters, not WHAT the tweet says — don't parrot the headline
-- For the OG post: give succinct background (who are they, why should we care, what's the stakes) before describing what they said
+- Don't parrot the headline or tweet text — explain what's actually going on
+- If the topic is obscure or super niche, give background on the OG post, the author, or any relevant parties so the viewer understands why it matters
 - Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof
-- Present discourse objectively — show what different sides said without editorializing
 
 CATEGORIES ARE INTERNAL ONLY:
 - The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles — NEVER use these words in the script
-- Instead, describe reactions naturally: "people celebrated...", "critics pushed back...", "the joke that took off was...", "one spicy take stood out..."
-- Reference specific people/entities when they're central to the story
-- Simplify complex topics so a general audience can follow"""
+- Describe reactions naturally: "people celebrated...", "critics pushed back...", "the joke that took off was...", "one spicy take stood out..."
+- Reference specific people/entities when they're central to the story"""
 
 
 class ScriptGeneratorError(Exception):
