@@ -1,8 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
 import { TableOfContents } from '../components/TableOfContents'
+
+function todayDateStr(): string {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
 
 function defaultDateStr(): string {
   // Use PST (UTC-8) to determine time of day
@@ -18,7 +26,12 @@ function defaultDateStr(): string {
 
 export function DailyView() {
   const navigate = useNavigate()
-  const [date, setDate] = useState(defaultDateStr)
+  const [date, setDateRaw] = useState(defaultDateStr)
+  const today = todayDateStr()
+  const setDate = useCallback((d: string) => {
+    if (d > today) return
+    setDateRaw(d)
+  }, [today])
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
@@ -125,7 +138,7 @@ export function DailyView() {
           <div style={{ flex: 1 }} />
 
           {/* Center: date picker */}
-          <DatePicker value={date} onChange={setDate} />
+          <DatePicker value={date} onChange={setDate} maxDate={today} />
 
           {/* Right: search + settings */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
