@@ -99,6 +99,7 @@ interface TopicSectionWithDataProps {
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => void
+  tweets?: Tweet[]
 }
 
 export function TopicSectionWithData({
@@ -112,9 +113,10 @@ export function TopicSectionWithData({
   onUpdateTitle,
   onSetOg,
   onContextMenu,
+  tweets: propTweets,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined })
-  const tweets = tweetsQuery.data ?? []
+  const tweets = propTweets ?? tweetsQuery.data ?? []
   const { data: activeScript } = useTopicScript(topicId)
   const { showEngagement } = useEngagementToggle()
 
