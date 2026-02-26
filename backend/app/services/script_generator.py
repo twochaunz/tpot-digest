@@ -40,6 +40,9 @@ WRITING RULES:
 - Don't give the viewer exercises like "Imagine a world...". If comparing, reference real things — previous day topics or known sentiment in tech with a reputable source.
 - If the topic is obscure or niche, give brief background on the OG post, author, or relevant parties so the viewer understands why it matters.
 - Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof.
+- Do NOT narrate individual tweets like "@user tweeted X" or "User said Y". Instead, describe what's happening in the discourse — what people think, what the reaction was, what the tension is — and let the tweet blocks show who said it. The script narrates the story; the tweets are the receipts.
+  BAD: "@elonmusk tweeted that the acquisition was inevitable. @sama responded saying it was a bold move."
+  GOOD: "The reaction split fast — some saw it as inevitable consolidation, others called it a power grab."
 
 CATEGORY USAGE:
 - The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles
@@ -130,8 +133,9 @@ def build_prompt(
         parts.append(f'- You MUST include the OG tweet as a {{"type": "tweet", "tweet_id": "{og_id}"}} block somewhere in the script.')
         parts.append("  Placement: if the news itself is the main story, place the OG tweet early (after the opening line). If reactions are the main story, lead with reaction tweets and place the OG tweet later for context.")
     parts.append("- Place tweets as evidence — they prove what the script claims.")
+    parts.append("- Group 2-3 tweet blocks back-to-back when they support the same point. For example, after describing a wave of reactions, place 2-3 reaction tweets consecutively. Don't isolate every tweet with a text block in between — that reads like a slideshow, not a story.")
     parts.append("- Use category groupings to guide flow (context first, then reactions, pushback, hot takes) but don't force category names where they don't fit naturally. Change order if it tells a better story.")
-    parts.append("- You do NOT need every tweet. Aggregate similar sentiment into short phrases ('the consensus was...', 'critics argued...') and embed only 2-3 representative tweets.")
+    parts.append("- You do NOT need every tweet. Aggregate similar sentiment into short phrases ('the consensus was...', 'critics argued...') and embed the most representative tweets.")
     parts.append("- Every sentence should inform, clarify, or set up a tweet. Cut anything that doesn't.")
     parts.append('- Only reference tweet_ids from the list above, except for real comparisons tech people would know.')
     parts.append("- Return ONLY the JSON array, no other text")
