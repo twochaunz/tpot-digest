@@ -133,6 +133,25 @@ export function DayFeedPanel({
     [assignMutation],
   )
 
+  const handleMoveToTopic = useCallback(
+    (tweetId: number, fromTopicId: number, toTopicId: number) => {
+      if (fromTopicId) {
+        unassignMutation.mutate({ tweet_ids: [tweetId], topic_id: fromTopicId })
+      }
+      if (toTopicId) {
+        assignMutation.mutate({ tweet_ids: [tweetId], topic_id: toTopicId })
+      }
+      undo.push({
+        label: 'Tweet moved',
+        undo: () => {
+          if (toTopicId) unassignMutation.mutate({ tweet_ids: [tweetId], topic_id: toTopicId })
+          if (fromTopicId) assignMutation.mutate({ tweet_ids: [tweetId], topic_id: fromTopicId })
+        },
+      })
+    },
+    [assignMutation, unassignMutation, undo],
+  )
+
   const handleContextMenu = useCallback((e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY, tweet, topicId, ogTweetId })
@@ -400,6 +419,8 @@ export function DayFeedPanel({
           onSetOg={contextMenu.topicId ? handleSetOg : undefined}
           ogTweetId={contextMenu.ogTweetId ?? null}
           onSetCategory={contextMenu.topicId && !topics.find(t => t.id === contextMenu.topicId && isKekTopic(t.title)) ? handleSetCategory : undefined}
+          topics={topics}
+          onMoveToTopic={handleMoveToTopic}
         />
       )}
 
