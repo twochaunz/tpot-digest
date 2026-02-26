@@ -88,7 +88,6 @@ function ScriptTextBlock({ text, blockIndex, script, topicId }: {
   )
 }
 
-/** Chunk an array into groups of at most `size` */
 function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = []
   for (let i = 0; i < arr.length; i += size) {
@@ -168,13 +167,105 @@ function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
   )
 }
 
-/* ---- Fading drawing ---- */
-const FADE_MS = 1500
+/* ---- Drawing types ---- */
+const FADE_MS = 2000
+type DrawTool = 'pen' | 'highlighter'
 type TimedPoint = { x: number; y: number; t: number }
-type FadingStroke = TimedPoint[]
+type StyledStroke = { points: TimedPoint[]; color: string; tool: DrawTool }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) || 0
+  const g = parseInt(hex.slice(3, 5), 16) || 0
+  const b = parseInt(hex.slice(5, 7), 16) || 0
+  return [r, g, b]
+}
+
+/* ---- Color picker popover ---- */
+const PRESET_COLORS = ['#FF4444', '#FF8800', '#FFDD00', '#44CC44', '#4488FF', '#AA44FF', '#FFFFFF', '#000000']
+
+function ColorPicker({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [hexInput, setHexInput] = useState(color)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setHexInput(color) }, [color])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: 22, height: 22, borderRadius: '50%',
+          background: color, border: '2px solid var(--border)',
+          cursor: 'pointer', padding: 0, flexShrink: 0,
+        }}
+        title="Pick color"
+      />
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+          marginTop: 6, background: 'var(--bg-raised)', border: '1px solid var(--border)',
+          borderRadius: 8, padding: 10, zIndex: 200, minWidth: 190,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {PRESET_COLORS.map(c => (
+              <button
+                key={c}
+                onClick={() => { onChange(c); setHexInput(c) }}
+                style={{
+                  width: 24, height: 24, borderRadius: '50%', background: c,
+                  border: c === color ? '2px solid var(--accent)' : '2px solid var(--border)',
+                  cursor: 'pointer', padding: 0,
+                }}
+              />
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => { onChange(e.target.value); setHexInput(e.target.value) }}
+              style={{ width: 28, height: 28, border: 'none', padding: 0, cursor: 'pointer', background: 'none' }}
+            />
+            <input
+              type="text"
+              value={hexInput}
+              onChange={(e) => {
+                setHexInput(e.target.value)
+                if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onChange(e.target.value)
+              }}
+              onBlur={() => {
+                if (/^#[0-9a-fA-F]{6}$/.test(hexInput)) onChange(hexInput)
+                else setHexInput(color)
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              placeholder="#FF4444"
+              style={{
+                flex: 1, background: 'var(--bg-base)', color: 'var(--text-primary)',
+                border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px',
+                fontSize: 12, fontFamily: 'monospace',
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ---- Draw canvas ---- */
 function DrawCanvas({ strokes, width, height }: {
-  strokes: FadingStroke[]
+  strokes: StyledStroke[]
   width: number
   height: number
 }) {
@@ -199,20 +290,24 @@ function DrawCanvas({ strokes, width, height }: {
       const now = Date.now()
       let anyVisible = false
 
-      ctx.lineWidth = 3
       ctx.lineCap = 'round'
 
-      for (const stroke of strokes) {
-        if (stroke.length < 2) continue
-        for (let i = 1; i < stroke.length; i++) {
-          const age = now - stroke[i].t
-          const opacity = Math.max(0, 1 - age / FADE_MS)
-          if (opacity <= 0) continue
+      for (const { points, color, tool } of strokes) {
+        if (points.length < 2) continue
+        const isPen = tool === 'pen'
+        ctx.lineWidth = isPen ? 3 : 18
+        const [r, g, b] = hexToRgb(color)
+        const baseOpacity = isPen ? 1 : 0.35
+
+        for (let i = 1; i < points.length; i++) {
+          const age = now - points[i].t
+          const fade = Math.max(0, 1 - age / FADE_MS)
+          if (fade <= 0) continue
           anyVisible = true
-          ctx.strokeStyle = `rgba(255, 68, 68, ${opacity})`
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${baseOpacity * fade})`
           ctx.beginPath()
-          ctx.moveTo(stroke[i - 1].x, stroke[i - 1].y)
-          ctx.lineTo(stroke[i].x, stroke[i].y)
+          ctx.moveTo(points[i - 1].x, points[i - 1].y)
+          ctx.lineTo(points[i].x, points[i].y)
           ctx.stroke()
         }
       }
@@ -244,14 +339,16 @@ function DrawCanvas({ strokes, width, height }: {
   )
 }
 
-/** Image overlay with right-click drawing */
-function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawStrokes, onDrawStrokes }: {
+/* ---- Image overlay with drawing ---- */
+function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawStrokes, onDrawStrokes, toolRef, colorRef }: {
   url: string
   onClose: () => void
   containerRef: React.RefObject<HTMLDivElement | null>
   drawingEnabled?: boolean
-  drawStrokes?: FadingStroke[]
-  onDrawStrokes?: React.Dispatch<React.SetStateAction<FadingStroke[]>>
+  drawStrokes?: StyledStroke[]
+  onDrawStrokes?: React.Dispatch<React.SetStateAction<StyledStroke[]>>
+  toolRef?: React.RefObject<DrawTool>
+  colorRef?: React.RefObject<string>
 }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const currentStrokeRef = useRef<TimedPoint[]>([])
@@ -281,8 +378,8 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
       const now = Date.now()
       currentStrokeRef.current = [toLocal(e)]
       onDrawStrokes?.(prev => {
-        const active = prev.filter(s => s.some(p => now - p.t < FADE_MS))
-        return [...active, []]
+        const active = prev.filter(s => s.points.some(p => now - p.t < FADE_MS))
+        return [...active, { points: [], color: colorRef?.current ?? '#FF4444', tool: toolRef?.current ?? 'pen' }]
       })
     }
 
@@ -291,7 +388,8 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
       currentStrokeRef.current.push(toLocal(e))
       onDrawStrokes?.(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = [...currentStrokeRef.current]
+        const last = updated[updated.length - 1]
+        updated[updated.length - 1] = { ...last, points: [...currentStrokeRef.current] }
         return updated
       })
     }
@@ -311,7 +409,7 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
       el.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [drawingEnabled, onDrawStrokes])
+  }, [drawingEnabled, onDrawStrokes, toolRef, colorRef])
 
   const container = containerRef.current
   if (!container) return null
@@ -347,7 +445,7 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
           cursor: 'default',
         }}
       />
-      {drawStrokes && drawStrokes.some(s => s.length >= 2) && (
+      {drawStrokes && drawStrokes.some(s => s.points.length >= 2) && (
         <DrawCanvas strokes={drawStrokes} width={rect.width} height={rect.height} />
       )}
       <button
@@ -364,7 +462,7 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
   )
 }
 
-/** Mirrored cursor (fixed positioning for accuracy) */
+/* ---- Standard arrow cursor ---- */
 function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null; clicking: boolean }) {
   if (!pos) return null
   return createPortal(
@@ -375,11 +473,11 @@ function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null;
         top: pos.y,
         pointerEvents: 'none',
         zIndex: 100,
-        transform: 'translate(-2px, -2px)',
+        transform: 'translate(-1px, -1px)',
       }}
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
-        <path d="M5 3l14 8.5L12 14l-3 7L5 3z" fill="white" stroke="black" strokeWidth="1.5" />
+      <svg width="14" height="20" viewBox="0 0 14 20" fill="none" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }}>
+        <path d="M0.5 0.5L0.5 17L5 12L8.5 19L10.5 18L7 11H13L0.5 0.5Z" fill="white" stroke="black" strokeWidth="0.8" strokeLinejoin="round" />
       </svg>
       {clicking && (
         <div style={{
@@ -399,15 +497,22 @@ function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null;
   )
 }
 
+/* ---- Main component ---- */
 export default function ScriptView({ topicId, topicTitle, script, tweets, onClose }: ScriptViewProps) {
   const [model, setModel] = useState<string>(AVAILABLE_MODELS[0].id)
   const [feedback, setFeedback] = useState('')
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [mirrorPos, setMirrorPos] = useState<{ x: number; y: number } | null>(null)
   const [mirrorClicking, setMirrorClicking] = useState(false)
-  const [drawStrokes, setDrawStrokes] = useState<FadingStroke[]>([])
-  const [photoStrokes, setPhotoStrokes] = useState<FadingStroke[]>([])
+  const [drawStrokes, setDrawStrokes] = useState<StyledStroke[]>([])
+  const [photoStrokes, setPhotoStrokes] = useState<StyledStroke[]>([])
+  const [drawTool, setDrawTool] = useState<DrawTool>('pen')
+  const [drawColor, setDrawColor] = useState('#FF4444')
   const currentStrokeRef = useRef<TimedPoint[]>([])
+  const drawToolRef = useRef<DrawTool>(drawTool)
+  const drawColorRef = useRef(drawColor)
+  drawToolRef.current = drawTool
+  drawColorRef.current = drawColor
   const [leftSize, setLeftSize] = useState({ w: 0, h: 0 })
   const [rightSize, setRightSize] = useState({ w: 0, h: 0 })
   const generateScript = useGenerateScript()
@@ -417,7 +522,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
   const rightColumnRef = useRef<HTMLDivElement>(null)
   const syncing = useRef(false)
 
-  // Synchronized scrolling between left and right columns
+  // Synchronized scrolling
   useEffect(() => {
     const left = leftRef.current
     const right = rightRef.current
@@ -433,7 +538,6 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
 
     const leftHandler = syncScroll(left, right)
     const rightHandler = syncScroll(right, left)
-
     left.addEventListener('scroll', leftHandler)
     right.addEventListener('scroll', rightHandler)
     return () => {
@@ -442,7 +546,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
     }
   }, [script])
 
-  // Mirror mouse from left column to right column (fixed coordinates)
+  // Mirror mouse (fixed coordinates)
   useEffect(() => {
     const left = leftRef.current
     const right = rightRef.current
@@ -460,7 +564,6 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
     }
 
     const handleMouseLeave = () => setMirrorPos(null)
-
     const handleClick = () => {
       setMirrorClicking(true)
       setTimeout(() => setMirrorClicking(false), 400)
@@ -476,7 +579,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
     }
   }, [script])
 
-  // Right-click drawing on left column (across text + photos)
+  // Right-click drawing on left column
   useEffect(() => {
     const left = leftRef.current
     if (!left) return
@@ -493,10 +596,9 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
       e.preventDefault()
       const now = Date.now()
       currentStrokeRef.current = [toLocal(e)]
-      // Clean up fully faded strokes, then add new empty stroke
       setDrawStrokes(prev => {
-        const active = prev.filter(s => s.some(p => now - p.t < FADE_MS))
-        return [...active, []]
+        const active = prev.filter(s => s.points.some(p => now - p.t < FADE_MS))
+        return [...active, { points: [], color: drawColorRef.current, tool: drawToolRef.current }]
       })
     }
 
@@ -505,7 +607,8 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
       currentStrokeRef.current.push(toLocal(e))
       setDrawStrokes(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = [...currentStrokeRef.current]
+        const last = updated[updated.length - 1]
+        updated[updated.length - 1] = { ...last, points: [...currentStrokeRef.current] }
         return updated
       })
     }
@@ -527,7 +630,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
     }
   }, [script])
 
-  // Track column sizes for canvas + mirroring
+  // Track column sizes
   useEffect(() => {
     const left = leftRef.current
     const right = rightRef.current
@@ -546,12 +649,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
   }, [script])
 
   const handleGenerate = () => {
-    generateScript.mutate({
-      topicId,
-      model,
-      feedback: feedback || undefined,
-      fetchGrokContext: true,
-    })
+    generateScript.mutate({ topicId, model, feedback: feedback || undefined, fetchGrokContext: true })
     setFeedback('')
   }
 
@@ -560,47 +658,21 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
     setPhotoStrokes([])
   }, [])
 
-  // No script yet — show generate CTA
   if (!script) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 12,
-        padding: '32px 16px',
-        color: 'var(--text-secondary)',
-      }}>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          style={{
-            background: 'var(--bg-raised)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            padding: '6px 10px',
-            fontSize: 13,
-          }}
-        >
-          {AVAILABLE_MODELS.map(m => (
-            <option key={m.id} value={m.id}>{m.label}</option>
-          ))}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 16px', color: 'var(--text-secondary)' }}>
+        <select value={model} onChange={(e) => setModel(e.target.value)} style={{
+          background: 'var(--bg-raised)', color: 'var(--text-primary)',
+          border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', fontSize: 13,
+        }}>
+          {AVAILABLE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
         </select>
-        <button
-          onClick={handleGenerate}
-          disabled={generateScript.isPending}
-          style={{
-            background: 'var(--accent)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            padding: '8px 20px',
-            fontSize: 14,
-            cursor: generateScript.isPending ? 'wait' : 'pointer',
-            opacity: generateScript.isPending ? 0.6 : 1,
-          }}
-        >
+        <button onClick={handleGenerate} disabled={generateScript.isPending} style={{
+          background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6,
+          padding: '8px 20px', fontSize: 14,
+          cursor: generateScript.isPending ? 'wait' : 'pointer',
+          opacity: generateScript.isPending ? 0.6 : 1,
+        }}>
           {generateScript.isPending ? 'Generating...' : 'Generate Script'}
         </button>
       </div>
@@ -608,91 +680,74 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
   }
 
   const groupedBlocks = groupBlocks(script.content)
-  const hasColumnStrokes = drawStrokes.some(s => s.length >= 2)
+  const hasColumnStrokes = drawStrokes.some(s => s.points.length >= 2)
 
-  // Scale column strokes from left dimensions to right dimensions
-  const mirroredDrawStrokes = (hasColumnStrokes && leftSize.w > 0 && rightSize.w > 0)
-    ? drawStrokes.map(s => s.map(p => ({
-        x: (p.x / leftSize.w) * rightSize.w,
-        y: (p.y / leftSize.h) * rightSize.h,
-        t: p.t,
-      })))
+  const mirroredDrawStrokes: StyledStroke[] = (hasColumnStrokes && leftSize.w > 0 && rightSize.w > 0)
+    ? drawStrokes.map(s => ({
+        ...s,
+        points: s.points.map(p => ({
+          x: (p.x / leftSize.w) * rightSize.w,
+          y: (p.y / leftSize.h) * rightSize.h,
+          t: p.t,
+        })),
+      }))
     : []
+
+  const toolBtnStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? 'var(--accent)' : 'none',
+    color: active ? '#fff' : 'var(--text-secondary)',
+    border: active ? 'none' : '1px solid var(--border)',
+    fontSize: 12,
+    cursor: 'pointer',
+    padding: '4px 10px',
+    borderRadius: 'var(--radius-sm)',
+  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       <style>{`@keyframes mirror-click-ripple { from { transform: translate(-6px,-6px) scale(0.5); opacity: 1; } to { transform: translate(-6px,-6px) scale(2); opacity: 0; } }`}</style>
 
-      {/* Header with centered Back to Edit */}
+      {/* Header: Back to Edit + drawing tools */}
       <div style={{
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '6px 0',
+        gap: 8,
+        padding: '6px 16px',
         borderBottom: '1px solid var(--border)',
         flexShrink: 0,
       }}>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-            fontSize: 12,
-            cursor: 'pointer',
-            padding: '4px 14px',
-            borderRadius: 'var(--radius-sm)',
-          }}
-        >
+        <button onClick={onClose} style={{
+          background: 'none', border: '1px solid var(--border)',
+          color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer',
+          padding: '4px 14px', borderRadius: 'var(--radius-sm)',
+        }}>
           Back to Edit
         </button>
+        <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
+        <button onClick={() => setDrawTool('pen')} style={toolBtnStyle(drawTool === 'pen')}>Pen</button>
+        <button onClick={() => setDrawTool('highlighter')} style={toolBtnStyle(drawTool === 'highlighter')}>Highlighter</button>
+        <ColorPicker color={drawColor} onChange={setDrawColor} />
       </div>
 
       {/* Two-column script layout */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Left: full script (text + tweet cards) */}
+        {/* Left column */}
         <div
           ref={(el) => { leftRef.current = el; leftColumnRef.current = el }}
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            padding: '12px 20px',
-            position: 'relative',
-          }}
+          style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 20px', position: 'relative' }}
         >
-          {/* Drawing canvas across left column */}
-          {hasColumnStrokes && (
-            <DrawCanvas strokes={drawStrokes} width={leftSize.w} height={leftSize.h} />
-          )}
+          {hasColumnStrokes && <DrawCanvas strokes={drawStrokes} width={leftSize.w} height={leftSize.h} />}
           <div style={{
             fontSize: 17, fontWeight: 600, color: 'var(--text-primary)',
             padding: '4px 0 12px', borderBottom: '1px solid var(--border)', marginBottom: 12,
-          }}>
-            {topicTitle}
-          </div>
+          }}>{topicTitle}</div>
           {groupedBlocks.map((group) => {
             if (group.type === 'text' && group.block.text) {
-              return (
-                <ScriptTextBlock
-                  key={group.index}
-                  text={group.block.text}
-                  blockIndex={group.index}
-                  script={script}
-                  topicId={topicId}
-                />
-              )
+              return <ScriptTextBlock key={group.index} text={group.block.text} blockIndex={group.index} script={script} topicId={topicId} />
             }
             if (group.type === 'tweet_group') {
-              return (
-                <TweetRows
-                  key={`tg-${group.startIndex}`}
-                  blocks={group.blocks}
-                  startIndex={group.startIndex}
-                  tweets={tweets}
-                  onImageClick={setExpandedImage}
-                />
-              )
+              return <TweetRows key={`tg-${group.startIndex}`} blocks={group.blocks} startIndex={group.startIndex} tweets={tweets} onImageClick={setExpandedImage} />
             }
             return null
           })}
@@ -701,61 +756,39 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
         {/* Center divider */}
         <div style={{ width: 1, flexShrink: 0, background: 'var(--border)' }} />
 
-        {/* Right: mirrored tweet cards with text placeholders */}
+        {/* Right column */}
         <div
           ref={(el) => { rightRef.current = el; rightColumnRef.current = el }}
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            padding: '12px 16px',
-            position: 'relative',
-          }}
+          style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 16px', position: 'relative' }}
         >
-          {/* Mirrored drawing canvas */}
-          {mirroredDrawStrokes.length > 0 && (
-            <DrawCanvas strokes={mirroredDrawStrokes} width={rightSize.w} height={rightSize.h} />
-          )}
+          {mirroredDrawStrokes.length > 0 && <DrawCanvas strokes={mirroredDrawStrokes} width={rightSize.w} height={rightSize.h} />}
           <div style={{
             fontSize: 17, fontWeight: 600, color: 'var(--text-primary)',
             padding: '4px 0 12px', borderBottom: '1px solid var(--border)', marginBottom: 12,
-          }}>
-            {topicTitle}
-          </div>
+          }}>{topicTitle}</div>
           {groupedBlocks.map((group) => {
             if (group.type === 'text' && group.block.text) {
               return (
                 <div key={group.index} style={{
-                  padding: '8px 0',
-                  fontSize: '15px',
-                  lineHeight: 1.6,
-                  borderBottom: '1px solid var(--border)',
-                  marginBottom: 4,
+                  padding: '8px 0', fontSize: '15px', lineHeight: 1.6,
+                  borderBottom: '1px solid var(--border)', marginBottom: 4,
                 }}>
                   <div style={{ visibility: 'hidden' }}>{group.block.text}</div>
                 </div>
               )
             }
             if (group.type === 'tweet_group') {
-              return (
-                <TweetRows
-                  key={`tg-${group.startIndex}`}
-                  blocks={group.blocks}
-                  startIndex={group.startIndex}
-                  tweets={tweets}
-                  onImageClick={setExpandedImage}
-                />
-              )
+              return <TweetRows key={`tg-${group.startIndex}`} blocks={group.blocks} startIndex={group.startIndex} tweets={tweets} onImageClick={setExpandedImage} />
             }
             return null
           })}
         </div>
       </div>
 
-      {/* Mirror cursor (hidden when image overlay is open) */}
+      {/* Mirror cursor */}
       {!expandedImage && <MirrorCursor pos={mirrorPos} clicking={mirrorClicking} />}
 
-      {/* Mirrored image overlays with drawing support */}
+      {/* Mirrored image overlays with drawing */}
       {expandedImage && (
         <>
           <InlineImageOverlay
@@ -765,6 +798,8 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
             drawingEnabled
             drawStrokes={photoStrokes}
             onDrawStrokes={setPhotoStrokes}
+            toolRef={drawToolRef}
+            colorRef={drawColorRef}
           />
           <InlineImageOverlay
             url={expandedImage}
@@ -775,67 +810,35 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
         </>
       )}
 
-      {/* Bottom bar: version info + feedback + regenerate */}
+      {/* Bottom bar */}
       <div style={{
-        borderTop: '1px solid var(--border)',
-        padding: '10px 16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-        flexShrink: 0,
+        borderTop: '1px solid var(--border)', padding: '10px 16px',
+        display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0,
       }}>
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
           v{script.version} · {script.model_used} · {new Date(script.created_at).toLocaleString()}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            style={{
-              background: 'var(--bg-raised)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              padding: '6px 10px',
-              fontSize: 13,
-              flexShrink: 0,
-            }}
-          >
-            {AVAILABLE_MODELS.map(m => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
+          <select value={model} onChange={(e) => setModel(e.target.value)} style={{
+            background: 'var(--bg-raised)', color: 'var(--text-primary)',
+            border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', fontSize: 13, flexShrink: 0,
+          }}>
+            {AVAILABLE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
-          <input
-            type="text"
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
+          <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)}
             placeholder="Give feedback..."
             onKeyDown={(e) => { if (e.key === 'Enter') handleGenerate() }}
             style={{
-              flex: 1,
-              background: 'var(--bg-raised)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              padding: '6px 10px',
-              fontSize: 13,
+              flex: 1, background: 'var(--bg-raised)', color: 'var(--text-primary)',
+              border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', fontSize: 13,
             }}
           />
-          <button
-            onClick={handleGenerate}
-            disabled={generateScript.isPending}
-            style={{
-              background: 'var(--accent)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '6px 14px',
-              fontSize: 13,
-              cursor: generateScript.isPending ? 'wait' : 'pointer',
-              opacity: generateScript.isPending ? 0.6 : 1,
-              flexShrink: 0,
-            }}
-          >
+          <button onClick={handleGenerate} disabled={generateScript.isPending} style={{
+            background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6,
+            padding: '6px 14px', fontSize: 13,
+            cursor: generateScript.isPending ? 'wait' : 'pointer',
+            opacity: generateScript.isPending ? 0.6 : 1, flexShrink: 0,
+          }}>
             {generateScript.isPending ? 'Generating...' : 'Regenerate'}
           </button>
         </div>
