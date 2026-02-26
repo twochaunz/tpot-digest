@@ -22,19 +22,30 @@ _anthropic_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 CATEGORY_ORDER = ["context", "kek", "signal-boost", "pushback", "hot-take"]
 
 DEFAULT_STYLE_GUIDE = """PURPOSE:
-- This is a value add — this summary should be <20-30 seconds to give a reader MORE than if they read all the tweets and articles themselves
-- This should not be sensationalism nor embellishment. This should not be boring regurgitation.
+- Give the viewer MORE than reading the tweets themselves — in under 30 seconds per topic
+- Not sensationalism. Not embellishment. Not boring regurgitation. Just the story, told efficiently.
 
-STRUCTURE:
-- Don't parrot the headline or tweet text — explain what's actually going on
+WRITING RULES:
+- Get to the point immediately. No wind-up clauses, no scene-setting, no throat-clearing before the actual information.
+  BAD: "San Francisco's AI startup scene just got a wild spotlight in Harper's Magazine, where writer Sam Kriss dives into the world of highly agentic founders"
+  GOOD: "Writer Sam Kriss made waves in tech profiling the personalities and chaos fueling SF's AI startups."
+- Be specific. Say what someone actually did or what specifically happened — not vague adjectives about them.
+  BAD: "eccentric, hyper-driven tech bros betting it all on artificial intelligence"
+  GOOD: "a founder whose obsessive PC build rapidly grew his infamy in tech"
+- Do NOT editorialize unless a tweet is about to back it up. Statements like "this isn't just another tech puff piece" or "these aren't your typical stereotypes — they're raw and chaotic" are the script inserting its own opinion. That's the tweets' job, not the script's.
+- Every sentence must add new information. If a sentence just restates, summarizes, or evaluates what was already said, cut it. If the useful parts can be folded into an adjacent sentence, do that instead of giving it its own sentence.
+- No decorative closers. Don't wrap topics with sweeping statements like "painting a picture of an industry teetering between genius and grift." Just move on.
+- Don't parrot the headline or tweet text — paraphrase naturally and explain what's actually going on.
 - Don't ask rhetorical questions.
-- Don't give the viewer exercises like "Imagine a world...". If you are going to compare, use previous day topics or common discourse/sentiment in tech specifically like "...as opposed to how people felt about Anthropic's latest model this past week" (You should have a reputable source)
-- If the topic is obscure or super niche, give a brief background on the OG post, the author, or any relevant parties so the viewer understands why it matters
-- Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof
+- Don't give the viewer exercises like "Imagine a world...". If comparing, reference real things — previous day topics or known sentiment in tech with a reputable source.
+- If the topic is obscure or niche, give brief background on the OG post, author, or relevant parties so the viewer understands why it matters.
+- Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof.
 
-CATEGORIES ARE INTERNAL ONLY:
-- The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles — NEVER use these words in the script
-- Describe reactions naturally: "people celebrated...", "critics pushed back...", "people had crazy reactions to...", "one spicy take stood out..."
+CATEGORY USAGE:
+- The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles
+- NEVER use "signal-boost" or "kek" in the script — these are internal labels only
+- You CAN use "context", "pushback", and "hot take" in prose when it's natural (e.g. "the pushback was immediate...", "one hot take stood out...")
+- Describe reactions naturally: "people celebrated...", "critics pushed back...", "people had crazy reactions to..."
 - Reference specific people/entities when they're central to the story"""
 
 
@@ -59,7 +70,7 @@ def build_prompt(
     feedback: str | None = None,
 ) -> str:
     parts = [
-        "You are writing a narrative summary of a tech discourse topic for a daily digest.",
+        "You are writing a short, direct script for a tech discourse topic in a daily video digest.",
         "",
         "STYLE GUIDE:",
         style_guide or DEFAULT_STYLE_GUIDE,
@@ -110,13 +121,15 @@ def build_prompt(
     parts.append('- {"type": "tweet", "tweet_id": "123456"}')
     parts.append("")
     parts.append("INSTRUCTIONS:")
-    parts.append('- The hook should be a straightforward statement about people\'s reaction like "The timeline was in turmoil after..." or about the news itself like "OpenAi launched a...". It could also be something like the name of a trending article (if the name is self explanatory or provoking).')
-    parts.append("- Do NOT repeat the OG tweet's text. Should paraphrase (not forced) and follow our style guide")
-    parts.append("- Place tweets as evidence at natural moments in the narrative")
-    parts.append("- Use the category groupings to guide flow (context first, then reactions, pushback, hot takes) but NEVER mention category names in prose. You can change the order if it makes a story more compelling.")
-    parts.append("- You do NOT need every tweet. Aggregate similar sentiment into natural phrases ('the consensus was...', 'critics argued...') and embed only 2-3 representative tweets as proof")
-    parts.append("- While following the style guide, the script should educate, evoke, and/or entertain — strip anything that doesn't")
-    parts.append('- Only reference tweet_ids from the list above, except in interesting comparison situations that tech would know (like "their previous week\'s launch did better...")')
+    parts.append('- Open with a direct statement — who did what, or what happened. One clause, no buildup.')
+    parts.append('  BAD: "The timeline was in turmoil after a bombshell dropped from..."')
+    parts.append('  GOOD: "OpenAI launched o3." / "Writer Sam Kriss made waves in tech profiling SF\'s AI startup chaos."')
+    parts.append("- Do NOT repeat the OG tweet's text. Paraphrase naturally.")
+    parts.append("- Place tweets as evidence — they prove what the script claims.")
+    parts.append("- Use category groupings to guide flow (context first, then reactions, pushback, hot takes) but don't force category names where they don't fit naturally. Change order if it tells a better story.")
+    parts.append("- You do NOT need every tweet. Aggregate similar sentiment into short phrases ('the consensus was...', 'critics argued...') and embed only 2-3 representative tweets.")
+    parts.append("- Every sentence should inform, clarify, or set up a tweet. Cut anything that doesn't.")
+    parts.append('- Only reference tweet_ids from the list above, except for real comparisons tech people would know.')
     parts.append("- Return ONLY the JSON array, no other text")
 
     return "\n".join(parts)
