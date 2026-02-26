@@ -117,7 +117,8 @@ export function TopicSectionWithData({
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined }, { enabled: !propTweets })
   const tweets = propTweets ?? tweetsQuery.data ?? []
-  const { data: activeScript } = useTopicScript(topicId)
+  const [viewMode, setViewMode] = useState<'edit' | 'script'>('edit')
+  const { data: activeScript } = useTopicScript(viewMode === 'script' ? topicId : undefined)
   const { showEngagement } = useEngagementToggle()
 
   // Separate OG tweet from the rest
@@ -159,6 +160,8 @@ export function TopicSectionWithData({
       allTweets={tweets}
       activeScript={activeScript ?? null}
       showEngagement={showEngagement}
+      viewMode={viewMode}
+      onToggleViewMode={() => setViewMode((v) => (v === 'edit' ? 'script' : 'edit'))}
       onDelete={onDelete}
       onUpdateTitle={onUpdateTitle}
       onSetOg={onSetOg}
@@ -263,6 +266,8 @@ interface TopicSectionProps {
   allTweets: Tweet[]
   activeScript: TopicScript | null
   showEngagement: boolean
+  viewMode: 'edit' | 'script'
+  onToggleViewMode: () => void
   onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
@@ -279,6 +284,8 @@ function TopicSection({
   allTweets,
   activeScript,
   showEngagement,
+  viewMode,
+  onToggleViewMode,
   onDelete,
   onUpdateTitle,
   onSetOg,
@@ -288,7 +295,6 @@ function TopicSection({
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)
-  const [viewMode, setViewMode] = useState<'edit' | 'script'>('edit')
   const inputRef = useRef<HTMLInputElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
 
@@ -455,7 +461,7 @@ function TopicSection({
         <button
           onClick={(e) => {
             e.stopPropagation()
-            setViewMode((v) => (v === 'edit' ? 'script' : 'edit'))
+            onToggleViewMode()
           }}
           style={{
             background: 'none',
