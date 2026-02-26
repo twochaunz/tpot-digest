@@ -114,9 +114,10 @@ export function useGenerateDayScripts() {
       })
       return data as TopicScript[]
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['script'] })
+    onSuccess: (scripts) => {
+      for (const s of scripts) qc.setQueryData(['script', s.topic_id], s)
       qc.invalidateQueries({ queryKey: ['script-versions'] })
+      qc.invalidateQueries({ queryKey: ['day-bundle'] })
     },
   })
 }

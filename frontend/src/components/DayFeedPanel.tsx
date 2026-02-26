@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { useGenerateScript, useGenerateDayScripts, AVAILABLE_MODELS } from '../api/scripts'
+import DayScriptView from './DayScriptView'
 import {
   DndContext,
   DragOverlay,
@@ -88,29 +88,6 @@ export function DayFeedPanel({
 
   // Undo
   const undo = useUndo(date)
-
-  // Script generation
-  const generateAll = useGenerateDayScripts()
-  const generateScript = useGenerateScript()
-  const [genModel, setGenModel] = useState<string>(AVAILABLE_MODELS[0].id)
-  const [selectedTopicIds, setSelectedTopicIds] = useState<Set<number>>(new Set())
-
-  // Reset selection to all when modal opens
-  useEffect(() => {
-    if (genPanelOpen) {
-      setSelectedTopicIds(new Set(topics.map((t) => t.id)))
-    }
-  }, [genPanelOpen]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const allSelected = selectedTopicIds.size === topics.length && topics.length > 0
-  const toggleTopicId = useCallback((id: number) => {
-    setSelectedTopicIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
 
   // DnD sensors: 8px activation distance so clicks still work
   const sensors = useSensors(
@@ -237,13 +214,6 @@ export function DayFeedPanel({
     [updateTopicMutation, undo, date],
   )
 
-  const handleTopicGenerateScript = useCallback(
-    (topicId: number) => {
-      generateScript.mutate({ topicId, model: genModel })
-    },
-    [generateScript, genModel],
-  )
-
   const handleMoveToDate = useCallback(
     (tweetId: number, targetDate: string) => {
       const originalDate = date
@@ -353,13 +323,6 @@ export function DayFeedPanel({
       {/* Content when loaded */}
       {!isLoading && (
         <>
-        {/* Generating indicator */}
-        {generateAll.isPending && (
-          <div style={{ padding: '8px 0', marginBottom: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Generating scripts...
-          </div>
-        )}
-
         <DndContext
           sensors={sensors}
           collisionDetection={pointerWithin}
@@ -493,7 +456,6 @@ export function DayFeedPanel({
           onClose={() => setTopicContextMenu(null)}
           onDelete={handleDeleteTopic}
           onMoveToDate={handleTopicMoveToDate}
-          onGenerateScript={handleTopicGenerateScript}
         />
       )}
 
@@ -504,230 +466,10 @@ export function DayFeedPanel({
         onDismiss={undo.dismissToast}
       />
 
-      {/* Generate scripts modal */}
+      {/* Unified script panel */}
       {genPanelOpen && topics.length > 0 && (
-        <GenerateScriptsModal
-          topics={sortTopics(topics)}
-          selectedTopicIds={selectedTopicIds}
-          allSelected={allSelected}
-          genModel={genModel}
-          isPending={generateAll.isPending}
-          onToggleTopic={toggleTopicId}
-          onToggleAll={() => {
-            if (allSelected) setSelectedTopicIds(new Set())
-            else setSelectedTopicIds(new Set(topics.map((t) => t.id)))
-          }}
-          onModelChange={setGenModel}
-          onGenerate={() => {
-            generateAll.mutate({
-              date,
-              model: genModel,
-              topicIds: allSelected ? undefined : Array.from(selectedTopicIds),
-            })
-            onGenPanelClose()
-          }}
-          onClose={onGenPanelClose}
-        />
+        <DayScriptView date={date} topics={topics} onClose={onGenPanelClose} />
       )}
-    </div>
-  )
-}
-
-function GenerateScriptsModal({
-  topics,
-  selectedTopicIds,
-  allSelected,
-  genModel,
-  isPending,
-  onToggleTopic,
-  onToggleAll,
-  onModelChange,
-  onGenerate,
-  onClose,
-}: {
-  topics: { id: number; title: string; color: string | null }[]
-  selectedTopicIds: Set<number>
-  allSelected: boolean
-  genModel: string
-  isPending: boolean
-  onToggleTopic: (id: number) => void
-  onToggleAll: () => void
-  onModelChange: (model: string) => void
-  onGenerate: () => void
-  onClose: () => void
-}) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose() }
-    }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
-
-  return (
-    <div
-      ref={overlayRef}
-      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        background: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div
-        style={{
-          background: 'var(--bg-raised)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '20px 24px',
-          minWidth: 340,
-          maxWidth: 440,
-          width: '100%',
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-            Generate Scripts
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-tertiary)',
-              fontSize: 18,
-              cursor: 'pointer',
-              padding: '0 4px',
-              lineHeight: 1,
-            }}
-          >
-            &times;
-          </button>
-        </div>
-
-        {/* Select/Deselect All */}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            padding: '6px 8px',
-            borderRadius: 'var(--radius-sm)',
-            marginBottom: 4,
-            color: 'var(--text-primary)',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-        >
-          <input
-            type="checkbox"
-            checked={allSelected}
-            onChange={onToggleAll}
-            style={{ accentColor: 'var(--accent)' }}
-          />
-          {allSelected ? 'Deselect All' : 'Select All'}
-        </label>
-
-        {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border)', margin: '4px 0 4px' }} />
-
-        {/* Topic list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16, maxHeight: 320, overflowY: 'auto' }}>
-          {topics.map((topic) => {
-            const isSelected = selectedTopicIds.has(topic.id)
-            return (
-              <label
-                key={topic.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  padding: '6px 8px',
-                  borderRadius: 'var(--radius-sm)',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => onToggleTopic(topic.id)}
-                  style={{ accentColor: 'var(--accent)' }}
-                />
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: topic.color || 'var(--text-tertiary)',
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  color: 'var(--text-primary)',
-                }}>
-                  {topic.title}
-                </span>
-              </label>
-            )
-          })}
-        </div>
-
-        {/* Model + Generate */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <select
-            value={genModel}
-            onChange={(e) => onModelChange(e.target.value)}
-            style={{
-              flex: 1,
-              fontSize: 12,
-              padding: '6px 8px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border)',
-              background: 'var(--bg-elevated)',
-              color: 'var(--text-primary)',
-            }}
-          >
-            {AVAILABLE_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={onGenerate}
-            disabled={selectedTopicIds.size === 0 || isPending}
-            style={{
-              fontSize: 13,
-              padding: '6px 16px',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              background: selectedTopicIds.size === 0 || isPending ? 'var(--bg-elevated)' : 'var(--accent)',
-              color: selectedTopicIds.size === 0 || isPending ? 'var(--text-tertiary)' : '#fff',
-              cursor: selectedTopicIds.size === 0 || isPending ? 'not-allowed' : 'pointer',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {`Generate ${allSelected ? 'All' : selectedTopicIds.size} Script${allSelected || selectedTopicIds.size !== 1 ? 's' : ''}`}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

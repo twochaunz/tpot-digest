@@ -1,15 +1,10 @@
 import { useState, useMemo, useCallback, useRef, memo } from 'react'
-import { createPortal } from 'react-dom'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { useTweets, useFetchGrokContext } from '../api/tweets'
 import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
-import { useTopicScript } from '../api/scripts'
-import type { TopicScript } from '../api/scripts'
-import ScriptView from './ScriptView'
-import { useEngagementToggle } from '../hooks/useEngagementToggle'
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
@@ -116,9 +111,6 @@ export function TopicSectionWithData({
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined }, { enabled: !propTweets })
   const tweets = propTweets ?? tweetsQuery.data ?? []
-  const [viewMode, setViewMode] = useState<'edit' | 'script'>('edit')
-  const { data: activeScript } = useTopicScript(viewMode === 'script' ? topicId : undefined)
-  const { showEngagement } = useEngagementToggle()
 
   // Separate OG tweet from the rest
   const ogTweet = ogTweetId ? tweets.find(t => t.id === ogTweetId) ?? null : null
@@ -155,11 +147,6 @@ export function TopicSectionWithData({
       color={color}
       tweetsByCategory={tweetsByCategory}
       ogTweet={ogTweet}
-      allTweets={tweets}
-      activeScript={activeScript ?? null}
-      showEngagement={showEngagement}
-      viewMode={viewMode}
-      onToggleViewMode={() => setViewMode((v) => (v === 'edit' ? 'script' : 'edit'))}
       onUpdateTitle={onUpdateTitle}
       onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId, ogTweetId)}
       onTopicContextMenu={onTopicContextMenu}
@@ -216,11 +203,6 @@ interface TopicSectionProps {
   color: string | null
   tweetsByCategory: Map<string | null, { category: { name: string; color: string; sortOrder: number } | null; tweets: Tweet[] }>
   ogTweet: Tweet | null
-  allTweets: Tweet[]
-  activeScript: TopicScript | null
-  showEngagement: boolean
-  viewMode: 'edit' | 'script'
-  onToggleViewMode: () => void
   onUpdateTitle: (topicId: number, title: string) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
@@ -232,16 +214,10 @@ function TopicSection({
   color,
   tweetsByCategory,
   ogTweet,
-  allTweets,
-  activeScript,
-  showEngagement,
-  viewMode,
-  onToggleViewMode,
   onUpdateTitle,
   onContextMenu,
   onTopicContextMenu,
 }: TopicSectionProps) {
-  const [headerHovered, setHeaderHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)
@@ -287,8 +263,6 @@ function TopicSection({
     >
       {/* Header */}
       <div
-        onMouseEnter={() => setHeaderHovered(true)}
-        onMouseLeave={() => setHeaderHovered(false)}
         onContextMenu={(e) => { e.preventDefault(); onTopicContextMenu?.(e, topicId, title) }}
         style={{
           display: 'flex',
@@ -401,54 +375,7 @@ function TopicSection({
           </span>
         )}
 
-        {/* Script/Edit toggle button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onToggleViewMode()
-          }}
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-            fontSize: 11,
-            cursor: 'pointer',
-            padding: '2px 8px',
-            borderRadius: 'var(--radius-sm)',
-            opacity: headerHovered ? 1 : 0,
-            transition: 'opacity 0.15s ease',
-            lineHeight: 1.4,
-            flexShrink: 0,
-          }}
-          title={viewMode === 'edit' ? 'Switch to script view' : 'Switch to edit view'}
-        >
-          {viewMode === 'edit' ? 'Script' : 'Edit'}
-        </button>
-
       </div>
-
-      {/* Script overlay — portal to body so it covers full viewport */}
-      {viewMode === 'script' && createPortal(
-        <div style={{
-          position: 'fixed',
-          top: 66,
-          left: 0,
-          width: '100vw',
-          height: 'calc(100vh - 66px)',
-          zIndex: 60,
-          background: 'var(--bg-raised)',
-        }}>
-          <ScriptView
-            topicId={topicId}
-            topicTitle={title}
-            script={activeScript}
-            tweets={allTweets}
-            showEngagement={showEngagement}
-            onClose={onToggleViewMode}
-          />
-        </div>,
-        document.body,
-      )}
 
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
@@ -456,17 +383,6 @@ function TopicSection({
           padding: '12px 8px',
           minHeight: 60,
         }}>
-          {viewMode === 'script' ? (
-            /* Placeholder when script overlay is open */
-            <div style={{
-              padding: '24px 0',
-              textAlign: 'center',
-              color: 'var(--text-tertiary)',
-              fontSize: 13,
-            }}>
-              Script view is open
-            </div>
-          ) : (
             <>
               {totalTweets === 0 && (
                 <div
@@ -584,7 +500,6 @@ function TopicSection({
               ))
               )}
             </>
-          )}
         </div>
       )}
     </div>
