@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
@@ -22,7 +23,7 @@ function GripHandle() {
   )
 }
 
-function DraggableFeedTweetCard({
+const DraggableFeedTweetCard = memo(function DraggableFeedTweetCard({
   tweet,
   onDelete,
   onContextMenu,
@@ -72,9 +73,9 @@ function DraggableFeedTweetCard({
       />
     </div>
   )
-}
+})
 
-export function UnsortedSection({
+export const UnsortedSection = memo(function UnsortedSection({
   tweets,
   onDelete,
   onContextMenu,
@@ -153,4 +154,4 @@ export function UnsortedSection({
       </div>
     </div>
   )
-}
+})
