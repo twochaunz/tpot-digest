@@ -1,8 +1,4 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import {
-  AVAILABLE_MODELS,
-  useGenerateDayScripts,
-} from '../api/scripts'
 import type { TopicBundle } from '../api/dayBundle'
 import {
   FADE_MS,
@@ -18,11 +14,10 @@ import {
 } from './DayScriptView'
 
 interface ScriptMirrorViewProps {
-  date: string
   topics: TopicBundle[]
 }
 
-export function ScriptMirrorView({ date, topics }: ScriptMirrorViewProps) {
+export function ScriptMirrorView({ topics }: ScriptMirrorViewProps) {
   /* ---- Drawing state ---- */
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [mirrorPos, setMirrorPos] = useState<{ x: number; y: number } | null>(null)
@@ -48,41 +43,14 @@ export function ScriptMirrorView({ date, topics }: ScriptMirrorViewProps) {
   const rightColumnRef = useRef<HTMLDivElement>(null)
   const syncing = useRef(false)
 
-  /* ---- Script status tracking ---- */
-  const [scriptStatus, setScriptStatus] = useState<Map<number, boolean>>(new Map())
-
-  const handleScriptStatus = useCallback((topicId: number, hasScript: boolean) => {
-    setScriptStatus(prev => {
-      if (prev.get(topicId) === hasScript) return prev
-      const next = new Map(prev)
-      next.set(topicId, hasScript)
-      return next
-    })
-  }, [])
+  // No-op script status handler (generation controls are in TopicManagerView)
+  const handleScriptStatus = useCallback((_topicId: number, _hasScript: boolean) => {}, [])
 
   // All tweets across topics (for mirror tweet lookup)
   const allTweets = useMemo(() => topics.flatMap(t => t.tweets), [topics])
 
   // Topic IDs in order (for scroll sync)
   const topicIds = useMemo(() => topics.map(t => t.id), [topics])
-
-  // Compute missing script count
-  const missingScriptIds = topics
-    .filter(t => scriptStatus.get(t.id) === false)
-    .map(t => t.id)
-
-  // Generate missing scripts
-  const generateAll = useGenerateDayScripts()
-  const [genModel, setGenModel] = useState<string>(AVAILABLE_MODELS[0].id)
-
-  const handleGenerateMissing = useCallback(() => {
-    if (missingScriptIds.length === 0) return
-    generateAll.mutate({
-      date,
-      model: genModel,
-      topicIds: missingScriptIds,
-    })
-  }, [generateAll, date, genModel, missingScriptIds])
 
   /* ---- Element-aligned scroll sync ---- */
   useEffect(() => {
@@ -349,35 +317,7 @@ export function ScriptMirrorView({ date, topics }: ScriptMirrorViewProps) {
         <button onClick={() => setDrawTool('pen')} style={toolBtnStyle(drawTool === 'pen')}>Pen</button>
         <button onClick={() => setDrawTool('highlighter')} style={toolBtnStyle(drawTool === 'highlighter')}>Highlighter</button>
         <ColorWheelPicker color={drawColor} opacity={drawOpacity} onColorChange={setDrawColor} onOpacityChange={setDrawOpacity} />
-        <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
-
-        {/* Generate Missing button */}
-        {missingScriptIds.length > 0 && (
-          <>
-            <select value={genModel} onChange={(e) => setGenModel(e.target.value)} style={{
-              background: 'var(--bg-elevated)', color: 'var(--text-primary)',
-              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-              padding: '3px 6px', fontSize: 11,
-            }}>
-              {AVAILABLE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-            <button
-              onClick={handleGenerateMissing}
-              disabled={generateAll.isPending}
-              style={{
-                background: generateAll.isPending ? 'var(--bg-elevated)' : 'var(--accent)',
-                color: generateAll.isPending ? 'var(--text-tertiary)' : '#fff',
-                border: 'none', borderRadius: 'var(--radius-sm)',
-                padding: '4px 12px', fontSize: 12, fontWeight: 600,
-                cursor: generateAll.isPending ? 'wait' : 'pointer',
-              }}
-            >
-              {generateAll.isPending ? 'Generating...' : `Generate Missing (${missingScriptIds.length})`}
-            </button>
-            <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
-          </>
-        )}
-
+        <div style={{ flex: 1 }} />
         <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
           {topics.length} topic{topics.length !== 1 ? 's' : ''}
         </span>

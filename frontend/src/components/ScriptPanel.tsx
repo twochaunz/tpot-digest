@@ -192,7 +192,7 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
         minHeight: 0,
         overflow: 'hidden',
       }}>
-        <ScriptMirrorView date={date} topics={selectedTopics} />
+        <ScriptMirrorView topics={selectedTopics} />
       </div>
     </div>,
     document.body,
