@@ -96,7 +96,6 @@ interface TopicSectionWithDataProps {
   search: string
   ogTweetId: number | null
   onUpdateTitle: (topicId: number, title: string) => void
-  onSetOg: (topicId: number, tweetId: number | null) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => void
   onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
   tweets?: Tweet[]
@@ -110,7 +109,6 @@ export function TopicSectionWithData({
   search,
   ogTweetId,
   onUpdateTitle,
-  onSetOg,
   onContextMenu,
   onTopicContextMenu,
   tweets: propTweets,
@@ -163,7 +161,6 @@ export function TopicSectionWithData({
       viewMode={viewMode}
       onToggleViewMode={() => setViewMode((v) => (v === 'edit' ? 'script' : 'edit'))}
       onUpdateTitle={onUpdateTitle}
-      onSetOg={onSetOg}
       onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId, ogTweetId)}
       onTopicContextMenu={onTopicContextMenu}
     />
@@ -174,68 +171,25 @@ export function TopicSectionWithData({
 const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   tweet,
   topicId,
-  ogTweetId,
-  onSetOg,
   onContextMenu,
 }: {
   tweet: Tweet
   topicId: number
-  ogTweetId: number | null
-  onSetOg: (topicId: number, tweetId: number | null) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
     data: { tweet, sourceTopicId: topicId },
   })
-  const [isHovered, setIsHovered] = useState(false)
-  const [starHovered, setStarHovered] = useState(false)
-
-  const isOg = tweet.id === ogTweetId
 
   return (
     <div
       ref={setNodeRef}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       style={{
         opacity: isDragging ? 0.3 : 1,
         transition: 'opacity 0.15s ease',
-        position: 'relative',
       }}
     >
-      {/* OG star toggle */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onSetOg(topicId, isOg ? null : tweet.id)
-        }}
-        onMouseEnter={() => setStarHovered(true)}
-        onMouseLeave={() => setStarHovered(false)}
-        title={isOg ? 'Remove OG' : 'Set as OG Post'}
-        style={{
-          position: 'absolute',
-          top: 6,
-          left: 6,
-          background: isOg ? '#F59E0B' : starHovered ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.5)',
-          border: 'none',
-          borderRadius: '50%',
-          width: 24,
-          height: 24,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          fontSize: 12,
-          color: isOg ? '#000' : starHovered ? '#fff' : '#888',
-          opacity: isHovered || isOg ? 1 : 0,
-          transition: 'opacity 0.15s, color 0.15s, background 0.15s',
-          zIndex: 2,
-        }}
-      >
-        &#9733;
-      </button>
-
       {/* Invisible drag handle overlaid on the card */}
       <div
         {...attributes}
@@ -269,7 +223,6 @@ interface TopicSectionProps {
   viewMode: 'edit' | 'script'
   onToggleViewMode: () => void
   onUpdateTitle: (topicId: number, title: string) => void
-  onSetOg: (topicId: number, tweetId: number | null) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
 }
@@ -287,7 +240,6 @@ function TopicSection({
   viewMode,
   onToggleViewMode,
   onUpdateTitle,
-  onSetOg,
   onContextMenu,
   onTopicContextMenu,
 }: TopicSectionProps) {
@@ -562,8 +514,6 @@ function TopicSection({
                       key={t.id}
                       tweet={t}
                       topicId={topicId}
-                      ogTweetId={ogTweetId}
-                      onSetOg={onSetOg}
                       onContextMenu={onContextMenu}
                     />
                   ))}
@@ -599,9 +549,7 @@ function TopicSection({
                         key={t.id}
                         tweet={t}
                         topicId={topicId}
-                        ogTweetId={ogTweetId}
-                        onSetOg={onSetOg}
-                          onContextMenu={onContextMenu}
+                        onContextMenu={onContextMenu}
                       />
                     ))}
                   </div>
