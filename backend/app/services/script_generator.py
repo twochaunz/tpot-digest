@@ -41,8 +41,10 @@ WRITING RULES:
 - If the topic is obscure or niche, give brief background on the OG post, author, or relevant parties so the viewer understands why it matters.
 - Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof.
 - Do NOT narrate individual tweets like "@user tweeted X" or "User said Y". Instead, describe what's happening in the discourse — what people think, what the reaction was, what the tension is — and let the tweet blocks show who said it. The script narrates the story; the tweets are the receipts.
-  BAD: "@elonmusk tweeted that the acquisition was inevitable. @sama responded saying it was a bold move."
+  EXCEPTION: Well-known tech figures (e.g. Elon Musk, Sam Altman, Mark Zuckerberg, Satya Nadella) can be named when their involvement IS the story — but still describe what they did, don't just quote them.
+  BAD: "@random_dev tweeted that the API was broken. @another_user responded agreeing."
   GOOD: "The reaction split fast — some saw it as inevitable consolidation, others called it a power grab."
+  GOOD: "Sam Altman fired back within hours, calling the claims overblown."
 
 CATEGORY USAGE:
 - The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles
