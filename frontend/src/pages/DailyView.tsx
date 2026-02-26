@@ -75,11 +75,24 @@ export function DailyView() {
         const goBack = isTopicNav ? e.shiftKey : (e.key === 'ArrowUp' || e.key === 'k')
         const panelTop = feedPanel.getBoundingClientRect().top
 
-        // Find which element is closest to the panel top (the "current" one)
+        // For category nav inside a topic, account for sticky topic header
+        const getStickyOffset = (el: HTMLElement) => {
+          if (isTopicNav) return 0
+          const parentTopic = el.closest<HTMLElement>('[id^="toc-topic-"]')
+          if (!parentTopic) return 0
+          const header = parentTopic.querySelector<HTMLElement>(':scope > div')
+          return header ? header.offsetHeight : 0
+        }
+
+        // The "visible top" for category elements is below the sticky header
+        const getVisibleTop = (el: HTMLElement) =>
+          el.getBoundingClientRect().top - panelTop - getStickyOffset(el)
+
+        // Find which element is closest to the visible top (the "current" one)
         let currentIdx = 0
         let minDist = Infinity
         for (let i = 0; i < elements.length; i++) {
-          const dist = Math.abs(elements[i].getBoundingClientRect().top - panelTop)
+          const dist = Math.abs(getVisibleTop(elements[i]))
           if (dist < minDist) {
             minDist = dist
             currentIdx = i
@@ -87,18 +100,19 @@ export function DailyView() {
         }
 
         const targetIdx = goBack ? currentIdx - 1 : currentIdx + 1
-        // If current element isn't snapped to top yet, navigating forward should go to it first
-        if (!goBack && elements[currentIdx].getBoundingClientRect().top > panelTop + 30) {
-          const el = elements[currentIdx]
+        // If current element isn't snapped to visible top yet, navigating forward should go to it first
+        if (!goBack && getVisibleTop(elements[currentIdx]) > 30) {
           e.preventDefault()
-          feedPanel.scrollTo({ top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelTop, behavior: 'smooth' })
+          const offset = getStickyOffset(elements[currentIdx])
+          feedPanel.scrollTo({ top: feedPanel.scrollTop + elements[currentIdx].getBoundingClientRect().top - panelTop - offset, behavior: 'smooth' })
           return
         }
         if (targetIdx < 0 || targetIdx >= elements.length) return
 
         e.preventDefault()
         const target = elements[targetIdx]
-        feedPanel.scrollTo({ top: feedPanel.scrollTop + target.getBoundingClientRect().top - panelTop, behavior: 'smooth' })
+        const offset = getStickyOffset(target)
+        feedPanel.scrollTo({ top: feedPanel.scrollTop + target.getBoundingClientRect().top - panelTop - offset, behavior: 'smooth' })
       }
     }
     document.addEventListener('keydown', handleKeyDown)
