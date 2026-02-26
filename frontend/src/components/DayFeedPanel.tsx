@@ -164,6 +164,20 @@ export function DayFeedPanel({
     [assignMutation, unassignMutation, undo],
   )
 
+  const handleCreateTopicAndMove = useCallback(
+    (tweetId: number, fromTopicId: number, title: string) => {
+      createTopicMutation.mutate({ title, date }, {
+        onSuccess: (newTopic: { id: number }) => {
+          if (fromTopicId) {
+            unassignMutation.mutate({ tweet_ids: [tweetId], topic_id: fromTopicId })
+          }
+          assignMutation.mutate({ tweet_ids: [tweetId], topic_id: newTopic.id })
+        },
+      })
+    },
+    [createTopicMutation, assignMutation, unassignMutation, date],
+  )
+
   const handleContextMenu = useCallback((e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY, tweet, topicId, ogTweetId })
@@ -465,6 +479,8 @@ export function DayFeedPanel({
           onSetCategory={contextMenu.topicId && !topics.find(t => t.id === contextMenu.topicId && isKekTopic(t.title)) ? handleSetCategory : undefined}
           topics={topics}
           onMoveToTopic={handleMoveToTopic}
+          onCreateTopicAndMove={handleCreateTopicAndMove}
+          date={date}
         />
       )}
 
