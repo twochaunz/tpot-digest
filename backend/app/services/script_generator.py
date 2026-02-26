@@ -21,12 +21,23 @@ _anthropic_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 
 CATEGORY_ORDER = ["context", "kek", "signal-boost", "pushback", "hot-take"]
 
-DEFAULT_STYLE_GUIDE = """- Present discourse objectively — show what different sides said without editorializing
-- Simplify complex topics so a general audience can follow
-- Reference specific people/entities when they're central to the story
-- Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof
+DEFAULT_STYLE_GUIDE = """VOICE & TONE:
+- Every sentence must educate, evoke, or entertain — if it doesn't, cut it
+- Open with a hook that makes the viewer care (a surprising fact, a bold claim, a tension)
 - Conversational but informative — not academic, not meme-speak
-- Natural prose, full sentences, clear and accessible"""
+- Natural prose, full sentences, clear and accessible
+
+STRUCTURE:
+- Lead with WHY this story matters, not WHAT the tweet says — don't parrot the headline
+- For the OG post: give succinct background (who are they, why should we care, what's the stakes) before describing what they said
+- Let the tweets do the heavy lifting for opinions — the script sets up context, tweets show the proof
+- Present discourse objectively — show what different sides said without editorializing
+
+CATEGORIES ARE INTERNAL ONLY:
+- The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles — NEVER use these words in the script
+- Instead, describe reactions naturally: "people celebrated...", "critics pushed back...", "the joke that took off was...", "one spicy take stood out..."
+- Reference specific people/entities when they're central to the story
+- Simplify complex topics so a general audience can follow"""
 
 
 class ScriptGeneratorError(Exception):
@@ -100,11 +111,15 @@ def build_prompt(
     parts.append('- {"type": "text", "text": "narrative prose"}')
     parts.append('- {"type": "tweet", "tweet_id": "123456"}')
     parts.append("")
-    parts.append("Place tweets at moments where they serve as evidence for what the script is saying.")
-    parts.append("Use the category ordering to shape narrative flow: context → kek → signal-boost → pushback → hot-take.")
-    parts.append("You do NOT need to use every tweet. When many tweets express similar sentiment, summarize them in prose (e.g. 'many people loved...', 'the consensus was...') and only embed 1-2 representative tweets as evidence. Prioritize a tight, readable narrative over completeness.")
-    parts.append("Only reference tweet_ids from the list above.")
-    parts.append("Return ONLY the JSON array, no other text.")
+    parts.append("INSTRUCTIONS:")
+    parts.append("- Start with a hook — make the viewer immediately curious or invested")
+    parts.append("- Do NOT repeat the OG tweet's text — instead explain the background and why it matters")
+    parts.append("- Place tweets as evidence at natural moments in the narrative")
+    parts.append("- Use the category groupings to shape flow (context first, then reactions, pushback, hot takes) but NEVER mention category names in prose")
+    parts.append("- You do NOT need every tweet. Aggregate similar sentiment into natural phrases ('the consensus was...', 'critics argued...') and embed only 1-2 representative tweets as proof")
+    parts.append("- Every sentence must earn its place: educate, evoke, or entertain — strip anything that doesn't")
+    parts.append("- Only reference tweet_ids from the list above")
+    parts.append("- Return ONLY the JSON array, no other text")
 
     return "\n".join(parts)
 
