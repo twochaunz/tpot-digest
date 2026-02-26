@@ -282,6 +282,7 @@ function TopicSection({
         borderRadius: 'var(--radius-lg)',
         transition: 'border 0.15s ease',
         scrollSnapAlign: 'start' as const,
+        ...(viewMode === 'script' ? { flex: 1, minHeight: 0, overflow: 'hidden' } : {}),
       }}
     >
       {/* Header */}
@@ -428,7 +429,11 @@ function TopicSection({
 
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
-        <div ref={setNodeRef} style={{ padding: '12px 8px', minHeight: 60 }}>
+        <div ref={setNodeRef} style={{
+          padding: viewMode === 'script' ? 0 : '12px 8px',
+          minHeight: 60,
+          ...(viewMode === 'script' ? { flex: 1, display: 'flex', flexDirection: 'column' as const, minHeight: 0 } : {}),
+        }}>
           {viewMode === 'script' ? (
             <ScriptView
               topicId={topicId}
