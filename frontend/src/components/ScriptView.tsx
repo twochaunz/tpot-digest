@@ -228,6 +228,60 @@ function InlineImageOverlay({ url, onClose, containerRef }: {
   )
 }
 
+/** Drawing canvas overlay — renders strokes mirrored across columns */
+type Point = { x: number; y: number }
+type Stroke = Point[]
+
+function DrawCanvas({ strokes, width, height }: {
+  strokes: Stroke[]
+  width: number
+  height: number
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    canvas.width = width * window.devicePixelRatio
+    canvas.height = height * window.devicePixelRatio
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+
+    ctx.clearRect(0, 0, width, height)
+    ctx.strokeStyle = '#FF4444'
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    for (const stroke of strokes) {
+      if (stroke.length < 2) continue
+      ctx.beginPath()
+      ctx.moveTo(stroke[0].x, stroke[0].y)
+      for (let i = 1; i < stroke.length; i++) {
+        ctx.lineTo(stroke[i].x, stroke[i].y)
+      }
+      ctx.stroke()
+    }
+  }, [strokes, width, height])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width,
+        height,
+        pointerEvents: 'none',
+        zIndex: 90,
+      }}
+    />
+  )
+}
+
 /** Mirrored cursor rendered on the right column */
 function MirrorCursor({ pos, clicking }: { pos: { x: number; y: number } | null; clicking: boolean }) {
   if (!pos) return null
@@ -271,6 +325,11 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [mirrorPos, setMirrorPos] = useState<{ x: number; y: number } | null>(null)
   const [mirrorClicking, setMirrorClicking] = useState(false)
+  const [drawStrokes, setDrawStrokes] = useState<Stroke[]>([])
+  const [isDrawing, setIsDrawing] = useState(false)
+  const currentStroke = useRef<Point[]>([])
+  const [leftSize, setLeftSize] = useState({ w: 0, h: 0 })
+  const [rightSize, setRightSize] = useState({ w: 0, h: 0 })
   const generateScript = useGenerateScript()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
@@ -337,6 +396,95 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
       left.removeEventListener('click', handleClick, true)
     }
   }, [script])
+
+  // Right-click drawing on left column, mirrored to right
+  useEffect(() => {
+    const left = leftRef.current
+    if (!left) return
+
+    const toLocal = (e: MouseEvent): Point => {
+      const rect = left.getBoundingClientRect()
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top + left.scrollTop }
+    }
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+    }
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 2) return // right-click only
+      e.preventDefault()
+      setIsDrawing(true)
+      currentStroke.current = [toLocal(e)]
+    }
+
+    const handleMouseMoveForDraw = (e: MouseEvent) => {
+      if (!currentStroke.current.length) return
+      currentStroke.current.push(toLocal(e))
+      setDrawStrokes(prev => {
+        const updated = [...prev]
+        // Replace last stroke with current in-progress stroke
+        if (updated.length > 0 && currentStroke.current.length > 1) {
+          updated[updated.length - 1] = [...currentStroke.current]
+        }
+        return updated
+      })
+    }
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button !== 2 || !currentStroke.current.length) return
+      setIsDrawing(false)
+      currentStroke.current = []
+    }
+
+    // On first right-click stroke start, push a new stroke entry
+    const handleMouseDownCapture = (e: MouseEvent) => {
+      if (e.button !== 2) return
+      setDrawStrokes(prev => [...prev, []])
+    }
+
+    left.addEventListener('contextmenu', handleContextMenu)
+    left.addEventListener('mousedown', handleMouseDownCapture, true)
+    left.addEventListener('mousedown', handleMouseDown)
+    left.addEventListener('mousemove', handleMouseMoveForDraw)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      left.removeEventListener('contextmenu', handleContextMenu)
+      left.removeEventListener('mousedown', handleMouseDownCapture, true)
+      left.removeEventListener('mousedown', handleMouseDown)
+      left.removeEventListener('mousemove', handleMouseMoveForDraw)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [script])
+
+  // Track column sizes for canvas
+  useEffect(() => {
+    const left = leftRef.current
+    const right = rightRef.current
+    if (!left || !right) return
+
+    const update = () => {
+      setLeftSize({ w: left.clientWidth, h: left.scrollHeight })
+      setRightSize({ w: right.clientWidth, h: right.scrollHeight })
+    }
+    update()
+
+    const ro = new ResizeObserver(update)
+    ro.observe(left)
+    ro.observe(right)
+    return () => ro.disconnect()
+  }, [script])
+
+  // Clear drawings with Escape (when not in image overlay)
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !expandedImage && drawStrokes.length > 0) {
+        setDrawStrokes([])
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [expandedImage, drawStrokes.length])
 
   const handleGenerate = () => {
     generateScript.mutate({
@@ -410,8 +558,12 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
             overflowY: 'auto',
             overflowX: 'hidden',
             padding: '12px 20px',
+            position: 'relative',
           }}
         >
+          {drawStrokes.length > 0 && (
+            <DrawCanvas strokes={drawStrokes} width={leftSize.w} height={leftSize.h} />
+          )}
           {groupedBlocks.map((group) => {
             if (group.type === 'text' && group.block.text) {
               return (
@@ -459,6 +611,16 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
           }}
         >
           <MirrorCursor pos={mirrorPos} clicking={mirrorClicking} />
+          {drawStrokes.length > 0 && (
+            <DrawCanvas
+              strokes={leftSize.w > 0 ? drawStrokes.map(s => s.map(p => ({
+                x: (p.x / leftSize.w) * rightSize.w,
+                y: (p.y / leftSize.h) * rightSize.h,
+              }))) : drawStrokes}
+              width={rightSize.w}
+              height={rightSize.h}
+            />
+          )}
           <style>{`@keyframes mirror-click-ripple { from { transform: translate(-6px,-6px) scale(0.5); opacity: 1; } to { transform: translate(-6px,-6px) scale(2); opacity: 0; } }`}</style>
           {groupedBlocks.map((group) => {
             if (group.type === 'text' && group.block.text) {
