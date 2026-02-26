@@ -135,6 +135,7 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
       {days.map((dayDate, i) => {
         const config = panelConfig[i]
         const isCenter = i === 2
+        const isAdjacent = i === 1 || i === 3
 
         return (
           <div
@@ -166,13 +167,19 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
             )}
 
             <div style={{ pointerEvents: isCenter ? 'auto' : 'none', height: '100%' }}>
-              <DayFeedPanel
-                date={dayDate}
-                search={isCenter ? search : ''}
-                isActive={isCenter}
-                activeDragTweet={isCenter ? activeDragTweet : null}
-                setActiveDragTweet={setActiveDragTweet}
-              />
+              {(isCenter || isAdjacent) ? (
+                <DayFeedPanel
+                  date={dayDate}
+                  search={isCenter ? search : ''}
+                  isActive={isCenter}
+                  activeDragTweet={isCenter ? activeDragTweet : null}
+                  setActiveDragTweet={setActiveDragTweet}
+                />
+              ) : (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{dayDate}</span>
+                </div>
+              )}
             </div>
           </div>
         )
