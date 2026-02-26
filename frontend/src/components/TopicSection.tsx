@@ -154,7 +154,6 @@ export function TopicSectionWithData({
       color={color}
       tweetsByCategory={tweetsByCategory}
       ogTweet={ogTweet}
-      ogTweetId={ogTweetId}
       allTweets={tweets}
       activeScript={activeScript ?? null}
       showEngagement={showEngagement}
@@ -216,7 +215,6 @@ interface TopicSectionProps {
   color: string | null
   tweetsByCategory: Map<string | null, { category: { name: string; color: string; sortOrder: number } | null; tweets: Tweet[] }>
   ogTweet: Tweet | null
-  ogTweetId: number | null
   allTweets: Tweet[]
   activeScript: TopicScript | null
   showEngagement: boolean
@@ -233,7 +231,6 @@ function TopicSection({
   color,
   tweetsByCategory,
   ogTweet,
-  ogTweetId,
   allTweets,
   activeScript,
   showEngagement,
