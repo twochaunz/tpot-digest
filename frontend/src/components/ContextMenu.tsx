@@ -14,8 +14,8 @@ interface ContextMenuProps {
   onSetOg?: (topicId: number, tweetId: number | null) => void
   ogTweetId?: number | null
   onSetCategory?: (tweetId: number, topicId: number, category: string | null) => void
-  topics?: { id: number; title: string; color: string | null }[]
-  onMoveToTopic?: (tweetId: number, fromTopicId: number, toTopicId: number) => void
+  topics?: { id: number; title: string; color: string | null; categories?: string[] }[]
+  onMoveToTopic?: (tweetId: number, fromTopicId: number, toTopicId: number, category?: string) => void
   onCreateTopicAndMove?: (tweetId: number, fromTopicId: number, title: string) => void
 }
 
@@ -232,6 +232,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
   const [showTopics, setShowTopics] = useState(false)
   const [focusedTopicIndex, setFocusedTopicIndex] = useState(-1)
   const [topicSearch, setTopicSearch] = useState('')
+  const [hoveredTopicId, setHoveredTopicId] = useState<number | null>(null)
   const topicInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -479,28 +480,76 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
               </div>
 
               {searchFilteredTopics.map((topic, idx) => (
-                <button
+                <div
                   key={topic.id}
-                  onClick={() => {
-                    onMoveToTopic!(tweet.id, topicId ?? 0, topic.id)
-                    onClose()
-                  }}
-                  onMouseEnter={() => setFocusedTopicIndex(idx)}
-                  onMouseLeave={() => setFocusedTopicIndex(-1)}
-                  style={{
-                    ...itemStyle,
-                    background: focusedTopicIndex === idx ? 'var(--bg-hover)' : 'none',
-                  }}
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => { setFocusedTopicIndex(idx); setHoveredTopicId(topic.id) }}
+                  onMouseLeave={() => { setFocusedTopicIndex(-1); setHoveredTopicId(null) }}
                 >
-                  <span style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: topic.color ?? 'var(--text-tertiary)',
-                    flexShrink: 0,
-                  }} />
-                  {topic.title}
-                </button>
+                  <button
+                    onClick={() => {
+                      onMoveToTopic!(tweet.id, topicId ?? 0, topic.id)
+                      onClose()
+                    }}
+                    style={{
+                      ...itemStyle,
+                      justifyContent: 'space-between',
+                      background: focusedTopicIndex === idx ? 'var(--bg-hover)' : 'none',
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: topic.color ?? 'var(--text-tertiary)',
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.title}</span>
+                    </span>
+                    {topic.categories && topic.categories.length > 0 && (
+                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
+                    )}
+                  </button>
+
+                  {/* Nested category submenu */}
+                  {hoveredTopicId === topic.id && topic.categories && topic.categories.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      left: '100%',
+                      top: 0,
+                      zIndex: 102,
+                      background: 'var(--bg-raised)',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 'var(--radius-lg)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                      padding: 4,
+                      minWidth: 140,
+                    }}>
+                      {CATEGORIES.filter(c => topic.categories!.includes(c.key)).map((cat) => (
+                        <button
+                          key={cat.key}
+                          onClick={() => {
+                            onMoveToTopic!(tweet.id, topicId ?? 0, topic.id, cat.key)
+                            onClose()
+                          }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                          style={itemStyle}
+                        >
+                          <span style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: cat.color,
+                            flexShrink: 0,
+                          }} />
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
 
               {/* Create new topic option */}
@@ -585,9 +634,6 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
         )}
       </div>
 
-      {/* Divider */}
-      <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
-
       {/* Set / Remove OG Post */}
       {onSetOg && topicId && (
         <HoverButton
@@ -598,6 +644,9 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           {ogTweetId === tweet.id ? 'Remove OG' : 'Set as OG Post'}
         </HoverButton>
       )}
+
+      {/* Divider */}
+      <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px' }} />
 
       {/* Open on X */}
       {tweet.url && (

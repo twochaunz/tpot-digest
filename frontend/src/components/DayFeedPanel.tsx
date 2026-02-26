@@ -168,12 +168,12 @@ export function DayFeedPanel({
   )
 
   const handleMoveToTopic = useCallback(
-    (tweetId: number, fromTopicId: number, toTopicId: number) => {
+    (tweetId: number, fromTopicId: number, toTopicId: number, category?: string) => {
       if (fromTopicId) {
         unassignMutation.mutate({ tweet_ids: [tweetId], topic_id: fromTopicId })
       }
       if (toTopicId) {
-        assignMutation.mutate({ tweet_ids: [tweetId], topic_id: toTopicId })
+        assignMutation.mutate({ tweet_ids: [tweetId], topic_id: toTopicId, category: category ?? null })
       }
       undo.push({
         label: 'Tweet moved',
@@ -458,7 +458,10 @@ export function DayFeedPanel({
           onSetOg={contextMenu.topicId ? handleSetOg : undefined}
           ogTweetId={contextMenu.ogTweetId ?? null}
           onSetCategory={contextMenu.topicId && !topics.find(t => t.id === contextMenu.topicId && isKekTopic(t.title)) ? handleSetCategory : undefined}
-          topics={topics}
+          topics={topics.map(t => ({
+            ...t,
+            categories: [...new Set(t.tweets.map(tw => tw.category).filter(Boolean) as string[])],
+          }))}
           onMoveToTopic={handleMoveToTopic}
           onCreateTopicAndMove={handleCreateTopicAndMove}
         />
