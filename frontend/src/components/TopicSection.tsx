@@ -377,16 +377,25 @@ function TopicSection({
           &#9660;
         </span>
 
-        {/* Color dot */}
+        {/* Color dot with count */}
         <span
           style={{
-            width: 10,
-            height: 10,
-            borderRadius: '50%',
+            minWidth: 22,
+            height: 22,
+            borderRadius: 11,
             background: accentColor,
             flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#fff',
+            padding: '0 5px',
           }}
-        />
+        >
+          {totalTweets}
+        </span>
 
         {/* Title */}
         {editing ? (
@@ -440,22 +449,6 @@ function TopicSection({
             {title}
           </span>
         )}
-
-        {/* Count */}
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: '#fff',
-            background: accentColor,
-            padding: '2px 10px',
-            borderRadius: 12,
-            minWidth: 28,
-            textAlign: 'center',
-          }}
-        >
-          {totalTweets}
-        </span>
 
         {/* Script/Edit toggle button */}
         <button
