@@ -171,7 +171,7 @@ function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
 const FADE_MS = 2000
 type DrawTool = 'pen' | 'highlighter'
 type TimedPoint = { x: number; y: number; t: number }
-type StyledStroke = { points: TimedPoint[]; color: string; tool: DrawTool }
+type StyledStroke = { points: TimedPoint[]; color: string; tool: DrawTool; opacity: number }
 
 function hexToRgb(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) || 0
@@ -180,33 +180,124 @@ function hexToRgb(hex: string): [number, number, number] {
   return [r, g, b]
 }
 
-/* ---- Color picker popover ---- */
-const PRESET_COLORS = ['#FF4444', '#FF8800', '#FFDD00', '#44CC44', '#4488FF', '#AA44FF', '#FFFFFF', '#000000']
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  s /= 100
+  l /= 100
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+  }
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)]
+}
 
-function ColorPicker({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+/* ---- Circular color wheel picker with opacity slider ---- */
+const WHEEL_SIZE = 140
+
+function ColorWheelPicker({ color, opacity, onColorChange, onOpacityChange }: {
+  color: string
+  opacity: number
+  onColorChange: (c: string) => void
+  onOpacityChange: (o: number) => void
+}) {
   const [open, setOpen] = useState(false)
   const [hexInput, setHexInput] = useState(color)
-  const ref = useRef<HTMLDivElement>(null)
+  const wheelRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
 
   useEffect(() => { setHexInput(color) }, [color])
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  // Draw circular color wheel
+  useEffect(() => {
+    if (!open) return
+    const canvas = wheelRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const size = WHEEL_SIZE
+    canvas.width = size
+    canvas.height = size
+
+    const imageData = ctx.createImageData(size, size)
+    const data = imageData.data
+    const cx = size / 2
+    const radius = size / 2
+
+    for (let py = 0; py < size; py++) {
+      for (let px = 0; px < size; px++) {
+        const dx = px - cx
+        const dy = py - cx
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist > radius) continue
+
+        const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360
+        const sat = (dist / radius) * 100
+        const light = 100 - (sat / 100) * 50
+        const [r, g, b] = hslToRgb(angle, sat, light)
+
+        const idx = (py * size + px) * 4
+        data[idx] = r
+        data[idx + 1] = g
+        data[idx + 2] = b
+        data[idx + 3] = 255
+      }
+    }
+    ctx.putImageData(imageData, 0, 0)
+  }, [open])
+
+  const pickFromEvent = useCallback((e: React.MouseEvent<HTMLCanvasElement> | MouseEvent) => {
+    const canvas = wheelRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const rect = canvas.getBoundingClientRect()
+    const x = Math.round((e.clientX - rect.left) / rect.width * WHEEL_SIZE)
+    const y = Math.round((e.clientY - rect.top) / rect.height * WHEEL_SIZE)
+    if (x < 0 || x >= WHEEL_SIZE || y < 0 || y >= WHEEL_SIZE) return
+
+    const cx = WHEEL_SIZE / 2
+    if (Math.sqrt((x - cx) ** 2 + (y - cx) ** 2) > cx) return
+
+    const pixel = ctx.getImageData(x, y, 1, 1).data
+    if (pixel[3] === 0) return
+    const hex = '#' + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('')
+    onColorChange(hex)
+    setHexInput(hex)
+  }, [onColorChange])
+
+  // Drag on wheel
+  useEffect(() => {
+    if (!open) return
+    const handleMove = (e: MouseEvent) => { if (dragging.current) pickFromEvent(e) }
+    const handleUp = () => { dragging.current = false }
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+    }
+  }, [open, pickFromEvent])
+
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={containerRef} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(!open)}
         style={{
           width: 22, height: 22, borderRadius: '50%',
           background: color, border: '2px solid var(--border)',
           cursor: 'pointer', padding: 0, flexShrink: 0,
+          opacity: opacity,
         }}
         title="Pick color"
       />
@@ -214,49 +305,45 @@ function ColorPicker({ color, onChange }: { color: string; onChange: (c: string)
         <div style={{
           position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
           marginTop: 6, background: 'var(--bg-raised)', border: '1px solid var(--border)',
-          borderRadius: 8, padding: 10, zIndex: 200, minWidth: 190,
+          borderRadius: 8, padding: 12, zIndex: 200,
           boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
         }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-            {PRESET_COLORS.map(c => (
-              <button
-                key={c}
-                onClick={() => { onChange(c); setHexInput(c) }}
-                style={{
-                  width: 24, height: 24, borderRadius: '50%', background: c,
-                  border: c === color ? '2px solid var(--accent)' : '2px solid var(--border)',
-                  cursor: 'pointer', padding: 0,
-                }}
-              />
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <canvas
+            ref={wheelRef}
+            onMouseDown={(e) => { dragging.current = true; pickFromEvent(e) }}
+            style={{ width: WHEEL_SIZE, height: WHEEL_SIZE, borderRadius: '50%', cursor: 'crosshair' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Opacity</span>
             <input
-              type="color"
-              value={color}
-              onChange={(e) => { onChange(e.target.value); setHexInput(e.target.value) }}
-              style={{ width: 28, height: 28, border: 'none', padding: 0, cursor: 'pointer', background: 'none' }}
+              type="range" min={0} max={100}
+              value={Math.round(opacity * 100)}
+              onChange={(e) => onOpacityChange(parseInt(e.target.value) / 100)}
+              style={{ flex: 1, accentColor: color }}
             />
-            <input
-              type="text"
-              value={hexInput}
-              onChange={(e) => {
-                setHexInput(e.target.value)
-                if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onChange(e.target.value)
-              }}
-              onBlur={() => {
-                if (/^#[0-9a-fA-F]{6}$/.test(hexInput)) onChange(hexInput)
-                else setHexInput(color)
-              }}
-              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-              placeholder="#FF4444"
-              style={{
-                flex: 1, background: 'var(--bg-base)', color: 'var(--text-primary)',
-                border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px',
-                fontSize: 12, fontFamily: 'monospace',
-              }}
-            />
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', minWidth: 28, textAlign: 'right' }}>
+              {Math.round(opacity * 100)}%
+            </span>
           </div>
+          <input
+            type="text" value={hexInput}
+            onChange={(e) => {
+              setHexInput(e.target.value)
+              if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onColorChange(e.target.value)
+            }}
+            onBlur={() => {
+              if (/^#[0-9a-fA-F]{6}$/.test(hexInput)) onColorChange(hexInput)
+              else setHexInput(color)
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            placeholder="#FF4444"
+            style={{
+              width: '100%', background: 'var(--bg-base)', color: 'var(--text-primary)',
+              border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px',
+              fontSize: 12, fontFamily: 'monospace', textAlign: 'center', boxSizing: 'border-box',
+            }}
+          />
         </div>
       )}
     </div>
@@ -291,25 +378,41 @@ function DrawCanvas({ strokes, width, height }: {
       let anyVisible = false
 
       ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
 
-      for (const { points, color, tool } of strokes) {
+      for (const { points, color, tool, opacity: strokeOpacity } of strokes) {
         if (points.length < 2) continue
         const isPen = tool === 'pen'
         ctx.lineWidth = isPen ? 3 : 18
         const [r, g, b] = hexToRgb(color)
         const baseOpacity = isPen ? 1 : 0.35
 
-        for (let i = 1; i < points.length; i++) {
-          const age = now - points[i].t
-          const fade = Math.max(0, 1 - age / FADE_MS)
-          if (fade <= 0) continue
-          anyVisible = true
-          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${baseOpacity * fade})`
-          ctx.beginPath()
-          ctx.moveTo(points[i - 1].x, points[i - 1].y)
-          ctx.lineTo(points[i].x, points[i].y)
-          ctx.stroke()
+        // Filter to visible points
+        const visible = points.filter(p => (now - p.t) < FADE_MS)
+        if (visible.length < 2) continue
+
+        // Fade based on newest point — whole stroke fades uniformly
+        const newestFade = Math.max(0, 1 - (now - visible[visible.length - 1].t) / FADE_MS)
+        if (newestFade <= 0) continue
+        anyVisible = true
+
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${baseOpacity * strokeOpacity * newestFade})`
+        ctx.beginPath()
+        ctx.moveTo(visible[0].x, visible[0].y)
+
+        if (visible.length === 2) {
+          ctx.lineTo(visible[1].x, visible[1].y)
+        } else {
+          // Smooth quadratic bezier through midpoints
+          for (let i = 1; i < visible.length - 1; i++) {
+            const mx = (visible[i].x + visible[i + 1].x) / 2
+            const my = (visible[i].y + visible[i + 1].y) / 2
+            ctx.quadraticCurveTo(visible[i].x, visible[i].y, mx, my)
+          }
+          const last = visible[visible.length - 1]
+          ctx.lineTo(last.x, last.y)
         }
+        ctx.stroke()
       }
 
       if (anyVisible) {
@@ -340,7 +443,7 @@ function DrawCanvas({ strokes, width, height }: {
 }
 
 /* ---- Image overlay with drawing ---- */
-function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawStrokes, onDrawStrokes, toolRef, colorRef }: {
+function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawStrokes, onDrawStrokes, toolRef, colorRef, opacityRef }: {
   url: string
   onClose: () => void
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -349,6 +452,7 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
   onDrawStrokes?: React.Dispatch<React.SetStateAction<StyledStroke[]>>
   toolRef?: React.RefObject<DrawTool>
   colorRef?: React.RefObject<string>
+  opacityRef?: React.RefObject<number>
 }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const currentStrokeRef = useRef<TimedPoint[]>([])
@@ -379,7 +483,7 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
       currentStrokeRef.current = [toLocal(e)]
       onDrawStrokes?.(prev => {
         const active = prev.filter(s => s.points.some(p => now - p.t < FADE_MS))
-        return [...active, { points: [], color: colorRef?.current ?? '#FF4444', tool: toolRef?.current ?? 'pen' }]
+        return [...active, { points: [], color: colorRef?.current ?? '#FF4444', tool: toolRef?.current ?? 'pen', opacity: opacityRef?.current ?? 1 }]
       })
     }
 
@@ -409,7 +513,7 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
       el.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [drawingEnabled, onDrawStrokes, toolRef, colorRef])
+  }, [drawingEnabled, onDrawStrokes, toolRef, colorRef, opacityRef])
 
   const container = containerRef.current
   if (!container) return null
@@ -508,11 +612,14 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
   const [photoStrokes, setPhotoStrokes] = useState<StyledStroke[]>([])
   const [drawTool, setDrawTool] = useState<DrawTool>('pen')
   const [drawColor, setDrawColor] = useState('#FF4444')
+  const [drawOpacity, setDrawOpacity] = useState(1)
   const currentStrokeRef = useRef<TimedPoint[]>([])
   const drawToolRef = useRef<DrawTool>(drawTool)
   const drawColorRef = useRef(drawColor)
+  const drawOpacityRef = useRef(drawOpacity)
   drawToolRef.current = drawTool
   drawColorRef.current = drawColor
+  drawOpacityRef.current = drawOpacity
   const [leftSize, setLeftSize] = useState({ w: 0, h: 0 })
   const [rightSize, setRightSize] = useState({ w: 0, h: 0 })
   const generateScript = useGenerateScript()
@@ -598,7 +705,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
       currentStrokeRef.current = [toLocal(e)]
       setDrawStrokes(prev => {
         const active = prev.filter(s => s.points.some(p => now - p.t < FADE_MS))
-        return [...active, { points: [], color: drawColorRef.current, tool: drawToolRef.current }]
+        return [...active, { points: [], color: drawColorRef.current, tool: drawToolRef.current, opacity: drawOpacityRef.current }]
       })
     }
 
@@ -727,7 +834,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
         <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
         <button onClick={() => setDrawTool('pen')} style={toolBtnStyle(drawTool === 'pen')}>Pen</button>
         <button onClick={() => setDrawTool('highlighter')} style={toolBtnStyle(drawTool === 'highlighter')}>Highlighter</button>
-        <ColorPicker color={drawColor} onChange={setDrawColor} />
+        <ColorWheelPicker color={drawColor} opacity={drawOpacity} onColorChange={setDrawColor} onOpacityChange={setDrawOpacity} />
       </div>
 
       {/* Two-column script layout */}
@@ -800,6 +907,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
             onDrawStrokes={setPhotoStrokes}
             toolRef={drawToolRef}
             colorRef={drawColorRef}
+            opacityRef={drawOpacityRef}
           />
           <InlineImageOverlay
             url={expandedImage}
