@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { Tweet } from '../api/tweets'
-import { CATEGORIES, getCategoryDef } from '../constants/categories'
+import { CATEGORIES } from '../constants/categories'
 
 interface ContextMenuProps {
   x: number
@@ -415,7 +415,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={iconStyle}>&#128194;</span>
-              Move to topic
+              Topic
             </span>
             <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
           </HoverButton>
@@ -536,7 +536,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={iconStyle}>&#127991;</span>
-              {tweet.category ? getCategoryDef(tweet.category).label : 'Set Category'}
+              Category
             </span>
             <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>&#9654;</span>
           </HoverButton>

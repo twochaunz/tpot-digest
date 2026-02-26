@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
+import app.db as db_module
 from app.db import Base, get_db
 from app.main import app
 from app.models import Tweet, Topic, TweetAssignment  # noqa: F401
@@ -30,12 +31,15 @@ async def override_get_db():
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
     app.dependency_overrides[get_db] = override_get_db
+    _orig_session = db_module.async_session
+    db_module.async_session = async_session
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     app.dependency_overrides.pop(get_db, None)
+    db_module.async_session = _orig_session
 
 
 MOCK_X_API_RESULT = {
