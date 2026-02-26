@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import DayScriptView from './DayScriptView'
+import ScriptPanel from './ScriptPanel'
 import {
   DndContext,
   DragOverlay,
@@ -468,7 +468,7 @@ export function DayFeedPanel({
 
       {/* Unified script panel */}
       {genPanelOpen && topics.length > 0 && (
-        <DayScriptView date={date} topics={topics} onClose={onGenPanelClose} />
+        <ScriptPanel date={date} topics={topics} onClose={onGenPanelClose} />
       )}
     </div>
   )
