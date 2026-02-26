@@ -21,6 +21,7 @@ export function useDayBundle(date: string) {
       return data
     },
     staleTime: 5 * 60 * 1000, // 5 min — avoids refetch when carousel shifts dates
+    refetchOnWindowFocus: 'always', // pick up new tweets saved from extension
   })
 }
 
