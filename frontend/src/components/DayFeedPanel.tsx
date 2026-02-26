@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useGenerateScript, useGenerateDayScripts, AVAILABLE_MODELS } from '../api/scripts'
 import {
   DndContext,
@@ -73,15 +73,29 @@ export function DayFeedPanel({
   const generateAll = useGenerateDayScripts()
   const generateScript = useGenerateScript()
   const [genModel, setGenModel] = useState<string>(AVAILABLE_MODELS[0].id)
+  const [showGenPanel, setShowGenPanel] = useState(false)
   const [selectedTopicIds, setSelectedTopicIds] = useState<Set<number>>(new Set())
+  const genPanelRef = useRef<HTMLDivElement>(null)
 
-  // Reset selection to all when topic set changes (add/remove/date change)
-  const topicIdsKey = topics.map((t) => t.id).sort((a, b) => a - b).join(',')
-  useEffect(() => {
+  // Reset selection to all when panel opens
+  const openGenPanel = useCallback(() => {
     setSelectedTopicIds(new Set(topics.map((t) => t.id)))
-  }, [topicIdsKey]) // eslint-disable-line react-hooks/exhaustive-deps
+    setShowGenPanel(true)
+  }, [topics])
 
-  const allSelected = selectedTopicIds.size === topics.length
+  // Close panel on outside click
+  useEffect(() => {
+    if (!showGenPanel) return
+    const handler = (e: MouseEvent) => {
+      if (genPanelRef.current && !genPanelRef.current.contains(e.target as Node)) {
+        setShowGenPanel(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showGenPanel])
+
+  const allSelected = selectedTopicIds.size === topics.length && topics.length > 0
   const toggleTopicId = useCallback((id: number) => {
     setSelectedTopicIds((prev) => {
       const next = new Set(prev)
@@ -332,105 +346,154 @@ export function DayFeedPanel({
       {/* Content when loaded */}
       {!isLoading && (
         <>
-        {/* Generate scripts with topic selection */}
+        {/* Generate scripts button + popover */}
         {topics.length > 0 && (
-          <div style={{ padding: '8px 0', marginBottom: 8 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {sortTopics(topics).map((topic) => {
-                const isSelected = selectedTopicIds.has(topic.id)
-                return (
+          <div style={{ position: 'relative', padding: '8px 0', marginBottom: 8 }}>
+            <button
+              onClick={openGenPanel}
+              disabled={generateAll.isPending}
+              style={{
+                fontSize: 12,
+                padding: '4px 12px',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: generateAll.isPending ? 'var(--bg-secondary)' : 'var(--accent)',
+                color: generateAll.isPending ? 'var(--text-tertiary)' : '#fff',
+                cursor: generateAll.isPending ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              {generateAll.isPending ? 'Generating...' : 'Generate Scripts'}
+            </button>
+            {showGenPanel && (
+              <div
+                ref={genPanelRef}
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  zIndex: 50,
+                  marginTop: 4,
+                  padding: 12,
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-primary)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                  minWidth: 260,
+                  maxWidth: 360,
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  Select topics
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+                  {sortTopics(topics).map((topic) => {
+                    const isSelected = selectedTopicIds.has(topic.id)
+                    return (
+                      <label
+                        key={topic.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          padding: '3px 4px',
+                          borderRadius: 4,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-secondary)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleTopicId(topic.id)}
+                          style={{ accentColor: 'var(--accent)' }}
+                        />
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: topic.color || 'var(--text-tertiary)',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          color: 'var(--text-primary)',
+                        }}>
+                          {topic.title}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <button
-                    key={topic.id}
-                    onClick={() => toggleTopicId(topic.id)}
+                    onClick={() => {
+                      if (allSelected) setSelectedTopicIds(new Set())
+                      else setSelectedTopicIds(new Set(topics.map((t) => t.id)))
+                    }}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      fontSize: 12,
-                      padding: '3px 10px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border)',
-                      background: isSelected ? 'var(--bg-secondary)' : 'transparent',
-                      color: 'var(--text-primary)',
-                      opacity: isSelected ? 1 : 0.4,
+                      fontSize: 11,
+                      color: 'var(--text-tertiary)',
+                      background: 'none',
+                      border: 'none',
                       cursor: 'pointer',
-                      maxWidth: 180,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      padding: 0,
+                      textDecoration: 'underline',
                     }}
                   >
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: topic.color || 'var(--text-tertiary)',
-                        flexShrink: 0,
-                      }}
-                    />
-                    {topic.title}
+                    {allSelected ? 'Deselect All' : 'Select All'}
                   </button>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={() => {
-                  if (allSelected) setSelectedTopicIds(new Set())
-                  else setSelectedTopicIds(new Set(topics.map((t) => t.id)))
-                }}
-                style={{
-                  fontSize: 11,
-                  color: 'var(--text-tertiary)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '2px 4px',
-                  textDecoration: 'underline',
-                }}
-              >
-                {allSelected ? 'Deselect All' : 'Select All'}
-              </button>
-              <select
-                value={genModel}
-                onChange={(e) => setGenModel(e.target.value)}
-                style={{
-                  fontSize: 12,
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                {AVAILABLE_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={() => generateAll.mutate({
-                  date,
-                  model: genModel,
-                  topicIds: allSelected ? undefined : Array.from(selectedTopicIds),
-                })}
-                disabled={generateAll.isPending || selectedTopicIds.size === 0}
-                style={{
-                  fontSize: 12,
-                  padding: '4px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border)',
-                  background: generateAll.isPending || selectedTopicIds.size === 0 ? 'var(--bg-secondary)' : 'var(--accent)',
-                  color: generateAll.isPending || selectedTopicIds.size === 0 ? 'var(--text-tertiary)' : '#fff',
-                  cursor: generateAll.isPending || selectedTopicIds.size === 0 ? 'not-allowed' : 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                {generateAll.isPending ? 'Generating...' : `Generate ${allSelected ? 'All' : selectedTopicIds.size} Script${selectedTopicIds.size !== 1 ? 's' : ''}`}
-              </button>
-            </div>
+                  <select
+                    value={genModel}
+                    onChange={(e) => setGenModel(e.target.value)}
+                    style={{
+                      fontSize: 11,
+                      padding: '3px 6px',
+                      borderRadius: 4,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    {AVAILABLE_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => {
+                    generateAll.mutate({
+                      date,
+                      model: genModel,
+                      topicIds: allSelected ? undefined : Array.from(selectedTopicIds),
+                    })
+                    setShowGenPanel(false)
+                  }}
+                  disabled={selectedTopicIds.size === 0}
+                  style={{
+                    width: '100%',
+                    fontSize: 12,
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: selectedTopicIds.size === 0 ? 'var(--bg-secondary)' : 'var(--accent)',
+                    color: selectedTopicIds.size === 0 ? 'var(--text-tertiary)' : '#fff',
+                    cursor: selectedTopicIds.size === 0 ? 'not-allowed' : 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  {`Generate ${allSelected ? 'All' : selectedTopicIds.size} Script${allSelected || selectedTopicIds.size !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
