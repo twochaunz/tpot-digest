@@ -85,16 +85,6 @@ function ScriptTextBlock({ text, blockIndex, script, topicId }: {
   )
 }
 
-function ScriptTweetBlock({ tweetId, tweets }: { tweetId: string; tweets: Tweet[] }) {
-  const tweet = tweets.find(t => t.tweet_id === tweetId)
-  if (!tweet) return null
-
-  return (
-    <div style={{ margin: '12px 0', maxWidth: 550 }}>
-      <TweetCard tweet={tweet} selectable={false} />
-    </div>
-  )
-}
 
 export default function ScriptView({ topicId, script, tweets }: ScriptViewProps) {
   const [model, setModel] = useState<string>(AVAILABLE_MODELS[0].id)
@@ -158,16 +148,53 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
     )
   }
 
+  // Group consecutive tweet blocks together for side-by-side rendering
+  const groupedBlocks: Array<{ type: 'text'; index: number; block: ScriptBlock } | { type: 'tweet_group'; startIndex: number; blocks: ScriptBlock[] }> = []
+  for (let i = 0; i < script.content.length; i++) {
+    const block = script.content[i]
+    if (block.type === 'tweet' && block.tweet_id) {
+      const tweetBlocks: ScriptBlock[] = [block]
+      while (i + 1 < script.content.length && script.content[i + 1].type === 'tweet' && script.content[i + 1].tweet_id) {
+        i++
+        tweetBlocks.push(script.content[i])
+      }
+      groupedBlocks.push({ type: 'tweet_group', startIndex: i - tweetBlocks.length + 1, blocks: tweetBlocks })
+    } else {
+      groupedBlocks.push({ type: 'text', index: i, block })
+    }
+  }
+
   // Render script blocks
   return (
     <div>
       <div style={{ padding: '8px 16px' }}>
-        {script.content.map((block: ScriptBlock, i: number) => {
-          if (block.type === 'text' && block.text) {
-            return <ScriptTextBlock key={i} text={block.text} blockIndex={i} script={script} topicId={topicId} />
+        {groupedBlocks.map((group) => {
+          if (group.type === 'text' && group.block.text) {
+            return <ScriptTextBlock key={group.index} text={group.block.text} blockIndex={group.index} script={script} topicId={topicId} />
           }
-          if (block.type === 'tweet' && block.tweet_id) {
-            return <ScriptTweetBlock key={i} tweetId={block.tweet_id} tweets={tweets} />
+          if (group.type === 'tweet_group') {
+            const isSingle = group.blocks.length === 1
+            return (
+              <div key={`tg-${group.startIndex}`} style={{
+                display: isSingle ? 'block' : 'flex',
+                gap: isSingle ? 0 : 12,
+                margin: '12px 0',
+              }}>
+                {group.blocks.map((b, j) => {
+                  const tweet = tweets.find(t => t.tweet_id === b.tweet_id)
+                  if (!tweet) return null
+                  return (
+                    <div key={`${group.startIndex}-${j}`} style={{
+                      flex: isSingle ? undefined : 1,
+                      maxWidth: isSingle ? 550 : undefined,
+                      minWidth: 0,
+                    }}>
+                      <TweetCard tweet={tweet} selectable={false} />
+                    </div>
+                  )
+                })}
+              </div>
+            )
           }
           return null
         })}
