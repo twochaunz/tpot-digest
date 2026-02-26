@@ -107,14 +107,23 @@ function SortableTopicRow({ topicId, topic, isSelected, onToggle, model }: {
         style={{ cursor: 'pointer', flexShrink: 0 }}
       />
 
-      {/* Color dot */}
+      {/* Color pill with count */}
       <span style={{
-        width: 10,
-        height: 10,
-        borderRadius: '50%',
+        minWidth: 22,
+        height: 22,
+        borderRadius: 11,
         background: topic.color || 'var(--text-tertiary)',
         flexShrink: 0,
-      }} />
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 11,
+        fontWeight: 700,
+        color: '#fff',
+        padding: '0 5px',
+      }}>
+        {topic.tweet_count}
+      </span>
 
       {/* Title */}
       <span style={{
@@ -127,15 +136,6 @@ function SortableTopicRow({ topicId, topic, isSelected, onToggle, model }: {
         whiteSpace: 'nowrap',
       }}>
         {topic.title}
-      </span>
-
-      {/* Tweet count */}
-      <span style={{
-        fontSize: 12,
-        color: 'var(--text-tertiary)',
-        flexShrink: 0,
-      }}>
-        {topic.tweet_count} tweet{topic.tweet_count !== 1 ? 's' : ''}
       </span>
 
       {/* Script status badge */}

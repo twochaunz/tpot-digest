@@ -75,7 +75,7 @@ export function useGenerateScript() {
       return data as TopicScript
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['script', data.topic_id] })
+      qc.setQueryData(['script', data.topic_id], data)
       qc.invalidateQueries({ queryKey: ['script-versions', data.topic_id] })
       qc.invalidateQueries({ queryKey: ['day-bundle'] })
     },
