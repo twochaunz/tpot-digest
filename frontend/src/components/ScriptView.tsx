@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { type ScriptBlock, type TopicScript, AVAILABLE_MODELS, useGenerateScript, useUpdateScript } from '../api/scripts'
 import { type Tweet } from '../api/tweets'
 import { TweetCard } from './TweetCard'
@@ -116,10 +117,29 @@ function groupBlocks(content: ScriptBlock[]): GroupedBlock[] {
   return groups
 }
 
-function TweetRows({ blocks, startIndex, tweets }: { blocks: ScriptBlock[]; startIndex: number; tweets: Tweet[] }) {
+function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
+  blocks: ScriptBlock[]
+  startIndex: number
+  tweets: Tweet[]
+  onImageClick?: (url: string) => void
+}) {
   const rows = chunk(blocks, 3)
+
+  const handleContainerClick = onImageClick ? (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.tagName === 'IMG') {
+      const src = (target as HTMLImageElement).src
+      // Only intercept media images (not avatars — avatars are 40px)
+      if (target.clientWidth > 60) {
+        e.stopPropagation()
+        e.preventDefault()
+        onImageClick(src)
+      }
+    }
+  } : undefined
+
   return (
-    <div style={{ margin: '8px 0' }}>
+    <div style={{ margin: '8px 0' }} onClickCapture={handleContainerClick}>
       {rows.map((row, ri) => {
         const isSingle = row.length === 1
         return (
@@ -147,12 +167,76 @@ function TweetRows({ blocks, startIndex, tweets }: { blocks: ScriptBlock[]; star
   )
 }
 
+function InlineImageOverlay({ url, onClose, containerRef }: {
+  url: string
+  onClose: () => void
+  containerRef: React.RefObject<HTMLDivElement | null>
+}) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  const container = containerRef.current
+  if (!container) return null
+
+  const rect = container.getBoundingClientRect()
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        zIndex: 150,
+        background: 'rgba(0, 0, 0, 0.85)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+      }}
+    >
+      <img
+        src={url}
+        alt=""
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '90%',
+          maxHeight: '90%',
+          objectFit: 'contain',
+          borderRadius: 8,
+          cursor: 'default',
+        }}
+      />
+      <button
+        onClick={onClose}
+        style={{
+          position: 'absolute', top: 12, right: 12,
+          background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', fontSize: 22,
+          width: 36, height: 36, borderRadius: '50%', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >&times;</button>
+    </div>,
+    document.body,
+  )
+}
+
 export default function ScriptView({ topicId, script, tweets }: ScriptViewProps) {
   const [model, setModel] = useState<string>(AVAILABLE_MODELS[0].id)
   const [feedback, setFeedback] = useState('')
+  const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const generateScript = useGenerateScript()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
+  const leftColumnRef = useRef<HTMLDivElement>(null)
+  const rightColumnRef = useRef<HTMLDivElement>(null)
   const syncing = useRef(false)
 
   // Synchronized scrolling between left and right columns
@@ -240,17 +324,18 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
   const groupedBlocks = groupBlocks(script.content)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       {/* Two-column script layout */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Left: full script (text + tweet cards) */}
         <div
-          ref={leftRef}
+          ref={(el) => { leftRef.current = el; leftColumnRef.current = el }}
           style={{
-            flex: 1,
+            width: '50%',
+            flexShrink: 0,
             overflowY: 'auto',
+            overflowX: 'hidden',
             padding: '12px 20px',
-            borderRight: '1px solid var(--border)',
           }}
         >
           {groupedBlocks.map((group) => {
@@ -272,6 +357,7 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
                   blocks={group.blocks}
                   startIndex={group.startIndex}
                   tweets={tweets}
+                  onImageClick={setExpandedImage}
                 />
               )
             }
@@ -279,26 +365,36 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
           })}
         </div>
 
-        {/* Right: tweet cards only, spacers for text blocks */}
+        {/* Center divider */}
+        <div style={{
+          width: 1,
+          flexShrink: 0,
+          background: 'var(--border)',
+        }} />
+
+        {/* Right: tweet cards only, divider placeholders for text blocks */}
         <div
-          ref={rightRef}
+          ref={(el) => { rightRef.current = el; rightColumnRef.current = el }}
           style={{
-            flex: 1,
+            width: '50%',
+            flexShrink: 0,
             overflowY: 'auto',
+            overflowX: 'hidden',
             padding: '12px 16px',
           }}
         >
           {groupedBlocks.map((group) => {
             if (group.type === 'text' && group.block.text) {
-              // Invisible spacer matching left-side text height
+              // Divider placeholder matching left-side text height
               return (
                 <div key={group.index} style={{
                   padding: '8px 0',
                   fontSize: '15px',
                   lineHeight: 1.6,
-                  visibility: 'hidden',
+                  borderBottom: '1px solid var(--border)',
+                  marginBottom: 4,
                 }}>
-                  {group.block.text}
+                  <div style={{ visibility: 'hidden' }}>{group.block.text}</div>
                 </div>
               )
             }
@@ -309,6 +405,7 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
                   blocks={group.blocks}
                   startIndex={group.startIndex}
                   tweets={tweets}
+                  onImageClick={setExpandedImage}
                 />
               )
             }
@@ -316,6 +413,22 @@ export default function ScriptView({ topicId, script, tweets }: ScriptViewProps)
           })}
         </div>
       </div>
+
+      {/* Mirrored image overlays on both columns */}
+      {expandedImage && (
+        <>
+          <InlineImageOverlay
+            url={expandedImage}
+            onClose={() => setExpandedImage(null)}
+            containerRef={leftColumnRef}
+          />
+          <InlineImageOverlay
+            url={expandedImage}
+            onClose={() => setExpandedImage(null)}
+            containerRef={rightColumnRef}
+          />
+        </>
+      )}
 
       {/* Bottom bar: version info + feedback + regenerate */}
       <div style={{
