@@ -46,49 +46,6 @@ export function useTweets(params: {
   })
 }
 
-export function useAssignTweets() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: { tweet_ids: number[]; topic_id: number; category?: string | null }) => {
-      const { data } = await api.post('/tweets/assign', body)
-      return data
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
-  })
-}
-
-export function useUnassignTweets() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: { tweet_ids: number[]; topic_id: number }) => {
-      const { data } = await api.post('/tweets/unassign', body)
-      return data
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
-  })
-}
-
-export function usePatchTweet() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, ...body }: { id: number; memo?: string | null; saved_at?: string }) => {
-      const { data } = await api.patch(`/tweets/${id}`, body)
-      return data
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
-  })
-}
-
-export function useDeleteTweet() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: number) => {
-      await api.delete(`/tweets/${id}`)
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tweets'], refetchType: 'active' }),
-  })
-}
-
 export function useFetchGrokContext() {
   const qc = useQueryClient()
   return useMutation({
