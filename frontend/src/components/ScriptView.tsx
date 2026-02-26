@@ -173,16 +173,13 @@ const FADE_MS = 1500
 type TimedPoint = { x: number; y: number; t: number }
 type FadingStroke = TimedPoint[]
 
-function DrawCanvas({ strokes, width, height, onAllFaded }: {
+function DrawCanvas({ strokes, width, height }: {
   strokes: FadingStroke[]
   width: number
   height: number
-  onAllFaded?: () => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
-  const callbackRef = useRef(onAllFaded)
-  callbackRef.current = onAllFaded
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -194,7 +191,9 @@ function DrawCanvas({ strokes, width, height, onAllFaded }: {
     canvas.width = width * dpr
     canvas.height = height * dpr
 
+    let running = true
     const draw = () => {
+      if (!running) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, width, height)
       const now = Date.now()
@@ -220,13 +219,11 @@ function DrawCanvas({ strokes, width, height, onAllFaded }: {
 
       if (anyVisible) {
         rafRef.current = requestAnimationFrame(draw)
-      } else {
-        callbackRef.current?.()
       }
     }
 
     rafRef.current = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(rafRef.current)
+    return () => { running = false; cancelAnimationFrame(rafRef.current) }
   }, [strokes, width, height])
 
   if (width === 0 || height === 0) return null
@@ -247,7 +244,7 @@ function DrawCanvas({ strokes, width, height, onAllFaded }: {
   )
 }
 
-/** Image overlay with optional right-click drawing */
+/** Image overlay with right-click drawing */
 function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawStrokes, onDrawStrokes }: {
   url: string
   onClose: () => void
@@ -281,8 +278,12 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button !== 2) return
       e.preventDefault()
+      const now = Date.now()
       currentStrokeRef.current = [toLocal(e)]
-      onDrawStrokes?.(prev => [...prev, []])
+      onDrawStrokes?.(prev => {
+        const active = prev.filter(s => s.some(p => now - p.t < FADE_MS))
+        return [...active, []]
+      })
     }
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -346,13 +347,8 @@ function InlineImageOverlay({ url, onClose, containerRef, drawingEnabled, drawSt
           cursor: 'default',
         }}
       />
-      {drawStrokes && drawStrokes.length > 0 && (
-        <DrawCanvas
-          strokes={drawStrokes}
-          width={rect.width}
-          height={rect.height}
-          onAllFaded={() => onDrawStrokes?.([])}
-        />
+      {drawStrokes && drawStrokes.some(s => s.length >= 2) && (
+        <DrawCanvas strokes={drawStrokes} width={rect.width} height={rect.height} />
       )}
       <button
         onClick={onClose}
@@ -410,6 +406,10 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
   const [mirrorPos, setMirrorPos] = useState<{ x: number; y: number } | null>(null)
   const [mirrorClicking, setMirrorClicking] = useState(false)
   const [drawStrokes, setDrawStrokes] = useState<FadingStroke[]>([])
+  const [photoStrokes, setPhotoStrokes] = useState<FadingStroke[]>([])
+  const currentStrokeRef = useRef<TimedPoint[]>([])
+  const [leftSize, setLeftSize] = useState({ w: 0, h: 0 })
+  const [rightSize, setRightSize] = useState({ w: 0, h: 0 })
   const generateScript = useGenerateScript()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
@@ -476,6 +476,75 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
     }
   }, [script])
 
+  // Right-click drawing on left column (across text + photos)
+  useEffect(() => {
+    const left = leftRef.current
+    if (!left) return
+
+    const toLocal = (e: MouseEvent): TimedPoint => {
+      const rect = left.getBoundingClientRect()
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top + left.scrollTop, t: Date.now() }
+    }
+
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault()
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 2) return
+      e.preventDefault()
+      const now = Date.now()
+      currentStrokeRef.current = [toLocal(e)]
+      // Clean up fully faded strokes, then add new empty stroke
+      setDrawStrokes(prev => {
+        const active = prev.filter(s => s.some(p => now - p.t < FADE_MS))
+        return [...active, []]
+      })
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!currentStrokeRef.current.length) return
+      currentStrokeRef.current.push(toLocal(e))
+      setDrawStrokes(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = [...currentStrokeRef.current]
+        return updated
+      })
+    }
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button !== 2 || !currentStrokeRef.current.length) return
+      currentStrokeRef.current = []
+    }
+
+    left.addEventListener('contextmenu', handleContextMenu)
+    left.addEventListener('mousedown', handleMouseDown)
+    left.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      left.removeEventListener('contextmenu', handleContextMenu)
+      left.removeEventListener('mousedown', handleMouseDown)
+      left.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [script])
+
+  // Track column sizes for canvas + mirroring
+  useEffect(() => {
+    const left = leftRef.current
+    const right = rightRef.current
+    if (!left || !right) return
+
+    const update = () => {
+      setLeftSize({ w: left.clientWidth, h: left.scrollHeight })
+      setRightSize({ w: right.clientWidth, h: right.scrollHeight })
+    }
+    update()
+
+    const ro = new ResizeObserver(update)
+    ro.observe(left)
+    ro.observe(right)
+    return () => ro.disconnect()
+  }, [script])
+
   const handleGenerate = () => {
     generateScript.mutate({
       topicId,
@@ -488,7 +557,7 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
 
   const closeImage = useCallback(() => {
     setExpandedImage(null)
-    setDrawStrokes([])
+    setPhotoStrokes([])
   }, [])
 
   // No script yet — show generate CTA
@@ -539,10 +608,45 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
   }
 
   const groupedBlocks = groupBlocks(script.content)
+  const hasColumnStrokes = drawStrokes.some(s => s.length >= 2)
+
+  // Scale column strokes from left dimensions to right dimensions
+  const mirroredDrawStrokes = (hasColumnStrokes && leftSize.w > 0 && rightSize.w > 0)
+    ? drawStrokes.map(s => s.map(p => ({
+        x: (p.x / leftSize.w) * rightSize.w,
+        y: (p.y / leftSize.h) * rightSize.h,
+        t: p.t,
+      })))
+    : []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       <style>{`@keyframes mirror-click-ripple { from { transform: translate(-6px,-6px) scale(0.5); opacity: 1; } to { transform: translate(-6px,-6px) scale(2); opacity: 0; } }`}</style>
+
+      {/* Header with centered Back to Edit */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '6px 0',
+        borderBottom: '1px solid var(--border)',
+        flexShrink: 0,
+      }}>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: '1px solid var(--border)',
+            color: 'var(--text-secondary)',
+            fontSize: 12,
+            cursor: 'pointer',
+            padding: '4px 14px',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          Back to Edit
+        </button>
+      </div>
 
       {/* Two-column script layout */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -557,6 +661,10 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
             position: 'relative',
           }}
         >
+          {/* Drawing canvas across left column */}
+          {hasColumnStrokes && (
+            <DrawCanvas strokes={drawStrokes} width={leftSize.w} height={leftSize.h} />
+          )}
           <div style={{
             fontSize: 17, fontWeight: 600, color: 'var(--text-primary)',
             padding: '4px 0 12px', borderBottom: '1px solid var(--border)', marginBottom: 12,
@@ -590,34 +698,8 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
           })}
         </div>
 
-        {/* Center divider with Back to Edit button */}
-        <div style={{
-          position: 'relative',
-          width: 1,
-          flexShrink: 0,
-          background: 'var(--border)',
-        }}>
-          <button
-            onClick={onClose}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'var(--bg-raised)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-secondary)',
-              fontSize: 11,
-              cursor: 'pointer',
-              padding: '6px 10px',
-              borderRadius: 'var(--radius-sm)',
-              whiteSpace: 'nowrap',
-              zIndex: 10,
-            }}
-          >
-            Back to Edit
-          </button>
-        </div>
+        {/* Center divider */}
+        <div style={{ width: 1, flexShrink: 0, background: 'var(--border)' }} />
 
         {/* Right: mirrored tweet cards with text placeholders */}
         <div
@@ -630,6 +712,10 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
             position: 'relative',
           }}
         >
+          {/* Mirrored drawing canvas */}
+          {mirroredDrawStrokes.length > 0 && (
+            <DrawCanvas strokes={mirroredDrawStrokes} width={rightSize.w} height={rightSize.h} />
+          )}
           <div style={{
             fontSize: 17, fontWeight: 600, color: 'var(--text-primary)',
             padding: '4px 0 12px', borderBottom: '1px solid var(--border)', marginBottom: 12,
@@ -677,14 +763,14 @@ export default function ScriptView({ topicId, topicTitle, script, tweets, onClos
             onClose={closeImage}
             containerRef={leftColumnRef}
             drawingEnabled
-            drawStrokes={drawStrokes}
-            onDrawStrokes={setDrawStrokes}
+            drawStrokes={photoStrokes}
+            onDrawStrokes={setPhotoStrokes}
           />
           <InlineImageOverlay
             url={expandedImage}
             onClose={closeImage}
             containerRef={rightColumnRef}
-            drawStrokes={drawStrokes}
+            drawStrokes={photoStrokes}
           />
         </>
       )}
