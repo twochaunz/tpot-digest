@@ -106,10 +106,10 @@ export function DayCarousel({ date, onDateChange, search }: DayCarouselProps) {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
-      if (e.key === 'ArrowLeft') {
+      if (e.key === 'ArrowLeft' || e.key === 'h') {
         e.preventDefault()
         onDateChange(shiftDate(date, -1))
-      } else if (e.key === 'ArrowRight') {
+      } else if (e.key === 'ArrowRight' || e.key === 'l') {
         e.preventDefault()
         onDateChange(shiftDate(date, 1))
       }

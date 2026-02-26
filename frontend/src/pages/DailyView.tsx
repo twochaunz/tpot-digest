@@ -58,7 +58,7 @@ export function DailyView() {
 
       // Up/Down: navigate between category sections
       // Return/Shift+Return: navigate between topic sections
-      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'k' || e.key === 'j' || e.key === 'Enter') && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
         if (!feedPanel) return
 
@@ -67,7 +67,7 @@ export function DailyView() {
         const elements = Array.from(feedPanel.querySelectorAll<HTMLElement>(selector))
         if (elements.length === 0) return
 
-        const goBack = isTopicNav ? e.shiftKey : e.key === 'ArrowUp'
+        const goBack = isTopicNav ? e.shiftKey : (e.key === 'ArrowUp' || e.key === 'k')
         const panelTop = feedPanel.getBoundingClientRect().top
 
         // Find which element is closest to the panel top (the "current" one)
