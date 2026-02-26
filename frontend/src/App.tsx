@@ -22,6 +22,8 @@ export function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/app" element={<DailyView />} />
+          <Route path="/app/:dateStr" element={<DailyView />} />
+          <Route path="/app/:dateStr/:topicNum" element={<DailyView />} />
           <Route path="/app/settings" element={<SettingsPage />} />
         </Routes>
       </BrowserRouter>

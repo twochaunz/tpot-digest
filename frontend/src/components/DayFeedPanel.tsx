@@ -29,6 +29,7 @@ interface DayFeedPanelProps {
   setActiveDragTweet: (tweet: Tweet | null) => void
   genPanelOpen: boolean
   onGenPanelClose: () => void
+  initialTopicNum?: number | null
 }
 
 export function DayFeedPanel({
@@ -39,6 +40,7 @@ export function DayFeedPanel({
   setActiveDragTweet,
   genPanelOpen,
   onGenPanelClose,
+  initialTopicNum,
 }: DayFeedPanelProps) {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number; ogTweetId?: number | null } | null>(null)
@@ -60,6 +62,20 @@ export function DayFeedPanel({
       (t.author_display_name?.toLowerCase().includes(q) ?? false)
     )
   }, [bundle?.unsorted, search])
+
+  // Scroll to initial topic number (1-indexed, based on sorted order) on first load
+  const didScrollToTopic = useRef(false)
+  useEffect(() => {
+    if (!initialTopicNum || didScrollToTopic.current || !bundle?.topics?.length) return
+    const sorted = sortTopics(bundle.topics)
+    const targetTopic = sorted[initialTopicNum - 1]
+    if (!targetTopic) return
+    didScrollToTopic.current = true
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`toc-topic-${targetTopic.id}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [initialTopicNum, bundle?.topics])
 
   // Mutations
   const assignMutation = useOptimisticAssign()

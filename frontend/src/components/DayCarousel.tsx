@@ -18,9 +18,10 @@ interface DayCarouselProps {
   search: string
   genPanelOpen: boolean
   onGenPanelClose: () => void
+  initialTopicNum?: number | null
 }
 
-export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPanelClose }: DayCarouselProps) {
+export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPanelClose, initialTopicNum }: DayCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const isScrollingRef = useRef(false)
@@ -178,6 +179,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
                   setActiveDragTweet={setActiveDragTweet}
                   genPanelOpen={isCenter ? genPanelOpen : false}
                   onGenPanelClose={onGenPanelClose}
+                  initialTopicNum={isCenter ? initialTopicNum : undefined}
                 />
               ) : (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

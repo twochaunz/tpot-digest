@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
 import { TableOfContents } from '../components/TableOfContents'
@@ -24,14 +24,44 @@ function defaultDateStr(): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+function parseDateParam(dateStr?: string): string | null {
+  if (!dateStr || dateStr.length !== 8) return null
+  const yyyy = dateStr.slice(0, 4)
+  const mm = dateStr.slice(4, 6)
+  const dd = dateStr.slice(6, 8)
+  const parsed = `${yyyy}-${mm}-${dd}`
+  // Validate it's a real date
+  const d = new Date(parsed)
+  if (isNaN(d.getTime())) return null
+  return parsed
+}
+
+function toDateParam(isoDate: string): string {
+  return isoDate.replace(/-/g, '')
+}
+
 export function DailyView() {
   const navigate = useNavigate()
-  const [date, setDateRaw] = useState(defaultDateStr)
+  const { dateStr: urlDateStr, topicNum: urlTopicNum } = useParams<{ dateStr?: string; topicNum?: string }>()
+
+  const initialDate = parseDateParam(urlDateStr) || defaultDateStr()
+  const [date, setDateRaw] = useState(initialDate)
   const today = todayDateStr()
+  const pendingTopicNum = useRef<number | null>(urlTopicNum ? parseInt(urlTopicNum, 10) : null)
+
   const setDate = useCallback((d: string) => {
     if (d > today) return
     setDateRaw(d)
-  }, [today])
+    pendingTopicNum.current = null
+    navigate(`/app/${toDateParam(d)}`, { replace: true })
+  }, [today, navigate])
+  // Sync URL on initial load if no date param was provided
+  useEffect(() => {
+    if (!urlDateStr) {
+      navigate(`/app/${toDateParam(date)}`, { replace: true })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
@@ -294,6 +324,7 @@ export function DailyView() {
         search={debouncedSearch}
         genPanelOpen={genPanelOpen}
         onGenPanelClose={() => setGenPanelOpen(false)}
+        initialTopicNum={pendingTopicNum.current}
       />
 
       {/* TOC FAB button */}
