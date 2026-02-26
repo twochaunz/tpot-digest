@@ -437,44 +437,15 @@ function TopicSection({
           height: 'calc(100vh - 66px)',
           zIndex: 60,
           background: 'var(--bg-raised)',
-          display: 'flex',
-          flexDirection: 'column',
         }}>
-          {/* Script header bar with topic title + close */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '8px 20px',
-            borderBottom: '1px solid var(--border)',
-            gap: 12,
-            flexShrink: 0,
-          }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
-              {title}
-            </span>
-            <button
-              onClick={onToggleViewMode}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border)',
-                color: 'var(--text-secondary)',
-                fontSize: 12,
-                cursor: 'pointer',
-                padding: '4px 12px',
-                borderRadius: 'var(--radius-sm)',
-              }}
-            >
-              Back to Edit
-            </button>
-          </div>
-          <div style={{ flex: 1, minHeight: 0 }}>
-            <ScriptView
-              topicId={topicId}
-              script={activeScript}
-              tweets={allTweets}
-              showEngagement={showEngagement}
-            />
-          </div>
+          <ScriptView
+            topicId={topicId}
+            topicTitle={title}
+            script={activeScript}
+            tweets={allTweets}
+            showEngagement={showEngagement}
+            onClose={onToggleViewMode}
+          />
         </div>,
         document.body,
       )}
