@@ -35,7 +35,7 @@ export function useCreateTopic() {
 export function useUpdateTopic() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...body }: { id: number; title?: string; color?: string; position?: number; og_tweet_id?: number | null }) => {
+    mutationFn: async ({ id, ...body }: { id: number; title?: string; date?: string; color?: string; position?: number; og_tweet_id?: number | null }) => {
       const { data } = await api.patch(`/topics/${id}`, body)
       return data
     },

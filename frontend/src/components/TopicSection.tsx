@@ -95,10 +95,10 @@ interface TopicSectionWithDataProps {
   date: string
   search: string
   ogTweetId: number | null
-  onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => void
+  onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
   tweets?: Tweet[]
 }
 
@@ -109,10 +109,10 @@ export function TopicSectionWithData({
   date,
   search,
   ogTweetId,
-  onDelete,
   onUpdateTitle,
   onSetOg,
   onContextMenu,
+  onTopicContextMenu,
   tweets: propTweets,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined }, { enabled: !propTweets })
@@ -162,10 +162,10 @@ export function TopicSectionWithData({
       showEngagement={showEngagement}
       viewMode={viewMode}
       onToggleViewMode={() => setViewMode((v) => (v === 'edit' ? 'script' : 'edit'))}
-      onDelete={onDelete}
       onUpdateTitle={onUpdateTitle}
       onSetOg={onSetOg}
       onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId, ogTweetId)}
+      onTopicContextMenu={onTopicContextMenu}
     />
   )
 }
@@ -268,10 +268,10 @@ interface TopicSectionProps {
   showEngagement: boolean
   viewMode: 'edit' | 'script'
   onToggleViewMode: () => void
-  onDelete: (topicId: number) => void
   onUpdateTitle: (topicId: number, title: string) => void
   onSetOg: (topicId: number, tweetId: number | null) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
 }
 
 function TopicSection({
@@ -286,10 +286,10 @@ function TopicSection({
   showEngagement,
   viewMode,
   onToggleViewMode,
-  onDelete,
   onUpdateTitle,
   onSetOg,
   onContextMenu,
+  onTopicContextMenu,
 }: TopicSectionProps) {
   const [headerHovered, setHeaderHovered] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -339,6 +339,7 @@ function TopicSection({
       <div
         onMouseEnter={() => setHeaderHovered(true)}
         onMouseLeave={() => setHeaderHovered(false)}
+        onContextMenu={(e) => { e.preventDefault(); onTopicContextMenu?.(e, topicId, title) }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -474,29 +475,6 @@ function TopicSection({
           {viewMode === 'edit' ? 'Script' : 'Edit'}
         </button>
 
-        {/* Delete button - shows on hover */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            if (window.confirm(`Delete topic "${title}"? Tweets will be unassigned.`)) {
-              onDelete(topicId)
-            }
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-tertiary)',
-            fontSize: 13,
-            cursor: 'pointer',
-            padding: '2px 4px',
-            opacity: headerHovered ? 1 : 0,
-            transition: 'opacity 0.15s ease',
-            lineHeight: 1,
-          }}
-          title="Delete topic"
-        >
-          &#128465;
-        </button>
       </div>
 
       {/* Body (droppable) - collapsible */}

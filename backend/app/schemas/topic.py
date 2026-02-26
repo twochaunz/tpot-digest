@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -11,6 +12,7 @@ class TopicCreate(BaseModel):
 
 class TopicUpdate(BaseModel):
     title: str | None = None
+    date: Optional[date] = None
     color: str | None = None
     position: int | None = None
     og_tweet_id: int | None = None
