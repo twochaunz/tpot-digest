@@ -136,13 +136,43 @@ export function ScriptMirrorView({ topics, drawToolRef, drawColorRef, drawOpacit
     const handleMouseMove = (e: MouseEvent) => {
       const cursor = cursorRef.current
       if (!cursor) return
+
       const leftRect = left.getBoundingClientRect()
       const rightRect = right.getBoundingClientRect()
       const relX = (e.clientX - leftRect.left) / leftRect.width
-      const relY = (e.clientY - leftRect.top) / leftRect.height
-      cursor.style.left = `${rightRect.left + relX * rightRect.width}px`
-      cursor.style.top = `${rightRect.top + relY * rightRect.height}px`
-      cursor.style.display = 'block'
+
+      // Find the tweet element closest to the cursor in the left column
+      const leftTweets = left.querySelectorAll('[data-tweet-id]')
+      let bestTweetId: string | null = null
+      let bestRelY = 0.5
+      let bestDist = Infinity
+
+      for (const el of leftTweets) {
+        const rect = (el as HTMLElement).getBoundingClientRect()
+        if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          // Cursor is directly over this tweet
+          bestTweetId = el.getAttribute('data-tweet-id')
+          bestRelY = (e.clientY - rect.top) / rect.height
+          break
+        }
+        // Distance to nearest edge of this tweet
+        const dist = e.clientY < rect.top ? rect.top - e.clientY : e.clientY - rect.bottom
+        if (dist < bestDist) {
+          bestDist = dist
+          bestTweetId = el.getAttribute('data-tweet-id')
+          bestRelY = e.clientY < rect.top ? 0 : 1
+        }
+      }
+
+      if (bestTweetId) {
+        const rightTweet = right.querySelector(`[data-tweet-id="${bestTweetId}"]`) as HTMLElement
+        if (rightTweet) {
+          const rtRect = rightTweet.getBoundingClientRect()
+          cursor.style.left = `${rightRect.left + relX * rightRect.width}px`
+          cursor.style.top = `${rtRect.top + bestRelY * rtRect.height}px`
+          cursor.style.display = 'block'
+        }
+      }
     }
 
     const handleMouseLeave = () => {
