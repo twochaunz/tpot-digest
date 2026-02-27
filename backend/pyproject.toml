@@ -13,6 +13,7 @@ dependencies = [
     "pydantic-settings>=2.7",
     "email-validator>=2.0",
     "pgvector>=0.3",
+    "sentence-transformers>=3.0",
 ]
 
 [project.optional-dependencies]
