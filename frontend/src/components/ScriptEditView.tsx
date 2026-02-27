@@ -270,10 +270,9 @@ function EditableBlock({ id, block, blockIndex, script, topicId, tweets, onUpdat
 }
 
 /* ---- Insert button between blocks ---- */
-function InsertButton({ index, script, topicId, tweets, onUpdateContent }: {
+function InsertButton({ index, script, tweets, onUpdateContent }: {
   index: number
   script: TopicScript
-  topicId: number
   tweets: Tweet[]
   onUpdateContent: (content: ScriptBlock[]) => void
 }) {
@@ -544,7 +543,6 @@ function TopicEditSection({ topicId, tweets }: {
           <InsertButton
             index={0}
             script={script}
-            topicId={topicId}
             tweets={tweets}
             onUpdateContent={updateContent}
           />
@@ -565,7 +563,6 @@ function TopicEditSection({ topicId, tweets }: {
               <InsertButton
                 index={idx + 1}
                 script={script}
-                topicId={topicId}
                 tweets={tweets}
                 onUpdateContent={updateContent}
               />
