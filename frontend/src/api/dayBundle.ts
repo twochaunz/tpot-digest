@@ -20,8 +20,8 @@ export function useDayBundle(date: string) {
       const { data } = await api.get(`/days/${date}/bundle`)
       return data
     },
-    staleTime: 5 * 60 * 1000, // 5 min — avoids refetch when carousel shifts dates
-    refetchOnWindowFocus: 'always', // pick up new tweets saved from extension
+    staleTime: 30_000, // 30s — refetch picks up extension-saved tweets on focus
+    refetchOnWindowFocus: true, // respects staleTime instead of always refetching
   })
 }
 

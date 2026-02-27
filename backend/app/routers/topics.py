@@ -47,8 +47,9 @@ TOPIC_COLORS = [
 async def create_topic(body: TopicCreate, db: AsyncSession = Depends(get_db)):
     color = body.color
     if not color:
-        count_result = await db.execute(select(Topic).where(Topic.date == body.date))
-        count = len(count_result.scalars().all())
+        count = (await db.execute(
+            select(func.count()).select_from(Topic).where(Topic.date == body.date)
+        )).scalar() or 0
         color = TOPIC_COLORS[count % len(TOPIC_COLORS)]
     topic = Topic(title=title_case(body.title), date=body.date, color=color)
     db.add(topic)
