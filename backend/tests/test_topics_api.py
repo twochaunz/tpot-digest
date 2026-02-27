@@ -1,4 +1,6 @@
-from unittest.mock import AsyncMock, patch
+import sys
+import types
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -11,6 +13,21 @@ import app.db as db_module
 from app.db import Base, get_db
 from app.main import app
 from app.models import Tweet, Topic, TweetAssignment  # noqa: F401
+
+# Mock sentence_transformers before app.services.embeddings is imported
+_FAKE_EMBEDDING = [0.1] * 384
+
+if "sentence_transformers" not in sys.modules:
+    _st_mod = types.ModuleType("sentence_transformers")
+    _st_mod.SentenceTransformer = MagicMock()
+    sys.modules["sentence_transformers"] = _st_mod
+
+# Now ensure the embeddings module uses our mock embed_text
+if "app.services.embeddings" not in sys.modules:
+    _embed_mod = types.ModuleType("app.services.embeddings")
+    _embed_mod.embed_text = lambda text: _FAKE_EMBEDDING
+    _embed_mod.embed_texts = lambda texts: [_FAKE_EMBEDDING] * len(texts)
+    sys.modules["app.services.embeddings"] = _embed_mod
 
 
 @compiles(JSONB, "sqlite")
