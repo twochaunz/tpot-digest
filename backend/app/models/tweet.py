@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,6 +35,13 @@ class Tweet(Base):
     author_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    # AI classification fields
+    embedding = mapped_column(Vector(384), nullable=True)
+    ai_topic_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("topics.id", ondelete="SET NULL"), nullable=True)
+    ai_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ai_related_topic_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("topics.id", ondelete="SET NULL"), nullable=True)
+    ai_override: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     def __repr__(self) -> str:
         return f"<Tweet id={self.id} tweet_id={self.tweet_id!r}>"
