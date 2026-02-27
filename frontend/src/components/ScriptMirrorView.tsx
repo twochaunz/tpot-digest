@@ -277,23 +277,74 @@ export function ScriptMirrorView({ topics, drawToolRef, drawColorRef, drawOpacit
     setPhotoStrokes([])
   }, [])
 
-  /* ---- Mirrored strokes (scroll-offset based, not ratio) ---- */
-  // Converts left document coords to viewport coords, then to right document coords.
-  // This ensures marks appear at the same viewport position on both sides.
+  /* ---- Mirrored strokes (tweet-element-based mapping) ---- */
   const hasColumnStrokes = drawStrokes.some(s => s.points.length >= 2)
-  const leftScroll = leftRef.current?.scrollTop ?? 0
-  const rightScroll = rightRef.current?.scrollTop ?? 0
+  let mirroredDrawStrokes: StyledStroke[] = []
 
-  const mirroredDrawStrokes: StyledStroke[] = (hasColumnStrokes && leftSize.w > 0 && rightSize.w > 0)
-    ? drawStrokes.map(s => ({
-        ...s,
-        points: s.points.map(p => ({
-          x: (p.x / leftSize.w) * rightSize.w,
-          y: p.y - leftScroll + rightScroll,
-          t: p.t,
-        })),
-      }))
-    : []
+  if (hasColumnStrokes && leftRef.current && rightRef.current && leftSize.w > 0 && rightSize.w > 0) {
+    const left = leftRef.current
+    const right = rightRef.current
+    const leftRect = left.getBoundingClientRect()
+    const rightRect = right.getBoundingClientRect()
+
+    // Build tweet position maps (document-space coords)
+    type TweetRange = { id: string; top: number; bottom: number }
+    const leftTweets: TweetRange[] = []
+    const rightMap = new Map<string, TweetRange>()
+
+    for (const el of left.querySelectorAll('[data-tweet-id]')) {
+      const r = (el as HTMLElement).getBoundingClientRect()
+      leftTweets.push({
+        id: el.getAttribute('data-tweet-id')!,
+        top: r.top - leftRect.top + left.scrollTop,
+        bottom: r.bottom - leftRect.top + left.scrollTop,
+      })
+    }
+    for (const el of right.querySelectorAll('[data-tweet-id]')) {
+      const r = (el as HTMLElement).getBoundingClientRect()
+      const id = el.getAttribute('data-tweet-id')!
+      rightMap.set(id, {
+        id,
+        top: r.top - rightRect.top + right.scrollTop,
+        bottom: r.bottom - rightRect.top + right.scrollTop,
+      })
+    }
+
+    // Map a left-column document Y to a right-column document Y
+    const mapY = (leftDocY: number): number => {
+      // If Y is within a tweet, map proportionally to the same tweet on right
+      for (const lt of leftTweets) {
+        if (leftDocY >= lt.top && leftDocY <= lt.bottom) {
+          const rt = rightMap.get(lt.id)
+          if (rt) {
+            const relY = (leftDocY - lt.top) / (lt.bottom - lt.top || 1)
+            return rt.top + relY * (rt.bottom - rt.top)
+          }
+        }
+      }
+      // Between tweets (over text) — clamp to nearest tweet edge on right
+      let bestDist = Infinity
+      let bestY = leftDocY
+      for (const lt of leftTweets) {
+        const dist = leftDocY < lt.top ? lt.top - leftDocY : leftDocY - lt.bottom
+        if (dist < bestDist) {
+          bestDist = dist
+          const rt = rightMap.get(lt.id)
+          if (rt) bestY = leftDocY < lt.top ? rt.top : rt.bottom
+        }
+      }
+      return bestY
+    }
+
+    mirroredDrawStrokes = drawStrokes.map(s => ({
+      ...s,
+      points: s.points.map(p => ({
+        x: (p.x / leftSize.w) * rightSize.w,
+        y: mapY(p.y),
+        t: p.t,
+      })),
+    }))
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
