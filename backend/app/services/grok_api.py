@@ -41,26 +41,23 @@ async def fetch_grok_context(tweet_url: str) -> str:
             "model": "grok-4-1-fast-reasoning",
             "input": [
                 {
-                    "role": "system",
-                    "content": (
-                        "You summarize X posts for a video producer who covers tech Twitter daily. "
-                        "Your summaries help them quickly understand what a post is about and why it matters, "
-                        "so they can decide how to talk about it on camera. "
-                        "Be direct, specific, and opinionated. No hedging, no filler."
-                    ),
-                },
-                {
                     "role": "user",
                     "content": (
-                        f"Summarize this X post: {tweet_url}\n\n"
-                        "Cover these in order:\n"
-                        "1. **What happened** — What is this post saying or announcing? One or two sentences max.\n"
-                        "2. **Who** — Who posted it and who are they? Why do they matter in this context? Skip if obvious.\n"
-                        "3. **Backstory** — What led to this post? Any prior drama, announcements, or events?\n"
-                        "4. **Discourse** — How are people reacting in replies and quotes? Any notable takes, ratio, pushback, or memes?\n"
-                        "5. **Why it matters** — Why should anyone care? What's the bigger picture?\n\n"
-                        "Use short bullet points under each heading. Skip any section that doesn't apply. "
-                        "If it's a shitpost or meme, just say what the joke is and why it's funny."
+                        f"Explain this X post to me: {tweet_url}\n\n"
+                        "## Guidelines for an excellent response\n"
+                        "- Include only context, backstory, or world events that are directly relevant "
+                        "and surprising, informative, educational, or entertaining.\n"
+                        "- Avoid stating the obvious or simple reactions.\n"
+                        "- Provide truthful and based insights, challenging mainstream narratives "
+                        "if necessary, but remain objective.\n"
+                        "- Incorporate relevant scientific studies, data, or evidence to support "
+                        "your analysis; prioritize peer-reviewed research and be critical of sources "
+                        "to avoid bias.\n\n"
+                        "## Formatting\n"
+                        "- Write your response as 5 short bullet points. Do not use nested bullet points.\n"
+                        "- Prioritize conciseness; Ensure each bullet point conveys a single, crucial idea.\n"
+                        "- Use simple, information-rich sentences. Avoid purple prose.\n"
+                        "- Exclude post/thread IDs and concluding summaries."
                     ),
                 }
             ],
