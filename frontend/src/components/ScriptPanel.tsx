@@ -4,6 +4,7 @@ import type { TopicBundle } from '../api/dayBundle'
 import { sortTopics } from '../utils/topics'
 import { TopicManagerView } from './TopicManagerView'
 import { ScriptMirrorView } from './ScriptMirrorView'
+import { ScriptEditView } from './ScriptEditView'
 import { ColorWheelPicker, type DrawTool } from './DayScriptView'
 
 interface ScriptPanelProps {
@@ -236,12 +237,8 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
         flex: 1,
         minHeight: 0,
         overflow: 'hidden',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--text-tertiary)',
-        fontSize: 14,
       }}>
-        Edit view coming soon
+        <ScriptEditView topics={selectedTopics} />
       </div>
 
       <div style={{
