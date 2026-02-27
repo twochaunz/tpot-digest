@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback, useRef, memo } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useTweets, useFetchGrokContext } from '../api/tweets'
 import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
@@ -47,12 +49,13 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
       {!collapsed && (
         <div style={{
           padding: '0 12px 12px',
-          fontSize: 15,
+          fontSize: 14,
           color: 'var(--text-primary)',
-          lineHeight: 1.5,
-          whiteSpace: 'pre-wrap',
-        }}>
-          {context}
+          lineHeight: 1.6,
+        }}
+          className="grok-context-md"
+        >
+          <Markdown remarkPlugins={[remarkGfm]}>{context}</Markdown>
         </div>
       )}
     </div>
