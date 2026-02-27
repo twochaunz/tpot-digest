@@ -747,16 +747,6 @@ export function TopicScriptSectionMirror({ topicId, tweets, allTweets, onImageCl
             }
             return null
           })}
-
-          <div style={{
-            marginTop: 8,
-            padding: '8px 0',
-            borderTop: '1px solid var(--border)',
-          }}>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>
-              v{script.version} · {script.model_used}
-            </div>
-          </div>
         </>
       )}
 
