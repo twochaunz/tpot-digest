@@ -14,7 +14,7 @@ interface ScriptPanelProps {
 
 export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps) {
   // Active view: topics manager vs script mirror
-  const [activeView, setActiveView] = useState<'topics' | 'script'>('topics')
+  const [activeView, setActiveView] = useState<'topics' | 'edit' | 'script'>('topics')
 
   // Selected topic IDs — default to top 3 by tweet count (sortTopics sorts by count desc)
   const [selectedTopicIds, setSelectedTopicIds] = useState<Set<number>>(() => {
@@ -106,7 +106,7 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
 
       if (e.key === 'g') {
         e.preventDefault()
-        setActiveView(prev => prev === 'topics' ? 'script' : 'topics')
+        setActiveView(prev => prev === 'topics' ? 'edit' : prev === 'edit' ? 'script' : 'topics')
       }
 
       if (e.key === 'Escape') {
@@ -171,6 +171,21 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
           Topics
         </button>
         <button
+          onClick={() => setActiveView('edit')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeView === 'edit' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 10px',
+            borderBottom: activeView === 'edit' ? '2px solid var(--accent)' : '2px solid transparent',
+          }}
+        >
+          Edit
+        </button>
+        <button
           onClick={() => setActiveView('script')}
           style={{
             background: 'none',
@@ -183,7 +198,7 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
             borderBottom: activeView === 'script' ? '2px solid var(--accent)' : '2px solid transparent',
           }}
         >
-          Script
+          Present
         </button>
 
         {/* Drawing tools (visible only in script view) */}
@@ -214,6 +229,19 @@ export default function ScriptPanel({ date, topics, onClose }: ScriptPanelProps)
           selectAll={selectAll}
           deselectAll={deselectAll}
         />
+      </div>
+
+      <div style={{
+        display: activeView === 'edit' ? 'flex' : 'none',
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text-tertiary)',
+        fontSize: 14,
+      }}>
+        Edit view coming soon
       </div>
 
       <div style={{
