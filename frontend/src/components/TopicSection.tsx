@@ -64,7 +64,7 @@ function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string
 
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); fetchGrok.mutate(tweetId) }}
+      onClick={(e) => { e.stopPropagation(); fetchGrok.mutate({ tweetId, force: true }) }}
       disabled={fetchGrok.isPending}
       style={{
         background: 'none',
