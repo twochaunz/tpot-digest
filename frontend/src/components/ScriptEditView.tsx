@@ -269,6 +269,205 @@ function EditableBlock({ id, block, blockIndex, script, topicId, tweets, onUpdat
   )
 }
 
+/* ---- Insert button between blocks ---- */
+function InsertButton({ index, script, topicId, tweets, onUpdateContent }: {
+  index: number
+  script: TopicScript
+  topicId: number
+  tweets: Tweet[]
+  onUpdateContent: (content: ScriptBlock[]) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [showTweetList, setShowTweetList] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  /* Close menu on click-outside */
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+        setShowTweetList(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
+
+  /* Tweets NOT already in the script */
+  const tweetIdsInScript = new Set(
+    script.content.filter(b => b.type === 'tweet' && b.tweet_id).map(b => b.tweet_id!)
+  )
+  const availableTweets = tweets.filter(t => !tweetIdsInScript.has(t.tweet_id))
+
+  const handleInsertText = () => {
+    const newContent = [...script.content]
+    newContent.splice(index, 0, { type: 'text', text: 'New text...' })
+    onUpdateContent(newContent)
+    setMenuOpen(false)
+    setShowTweetList(false)
+  }
+
+  const handleInsertTweet = (tweetId: string) => {
+    const newContent = [...script.content]
+    newContent.splice(index, 0, { type: 'tweet', tweet_id: tweetId })
+    onUpdateContent(newContent)
+    setMenuOpen(false)
+    setShowTweetList(false)
+  }
+
+  const visible = hovered || menuOpen
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        height: 20,
+        marginLeft: 32,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Horizontal line */}
+      <div style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: '50%',
+        height: 1,
+        background: visible ? 'var(--border-strong)' : 'transparent',
+        transition: 'all 0.15s',
+      }} />
+
+      {/* Plus button */}
+      <button
+        onClick={() => {
+          setMenuOpen(!menuOpen)
+          setShowTweetList(false)
+        }}
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: visible ? 'var(--accent)' : 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 0,
+          transition: 'all 0.15s',
+        }}
+      >
+        <span style={{
+          color: visible ? '#fff' : 'transparent',
+          fontSize: 14,
+          lineHeight: 1,
+          fontWeight: 600,
+          transition: 'all 0.15s',
+        }}>
+          +
+        </span>
+      </button>
+
+      {/* Insert menu popover */}
+      {menuOpen && (
+        <div
+          ref={menuRef}
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            zIndex: 100,
+            padding: 4,
+            minWidth: showTweetList ? 320 : 140,
+          }}
+        >
+          {!showTweetList ? (
+            <>
+              <div
+                onClick={handleInsertText}
+                style={{
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: 'var(--text-primary)',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+              >
+                Text
+              </div>
+              <div
+                onClick={() => setShowTweetList(true)}
+                style={{
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: 'var(--text-primary)',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+              >
+                Tweet
+              </div>
+            </>
+          ) : (
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {availableTweets.length === 0 ? (
+                <div style={{
+                  padding: '12px 10px',
+                  color: 'var(--text-tertiary)',
+                  fontSize: 13,
+                  textAlign: 'center',
+                }}>
+                  No tweets available
+                </div>
+              ) : (
+                availableTweets.map(tweet => (
+                  <div
+                    key={tweet.tweet_id}
+                    onClick={() => handleInsertTweet(tweet.tweet_id)}
+                    style={{
+                      padding: '8px 10px',
+                      cursor: 'pointer',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.4,
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+                  >
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      @{tweet.author_handle}
+                    </span>
+                    {': '}
+                    {tweet.text.length > 60 ? tweet.text.slice(0, 60) + '...' : tweet.text}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ---- Per-topic edit section ---- */
 function TopicEditSection({ topicId, tweets }: {
   topicId: number
@@ -336,22 +535,41 @@ function TopicEditSection({ topicId, tweets }: {
   /* Stable sortable IDs for each block */
   const blockIds = script.content.map((_, idx) => `block-${idx}`)
 
-  /* Render blocks with drag-and-drop */
+  /* Render blocks with drag-and-drop + insert buttons interleaved */
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
         <div style={{ marginBottom: 8 }}>
+          {/* Insert button before first block */}
+          <InsertButton
+            index={0}
+            script={script}
+            topicId={topicId}
+            tweets={tweets}
+            onUpdateContent={updateContent}
+          />
+
           {script.content.map((block, idx) => (
-            <EditableBlock
-              key={`${topicId}-block-${idx}`}
-              id={`block-${idx}`}
-              block={block}
-              blockIndex={idx}
-              script={script}
-              topicId={topicId}
-              tweets={tweets}
-              onUpdateContent={updateContent}
-            />
+            <div key={`${topicId}-block-${idx}`}>
+              <EditableBlock
+                id={`block-${idx}`}
+                block={block}
+                blockIndex={idx}
+                script={script}
+                topicId={topicId}
+                tweets={tweets}
+                onUpdateContent={updateContent}
+              />
+
+              {/* Insert button after each block */}
+              <InsertButton
+                index={idx + 1}
+                script={script}
+                topicId={topicId}
+                tweets={tweets}
+                onUpdateContent={updateContent}
+              />
+            </div>
           ))}
         </div>
       </SortableContext>
