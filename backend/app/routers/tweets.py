@@ -322,3 +322,59 @@ async def unassign_tweets(body: TweetUnassignRequest, db: AsyncSession = Depends
             await db.delete(existing)
     await db.commit()
     return {"unassigned": len(body.tweet_ids)}
+
+
+@router.post("/{tweet_id}/accept-suggestion", status_code=200)
+async def accept_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
+    """Accept AI suggestion: assign tweet to suggested topic with category."""
+    tweet = await db.get(Tweet, tweet_id)
+    if not tweet:
+        raise HTTPException(404, "Tweet not found")
+    if not tweet.ai_topic_id:
+        raise HTTPException(400, "No AI suggestion for this tweet")
+
+    topic_id = tweet.ai_topic_id
+    category = tweet.ai_category
+
+    # Create assignment
+    existing = (await db.execute(
+        select(TweetAssignment).where(
+            TweetAssignment.tweet_id == tweet_id,
+            TweetAssignment.topic_id == topic_id,
+        )
+    )).scalar_one_or_none()
+    if existing:
+        existing.category = category
+    else:
+        db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id, category=category))
+
+    # Clear suggestion fields
+    tweet.ai_topic_id = None
+    tweet.ai_category = None
+    tweet.ai_related_topic_id = None
+    await db.commit()
+
+    return JSONResponse(
+        content={"assigned_topic_id": topic_id, "category": category},
+        background=BackgroundTask(_recategorize_after_accept, topic_id),
+    )
+
+
+@router.post("/{tweet_id}/dismiss-suggestion", status_code=200)
+async def dismiss_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
+    """Dismiss AI suggestion: clear suggestion fields."""
+    tweet = await db.get(Tweet, tweet_id)
+    if not tweet:
+        raise HTTPException(404, "Tweet not found")
+
+    tweet.ai_topic_id = None
+    tweet.ai_category = None
+    tweet.ai_related_topic_id = None
+    await db.commit()
+    return {"dismissed": True}
+
+
+async def _recategorize_after_accept(topic_id: int):
+    """Background: re-categorize all tweets in topic after a new one is accepted."""
+    from app.services.classifier import recategorize_topic_tweets
+    await recategorize_topic_tweets(topic_id)
