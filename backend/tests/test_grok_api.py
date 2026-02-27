@@ -9,7 +9,14 @@ async def test_fetch_grok_context_success():
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "choices": [{"message": {"content": "This tweet is about AI progress..."}}]
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {"type": "output_text", "text": "This tweet is about AI progress..."}
+                ],
+            }
+        ]
     }
 
     with patch("app.services.grok_api.settings") as mock_settings:
