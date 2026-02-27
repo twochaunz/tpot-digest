@@ -42,6 +42,11 @@ class TweetOut(BaseModel):
     saved_at: datetime
     category: str | None = None
     status: str = "saved"
+    ai_topic_id: int | None = None
+    ai_category: str | None = None
+    ai_related_topic_id: int | None = None
+    ai_topic_title: str | None = None
+    ai_override: bool = False
 
     model_config = {"from_attributes": True}
 

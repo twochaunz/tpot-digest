@@ -69,10 +69,23 @@ async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
         tb.tweets = topic_tweets
         topics.append(tb)
 
+    # Build topic title lookup for AI suggestion labels
+    topic_title_map = {t.id: t.title for t in topic_rows}
+
     # Unsorted = tweets not assigned to any topic
-    unsorted = [
-        TweetOut.model_validate(t) for t in all_tweets
-        if t.id not in assigned_tweet_ids
-    ]
+    unsorted = []
+    for t in all_tweets:
+        if t.id not in assigned_tweet_ids:
+            out = TweetOut.model_validate(t)
+            if out.ai_topic_id:
+                if out.ai_topic_id in topic_title_map:
+                    out.ai_topic_title = topic_title_map[out.ai_topic_id]
+                else:
+                    # Topic might be from a different day
+                    topic = await db.get(Topic, out.ai_topic_id)
+                    if topic:
+                        out.ai_topic_title = topic.title
+                        topic_title_map[topic.id] = topic.title
+            unsorted.append(out)
 
     return DayBundle(topics=topics, unsorted=unsorted)
