@@ -305,6 +305,10 @@ async def assign_tweets(body: TweetAssignRequest, db: AsyncSession = Depends(get
             db.add(TweetAssignment(
                 tweet_id=tid, topic_id=body.topic_id, category=body.category
             ))
+        if body.category:
+            tweet = await db.get(Tweet, tid)
+            if tweet:
+                tweet.ai_override = True
     await db.commit()
     return {"assigned": len(body.tweet_ids)}
 

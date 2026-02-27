@@ -166,3 +166,25 @@ export function useOptimisticPatchTweet() {
     },
   })
 }
+
+export function useAcceptSuggestion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tweetId: number) => {
+      const { data } = await api.post(`/tweets/${tweetId}/accept-suggestion`)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['day-bundle'] }),
+  })
+}
+
+export function useDismissSuggestion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tweetId: number) => {
+      const { data } = await api.post(`/tweets/${tweetId}/dismiss-suggestion`)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['day-bundle'] }),
+  })
+}
