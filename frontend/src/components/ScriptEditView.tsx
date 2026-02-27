@@ -4,14 +4,30 @@ import { type ScriptBlock, type TopicScript, useTopicScript, useUpdateScript } f
 import type { Tweet } from '../api/tweets'
 import { ScriptTextBlock } from './DayScriptView'
 import { TweetCard } from './TweetCard'
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
-/* ---- Block gutter with delete + swap controls ---- */
-function BlockGutter({ block, blockIndex, script, tweets, onUpdateContent }: {
+/* ---- Block gutter with drag handle, delete + swap controls ---- */
+function BlockGutter({ block, blockIndex, script, tweets, onUpdateContent, dragHandleProps }: {
   block: ScriptBlock
   blockIndex: number
   script: TopicScript
   tweets: Tweet[]
   onUpdateContent: (content: ScriptBlock[]) => void
+  dragHandleProps?: Record<string, unknown>
 }) {
   const [swapOpen, setSwapOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -60,6 +76,28 @@ function BlockGutter({ block, blockIndex, script, tweets, onUpdateContent }: {
       gap: 2,
       position: 'relative',
     }}>
+      {/* Drag handle */}
+      <span
+        {...dragHandleProps}
+        style={{
+          cursor: 'grab',
+          color: 'var(--text-tertiary)',
+          fontSize: 14,
+          lineHeight: 1,
+          padding: '2px 4px',
+          userSelect: 'none',
+          touchAction: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 20,
+          height: 20,
+        }}
+        title="Drag to reorder"
+      >
+        &#10303;
+      </span>
+
       {/* Delete button */}
       <button
         onClick={handleDelete}
@@ -170,8 +208,9 @@ function BlockGutter({ block, blockIndex, script, tweets, onUpdateContent }: {
   )
 }
 
-/* ---- Editable block (text or tweet) with left gutter ---- */
-function EditableBlock({ block, blockIndex, script, topicId, tweets, onUpdateContent }: {
+/* ---- Editable block (text or tweet) with left gutter — sortable ---- */
+function EditableBlock({ id, block, blockIndex, script, topicId, tweets, onUpdateContent }: {
+  id: string
   block: ScriptBlock
   blockIndex: number
   script: TopicScript
@@ -179,14 +218,32 @@ function EditableBlock({ block, blockIndex, script, topicId, tweets, onUpdateCon
   tweets: Tweet[]
   onUpdateContent: (content: ScriptBlock[]) => void
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    display: 'flex',
+    alignItems: 'flex-start',
+  }
+
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+    <div ref={setNodeRef} style={style}>
       <BlockGutter
         block={block}
         blockIndex={blockIndex}
         script={script}
         tweets={tweets}
         onUpdateContent={onUpdateContent}
+        dragHandleProps={{ ...attributes, ...listeners }}
       />
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -224,6 +281,24 @@ function TopicEditSection({ topicId, tweets }: {
     updateScript.mutate({ topicId, content: newContent })
   }, [topicId, updateScript])
 
+  // DnD sensors — require 5px movement before drag starts
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    if (!script) return
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = parseInt((active.id as string).replace('block-', ''), 10)
+    const newIndex = parseInt((over.id as string).replace('block-', ''), 10)
+    if (isNaN(oldIndex) || isNaN(newIndex)) return
+
+    const newContent = arrayMove(script.content, oldIndex, newIndex)
+    updateContent(newContent)
+  }, [script, updateContent])
+
   /* Loading state */
   if (isLoading) {
     return (
@@ -258,21 +333,29 @@ function TopicEditSection({ topicId, tweets }: {
     )
   }
 
-  /* Render blocks */
+  /* Stable sortable IDs for each block */
+  const blockIds = script.content.map((_, idx) => `block-${idx}`)
+
+  /* Render blocks with drag-and-drop */
   return (
-    <div style={{ marginBottom: 8 }}>
-      {script.content.map((block, idx) => (
-        <EditableBlock
-          key={`${topicId}-block-${idx}`}
-          block={block}
-          blockIndex={idx}
-          script={script}
-          topicId={topicId}
-          tweets={tweets}
-          onUpdateContent={updateContent}
-        />
-      ))}
-    </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+        <div style={{ marginBottom: 8 }}>
+          {script.content.map((block, idx) => (
+            <EditableBlock
+              key={`${topicId}-block-${idx}`}
+              id={`block-${idx}`}
+              block={block}
+              blockIndex={idx}
+              script={script}
+              topicId={topicId}
+              tweets={tweets}
+              onUpdateContent={updateContent}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   )
 }
 
