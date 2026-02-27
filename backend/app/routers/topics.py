@@ -112,6 +112,11 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
             except GrokAPIError:
                 pass  # Non-blocking: OG is set even if Grok fails
 
+        # Generate topic embedding for similarity search
+        from app.services.embeddings import embed_text
+        embed_source = f"{topic.title} {tweet.text or ''} {tweet.grok_context or ''}"
+        topic.embedding = embed_text(embed_source)
+
     # When date changes, move all assigned tweets to the new date
     if "date" in data and data["date"] != topic.date:
         from datetime import datetime, timezone
@@ -129,6 +134,14 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
 
     for field, value in data.items():
         setattr(topic, field, value)
+
+    # Re-embed if title changes and we have an OG tweet
+    if "title" in data and topic.og_tweet_id:
+        og = await db.get(Tweet, topic.og_tweet_id)
+        if og:
+            from app.services.embeddings import embed_text
+            embed_source = f"{topic.title} {og.text or ''} {og.grok_context or ''}"
+            topic.embedding = embed_text(embed_source)
 
     await db.commit()
     await db.refresh(topic)
