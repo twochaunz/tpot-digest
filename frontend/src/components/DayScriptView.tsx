@@ -563,7 +563,7 @@ export function TweetRows({ blocks, startIndex, tweets, onImageClick }: {
         const tweet = tweets.find(t => t.tweet_id === b.tweet_id)
         if (!tweet) return null
         return (
-          <div key={`${startIndex}-${i}`} style={{ marginBottom: i < blocks.length - 1 ? 10 : 0 }}>
+          <div key={`${startIndex}-${i}`} data-tweet-id={b.tweet_id} style={{ marginBottom: i < blocks.length - 1 ? 10 : 0 }}>
             <TweetCard tweet={tweet} selectable={false} />
           </div>
         )
@@ -742,16 +742,6 @@ export function TopicScriptSectionMirror({ topicId, tweets, allTweets, onImageCl
       {script && !isLoading && (
         <>
           {groupedBlocks.map((group) => {
-            if (group.type === 'text' && group.block.text) {
-              return (
-                <div key={`${topicId}-${group.index}`} style={{
-                  padding: '8px 0', fontSize: '15px', lineHeight: 1.6,
-                  borderBottom: '1px solid var(--border)', marginBottom: 4,
-                }}>
-                  <div style={{ visibility: 'hidden' }}>{group.block.text}</div>
-                </div>
-              )
-            }
             if (group.type === 'tweet_group') {
               return <TweetRows key={`${topicId}-tg-${group.startIndex}`} blocks={group.blocks} startIndex={group.startIndex} tweets={tweetPool} onImageClick={onImageClick} />
             }
