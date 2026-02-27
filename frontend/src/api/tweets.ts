@@ -49,8 +49,8 @@ export function useTweets(params: {
 export function useFetchGrokContext() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (tweetId: number) => {
-      const { data } = await api.post(`/tweets/${tweetId}/grok`)
+    mutationFn: async ({ tweetId, force = false }: { tweetId: number; force?: boolean }) => {
+      const { data } = await api.post(`/tweets/${tweetId}/grok?force=${force}`)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['day-bundle'] }),
