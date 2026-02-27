@@ -15,6 +15,12 @@ from app.schemas.tweet import TweetOut
 router = APIRouter(prefix="/api/days", tags=["days"])
 
 
+def _tweet_out_with_category(tweet: Tweet, category: str | None) -> TweetOut:
+    out = TweetOut.model_validate(tweet)
+    out.category = category
+    return out
+
+
 @router.get("/{day}/bundle", response_model=DayBundle)
 async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
     la = ZoneInfo("America/Los_Angeles")
@@ -41,24 +47,23 @@ async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
             select(TweetAssignment).where(TweetAssignment.tweet_id.in_(tweet_ids))
         )).scalars().all()
 
-    # Build lookup: tweet_id -> list of (topic_id, category)
-    assign_map: dict[int, list[tuple[int, str | None]]] = {}
+    # Build lookups: topic_id -> [(tweet, category)], and set of all assigned tweet ids
+    tweet_by_id = {t.id: t for t in all_tweets}
+    topic_tweets_map: dict[int, list[tuple[Tweet, str | None]]] = {t.id: [] for t in topic_rows}
+    assigned_tweet_ids: set[int] = set()
     for a in assignments:
-        assign_map.setdefault(a.tweet_id, []).append((a.topic_id, a.category))
+        tweet = tweet_by_id.get(a.tweet_id)
+        if tweet and a.topic_id in topic_tweets_map:
+            topic_tweets_map[a.topic_id].append((tweet, a.category))
+            assigned_tweet_ids.add(a.tweet_id)
 
     # Build topic bundles
-    assigned_tweet_ids: set[int] = set()
     topics: list[TopicBundle] = []
     for topic in topic_rows:
-        topic_tweets: list[TweetOut] = []
-        for tweet in all_tweets:
-            for topic_id, category in assign_map.get(tweet.id, []):
-                if topic_id == topic.id:
-                    out = TweetOut.model_validate(tweet)
-                    out.category = category
-                    topic_tweets.append(out)
-                    assigned_tweet_ids.add(tweet.id)
-                    break
+        topic_tweets = [
+            _tweet_out_with_category(tw, cat)
+            for tw, cat in topic_tweets_map[topic.id]
+        ]
         tb = TopicBundle.model_validate(topic)
         tb.tweet_count = len(topic_tweets)
         tb.tweets = topic_tweets
