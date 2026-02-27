@@ -1,6 +1,8 @@
 import { memo } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { TweetCard } from './TweetCard'
+import { useAcceptSuggestion, useDismissSuggestion } from '../api/dayBundle'
+import { getCategoryDef } from '../constants/categories'
 import type { Tweet } from '../api/tweets'
 
 interface UnsortedSectionProps {
@@ -20,6 +22,71 @@ function GripHandle() {
       <circle cx="3" cy="13" r="1.5" />
       <circle cx="7" cy="13" r="1.5" />
     </svg>
+  )
+}
+
+function SuggestionBadge({ tweet }: { tweet: Tweet }) {
+  const accept = useAcceptSuggestion()
+  const dismiss = useDismissSuggestion()
+
+  if (!tweet.ai_topic_id || !tweet.ai_topic_title) return null
+
+  const catDef = tweet.ai_category ? getCategoryDef(tweet.ai_category) : null
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      padding: '6px 10px',
+      marginTop: 4,
+    }}>
+      <button
+        onClick={(e) => { e.stopPropagation(); accept.mutate(tweet.id) }}
+        disabled={accept.isPending}
+        style={{
+          background: 'var(--accent-muted)',
+          border: '1px solid var(--accent)',
+          borderRadius: 'var(--radius-md)',
+          color: 'var(--accent)',
+          cursor: accept.isPending ? 'wait' : 'pointer',
+          fontSize: 12,
+          padding: '4px 10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontFamily: 'var(--font-body)',
+        }}
+      >
+        <span style={{ fontSize: 11 }}>→</span>
+        <span>{tweet.ai_topic_title}</span>
+        {catDef && (
+          <span style={{
+            fontSize: 10,
+            color: catDef.color,
+            fontWeight: 600,
+          }}>
+            · {catDef.label}
+          </span>
+        )}
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); dismiss.mutate(tweet.id) }}
+        disabled={dismiss.isPending}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--text-tertiary)',
+          cursor: 'pointer',
+          fontSize: 14,
+          padding: '2px 6px',
+          lineHeight: 1,
+        }}
+        title="Dismiss suggestion"
+      >
+        ✕
+      </button>
+    </div>
   )
 }
 
@@ -144,12 +211,14 @@ export const UnsortedSection = memo(function UnsortedSection({
         }}
       >
         {tweets.map((t) => (
-          <DraggableFeedTweetCard
-            key={t.id}
-            tweet={t}
-            onDelete={onDelete}
-            onContextMenu={onContextMenu}
-          />
+          <div key={t.id}>
+            <DraggableFeedTweetCard
+              tweet={t}
+              onDelete={onDelete}
+              onContextMenu={onContextMenu}
+            />
+            <SuggestionBadge tweet={t} />
+          </div>
         ))}
       </div>
     </div>
