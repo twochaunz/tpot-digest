@@ -176,6 +176,7 @@ const iconStyle: React.CSSProperties = { fontSize: 14, width: 18, textAlign: 'ce
 
 function useMenuPosition(x: number, y: number, menuRef: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
   const [pos, setPos] = useState({ x, y })
+  const [flipSub, setFlipSub] = useState(false)
   useEffect(() => {
     const el = menuRef.current
     if (!el) return
@@ -186,9 +187,11 @@ function useMenuPosition(x: number, y: number, menuRef: React.RefObject<HTMLDivE
     if (nx < 8) nx = 8
     if (ny < 8) ny = 8
     setPos({ x: nx, y: ny })
+    // Flip submenus to the left if the menu's right edge is in the right half of the viewport
+    setFlipSub(nx + rect.width + 160 > window.innerWidth - 8)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [x, y, ...deps])
-  return pos
+  return { pos, flipSub }
 }
 
 function useMenuClose(menuRef: React.RefObject<HTMLDivElement | null>, onClose: () => void, onKey?: (e: KeyboardEvent) => void) {
@@ -235,7 +238,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
   const topicInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const pos = useMenuPosition(x, y, menuRef, [showCalendar, showTopics])
+  const { pos, flipSub } = useMenuPosition(x, y, menuRef, [showCalendar, showTopics])
 
   // Reset focused index when submenu opens/closes
   useEffect(() => {
@@ -346,7 +349,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
 
   const submenuStyle: React.CSSProperties = {
     position: 'absolute',
-    left: '100%',
+    ...(flipSub ? { right: '100%' } : { left: '100%' }),
     top: 0,
     zIndex: 101,
     background: 'var(--bg-raised)',
@@ -518,7 +521,7 @@ export function ContextMenu({ x, y, tweet, topicId, onClose, onDelete, onMoveToD
                   {hoveredTopicId === topic.id && hasCats && (
                     <div style={{
                       position: 'absolute',
-                      left: '100%',
+                      ...(flipSub ? { right: '100%' } : { left: '100%' }),
                       top: 0,
                       zIndex: 102,
                       background: 'var(--bg-raised)',
@@ -676,7 +679,7 @@ export function TopicContextMenu({ x, y, topicId, topicTitle, onClose, onDelete,
   const [showCalendar, setShowCalendar] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const pos = useMenuPosition(x, y, menuRef, [showCalendar])
+  const { pos, flipSub } = useMenuPosition(x, y, menuRef, [showCalendar])
   useMenuClose(menuRef, onClose)
 
   const menu = (
@@ -704,7 +707,7 @@ export function TopicContextMenu({ x, y, topicId, topicTitle, onClose, onDelete,
         {showCalendar && (
           <div style={{
             position: 'absolute',
-            left: '100%',
+            ...(flipSub ? { right: '100%' } : { left: '100%' }),
             top: 0,
             zIndex: 101,
             background: 'var(--bg-raised)',
