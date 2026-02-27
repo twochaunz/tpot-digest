@@ -62,6 +62,13 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
 
         await db.commit()
 
+    # Run AI classification pipeline
+    from app.services.classifier import classify_pipeline
+    try:
+        await classify_pipeline(tweet_id)
+    except Exception as e:
+        logger.warning("Classification pipeline failed for tweet %d: %s", tweet_id, e)
+
 
 @router.post("", status_code=201)
 async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
