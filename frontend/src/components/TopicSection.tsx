@@ -41,7 +41,7 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
           }}>
-            Grok Context
+            Context
           </span>
         </div>
         <GrokRefreshButton tweetId={tweetId} />
@@ -78,7 +78,7 @@ function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string
         padding: '2px 4px',
         opacity: fetchGrok.isPending ? 0.5 : 0.7,
       }}
-      title="Refresh Grok context"
+      title="Refresh context"
     >
       {fetchGrok.isPending ? 'Fetching...' : label ?? '\u21BB'}
     </button>
@@ -445,7 +445,7 @@ function TopicSection({
                         <div style={{ height: 1, background: 'var(--border)' }} />
                       </div>
                       <div style={{ padding: '10px 12px 12px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-                        <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Grok Context" />
+                        <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Context" />
                       </div>
                     </div>
                   )}
