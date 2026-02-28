@@ -23,8 +23,9 @@ CATEGORIES_DESCRIPTION = """Categories (pick exactly one):
   Examples: "OAI waits to see where wind blows... anthropic doesn't flinch, get lots of credit" (the framing praises Anthropic and criticizes OAI — this is pushback against the OG position, NOT neutral context); sharing video of chalk art/protests supporting the opposing side (showing people oppose the OG position)
   Key test: Does the author's tone, framing, or content show they disagree with the OG position? If yes, it's pushback.
 
-- hot-take — Strong, provocative opinion that adds a NEW ANGLE or escalates the discourse. The author isn't just opposing or supporting — they're making a bold claim, prediction, or reframing the debate.
-  Examples: "It's extremely good that Anthropic has not backed down... in the future, there will be much more challenging situations" (bold opinion + provocative future warning that reframes the stakes)
+- hot-take — A genuinely NEW ANGLE that reframes the debate or makes a bold prediction. Not just criticism with evidence (that's pushback) — the author must introduce an insight, prediction, or framing that nobody else is offering.
+  Examples: "It's extremely good that Anthropic has not backed down... in the future, there will be much more challenging situations" (reframes stakes beyond this incident to future challenges — genuinely new angle)
+  NOT hot-take: criticism that connects evidence or builds a narrative against the OG position — that's pushback with receipts, not a new angle.
 
 - echo — Shares or amplifies without adding perspective. Minimal commentary, essentially a retweet.
   Examples: "Wow, this is huge" / "Everyone needs to see this" / a plain repost
