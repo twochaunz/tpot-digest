@@ -15,22 +15,24 @@ logger = logging.getLogger(__name__)
 
 CATEGORIES_DESCRIPTION = """Categories (pick exactly one):
 
-- context — Adds factual information, news developments, confirmations, or measured perspective that helps understand the situation. The tweet informs rather than argues.
-  Examples: "Confirmed via a spokesperson. OpenAI has the same red lines as Anthropic" (reporting a fact); "BREAKING: Sam Altman and OpenAI are working on a deal between Anthropic and the Pentagon" (news development)
+- context — NEUTRAL factual reporting only. Breaking news, confirmations, data. The author is not taking a side — they are reporting what happened.
+  Examples: "Confirmed via a spokesperson. OpenAI has the same red lines as Anthropic" (neutral confirmation); "BREAKING: Sam Altman and OpenAI are working on a deal between Anthropic and the Pentagon, per WSJ" (straight news report)
+  NOT context: any tweet where the author's framing shows they oppose or support the OG position
 
-- pushback — Opposes, criticizes, or challenges the position/action in the OG post. Includes showing real-world opposition or taking a clear side against the OG position.
-  Examples: "OAI waits to see where wind blows... anthropic doesn't flinch" (critical analysis opposing the OG position); sharing video of protest art supporting the opposing side (showing physical opposition)
+- pushback — The author opposes, criticizes, or sides AGAINST the OG post's position/action. This includes critical analysis, showing real-world opposition, or any framing that clearly disapproves of what the OG poster did or stands for.
+  Examples: "OAI waits to see where wind blows... anthropic doesn't flinch, get lots of credit" (the framing praises Anthropic and criticizes OAI — this is pushback against the OG position, NOT neutral context); sharing video of chalk art/protests supporting the opposing side (showing people oppose the OG position)
+  Key test: Does the author's tone, framing, or content show they disagree with the OG position? If yes, it's pushback.
 
-- hot-take — Strong, provocative opinion that adds a new angle or escalates the discourse. Goes beyond reporting or simple support/opposition — the author is making a bold claim or forward-looking warning.
-  Examples: "It's extremely good that Anthropic has not backed down... in the future, there will be much more challenging situations" (strong opinion with provocative forward-looking warning)
+- hot-take — Strong, provocative opinion that adds a NEW ANGLE or escalates the discourse. The author isn't just opposing or supporting — they're making a bold claim, prediction, or reframing the debate.
+  Examples: "It's extremely good that Anthropic has not backed down... in the future, there will be much more challenging situations" (bold opinion + provocative future warning that reframes the stakes)
 
-- echo — Shares or amplifies the news without adding meaningful perspective. Essentially a retweet with minimal commentary.
-  Examples: "Wow, this is huge" / "Everyone needs to see this" / a plain repost with no added take
+- echo — Shares or amplifies without adding perspective. Minimal commentary, essentially a retweet.
+  Examples: "Wow, this is huge" / "Everyone needs to see this" / a plain repost
 
-- kek — Humor, irony, memes, or sarcastic commentary about the topic.
+- kek — Humor, irony, memes, sarcastic commentary.
   Examples: "I cannot wait until the White House changes hands and all of you ghouls switch back..." (biting irony)
 
-IMPORTANT: The OG post represents a POSITION or ACTION. Categorize each tweet based on how it engages with that position within the broader discourse. Someone opposing the OG position is pushback, not signal-boost. Someone adding facts is context, even if those facts favor one side. Someone with a strong personal opinion is a hot-take."""
+CRITICAL DISTINCTION between context and pushback: If a tweet contains facts BUT the author's framing, word choice, or presentation takes a side against the OG position, it is PUSHBACK, not context. Context is strictly neutral reporting. Most opinion-laden tweets are either pushback or hot-take, not context."""
 
 
 @dataclass
