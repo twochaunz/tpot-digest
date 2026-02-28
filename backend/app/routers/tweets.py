@@ -13,7 +13,6 @@ from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.topic import Topic
 from app.models.tweet import Tweet
-from pydantic import BaseModel
 from app.schemas.tweet import TweetAssignRequest, TweetCheckRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
 
 logger = logging.getLogger(__name__)
@@ -64,12 +63,20 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
 
         await db.commit()
 
-    # Run AI classification pipeline
-    from app.services.classifier import classify_pipeline
+    # Embed tweet + fetch Grok context in background
+    from app.services.classifier import prepare_tweet
     try:
-        await classify_pipeline(tweet_id)
+        await prepare_tweet(tweet_id)
     except Exception as e:
-        logger.warning("Classification pipeline failed for tweet %d: %s", tweet_id, e)
+        logger.warning("Tweet preparation failed for tweet %d: %s", tweet_id, e)
+
+    # If assigned to a topic without explicit category, auto-categorize
+    if topic_id and not category:
+        from app.services.classifier import categorize_assigned_tweet
+        try:
+            await categorize_assigned_tweet(tweet_id, topic_id)
+        except Exception as e:
+            logger.warning("Auto-categorization failed for tweet %d: %s", tweet_id, e)
 
 
 @router.post("", status_code=201)
@@ -294,6 +301,7 @@ async def check_saved(body: TweetCheckRequest, db: AsyncSession = Depends(get_db
 
 @router.post("/assign", status_code=200)
 async def assign_tweets(body: TweetAssignRequest, db: AsyncSession = Depends(get_db)):
+    tweets_to_categorize: list[int] = []
     for tid in body.tweet_ids:
         existing = (await db.execute(
             select(TweetAssignment).where(
@@ -311,8 +319,18 @@ async def assign_tweets(body: TweetAssignRequest, db: AsyncSession = Depends(get
             tweet = await db.get(Tweet, tid)
             if tweet:
                 tweet.ai_override = True
+        else:
+            tweets_to_categorize.append(tid)
     await db.commit()
-    return {"assigned": len(body.tweet_ids)}
+
+    bg = None
+    if tweets_to_categorize:
+        bg = BackgroundTask(_categorize_after_assign, tweets_to_categorize, body.topic_id)
+
+    return JSONResponse(
+        content={"assigned": len(body.tweet_ids)},
+        background=bg,
+    )
 
 
 @router.post("/unassign", status_code=200)
@@ -330,85 +348,11 @@ async def unassign_tweets(body: TweetUnassignRequest, db: AsyncSession = Depends
     return {"unassigned": len(body.tweet_ids)}
 
 
-class AcceptSuggestionBody(BaseModel):
-    title: str | None = None
-
-
-@router.post("/{tweet_id}/accept-suggestion", status_code=200)
-async def accept_suggestion(
-    tweet_id: int,
-    body: AcceptSuggestionBody | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    """Accept AI suggestion: assign tweet to suggested topic with category."""
-    tweet = await db.get(Tweet, tweet_id)
-    if not tweet:
-        raise HTTPException(404, "Tweet not found")
-    if not tweet.ai_topic_id and not tweet.ai_new_topic_title:
-        raise HTTPException(400, "No AI suggestion for this tweet")
-
-    category = tweet.ai_category
-
-    if tweet.ai_topic_id:
-        topic_id = tweet.ai_topic_id
-        # If user edited the title, update the existing topic
-        if body and body.title:
-            topic = await db.get(Topic, topic_id)
-            if topic:
-                topic.title = body.title
-    else:
-        # Create new topic from AI suggestion (use user edit if provided)
-        title = (body.title if body and body.title else tweet.ai_new_topic_title)
-        new_topic = Topic(
-            title=title,
-            date=tweet.saved_at.date(),
-            og_tweet_id=tweet_id,
-        )
-        db.add(new_topic)
-        await db.flush()
-        topic_id = new_topic.id
-
-    # Create assignment
-    existing = (await db.execute(
-        select(TweetAssignment).where(
-            TweetAssignment.tweet_id == tweet_id,
-            TweetAssignment.topic_id == topic_id,
-        )
-    )).scalar_one_or_none()
-    if existing:
-        existing.category = category
-    else:
-        db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id, category=category))
-
-    # Clear suggestion fields
-    tweet.ai_topic_id = None
-    tweet.ai_category = None
-    tweet.ai_new_topic_title = None
-    tweet.ai_related_topic_id = None
-    await db.commit()
-
-    return JSONResponse(
-        content={"assigned_topic_id": topic_id, "category": category},
-        background=BackgroundTask(_recategorize_after_accept, topic_id),
-    )
-
-
-@router.post("/{tweet_id}/dismiss-suggestion", status_code=200)
-async def dismiss_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
-    """Dismiss AI suggestion: clear suggestion fields."""
-    tweet = await db.get(Tweet, tweet_id)
-    if not tweet:
-        raise HTTPException(404, "Tweet not found")
-
-    tweet.ai_topic_id = None
-    tweet.ai_category = None
-    tweet.ai_new_topic_title = None
-    tweet.ai_related_topic_id = None
-    await db.commit()
-    return {"dismissed": True}
-
-
-async def _recategorize_after_accept(topic_id: int):
-    """Background: re-categorize all tweets in topic after a new one is accepted."""
-    from app.services.classifier import recategorize_topic_tweets
-    await recategorize_topic_tweets(topic_id)
+async def _categorize_after_assign(tweet_ids: list[int], topic_id: int):
+    """Background: auto-categorize tweets assigned without explicit category."""
+    from app.services.classifier import categorize_assigned_tweet
+    for tid in tweet_ids:
+        try:
+            await categorize_assigned_tweet(tid, topic_id)
+        except Exception as e:
+            logger.warning("Auto-categorization failed for tweet %d: %s", tid, e)
