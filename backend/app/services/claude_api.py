@@ -100,6 +100,47 @@ Respond with ONLY valid JSON (no markdown, no explanation):
     return json.loads(text)
 
 
+async def categorize_single_tweet(
+    og_text: str,
+    og_grok_context: str | None,
+    tweet_text: str,
+    tweet_grok_context: str | None,
+) -> str:
+    """Categorize a single tweet relative to the OG post. Returns category key."""
+    og_ctx = f"\nGrok context: {og_grok_context}" if og_grok_context else ""
+    tw_ctx = f"\nGrok context: {tweet_grok_context}" if tweet_grok_context else ""
+
+    prompt = f"""You are categorizing a tweet within a topic for a daily digest.
+
+OG Post (the anchor — this tweet is a reaction to it):
+{og_text}
+{og_ctx}
+
+Tweet to categorize:
+{tweet_text}
+{tw_ctx}
+
+{CATEGORIES_DESCRIPTION}
+
+How does this tweet relate to the OG post? Pick exactly one category.
+
+Respond with ONLY the category key (e.g. "context", "pushback", etc.), nothing else."""
+
+    client = _get_client()
+    response = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=32,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    category = response.content[0].text.strip().lower().strip('"')
+    valid = {"context", "signal-boost", "pushback", "hot-take", "kek"}
+    if category not in valid:
+        logger.warning("Claude returned invalid category '%s', defaulting to 'context'", category)
+        category = "context"
+    return category
+
+
 async def recategorize_topic(
     og_text: str,
     og_grok_context: str | None,
