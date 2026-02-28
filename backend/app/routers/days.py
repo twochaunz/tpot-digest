@@ -86,6 +86,8 @@ async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
                     if topic:
                         out.ai_topic_title = topic.title
                         topic_title_map[topic.id] = topic.title
+            elif out.ai_new_topic_title:
+                out.ai_topic_title = out.ai_new_topic_title
             unsorted.append(out)
 
     return DayBundle(topics=topics, unsorted=unsorted)

@@ -40,6 +40,7 @@ class Tweet(Base):
     embedding = mapped_column(Vector(384), nullable=True)
     ai_topic_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("topics.id", ondelete="SET NULL"), nullable=True)
     ai_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ai_new_topic_title: Mapped[str | None] = mapped_column(String(512), nullable=True)
     ai_related_topic_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("topics.id", ondelete="SET NULL"), nullable=True)
     ai_override: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
