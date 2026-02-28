@@ -19,7 +19,7 @@ ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 _grok_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 _anthropic_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 
-CATEGORY_ORDER = ["context", "kek", "signal-boost", "pushback", "hot-take"]
+CATEGORY_ORDER = ["context", "kek", "echo", "pushback", "hot-take"]
 
 DEFAULT_STYLE_GUIDE = """PURPOSE:
 - Give the viewer MORE than reading the tweets themselves — in under 30 seconds per topic
@@ -47,8 +47,8 @@ WRITING RULES:
   GOOD: "Sam Altman fired back within hours, calling the claims overblown."
 
 CATEGORY USAGE:
-- The categories (context, kek, signal-boost, pushback, hot-take) are for YOUR reference to understand tweet roles
-- NEVER use "signal-boost" or "kek" in the script — these are internal labels only
+- The categories (context, kek, echo, pushback, hot-take) are for YOUR reference to understand tweet roles
+- NEVER use "echo" or "kek" in the script — these are internal labels only
 - You CAN use "context", "pushback", and "hot take" in prose when it's natural (e.g. "the pushback was immediate...", "one hot take stood out...")
 - Describe reactions naturally: "people celebrated...", "critics pushed back...", "people had crazy reactions to..."
 - Reference specific people/entities when they're central to the story"""

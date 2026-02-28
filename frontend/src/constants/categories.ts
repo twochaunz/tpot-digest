@@ -8,7 +8,7 @@ export interface CategoryDef {
 export const CATEGORIES: CategoryDef[] = [
   { key: 'context', label: 'Context', color: '#60A5FA', sortOrder: 1 },
   { key: 'kek', label: 'kek', color: '#C084FC', sortOrder: 2 },
-  { key: 'signal-boost', label: 'Signal Boost', color: '#34D399', sortOrder: 3 },
+  { key: 'echo', label: 'Echo', color: '#34D399', sortOrder: 3 },
   { key: 'pushback', label: 'Pushback', color: '#FB923C', sortOrder: 4 },
   { key: 'hot-take', label: 'Hot Take', color: '#F87171', sortOrder: 5 },
 ]
