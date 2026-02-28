@@ -11,7 +11,7 @@ import app.db as db_module
 from app.models.assignment import TweetAssignment
 from app.models.topic import Topic
 from app.models.tweet import Tweet
-from app.services.claude_api import recategorize_topic
+from app.services.claude_api import categorize_single_tweet
 
 logger = logging.getLogger(__name__)
 
@@ -124,24 +124,26 @@ async def recategorize_topic_tweets(topic_id: int) -> None:
         if not tweets_to_categorize:
             return
 
-        try:
-            new_categories = await recategorize_topic(
-                topic_title=topic.title,
-                og_text=og_tweet.text or "",
-                og_grok_context=og_tweet.grok_context,
-                tweets=tweets_to_categorize,
-            )
-        except Exception as e:
-            logger.error("Recategorization failed for topic %d: %s", topic_id, e)
-            return
-
-        # Update assignments
-        for tweet_id, category in new_categories.items():
-            if tweet_id in assignment_map:
-                assignment_map[tweet_id].category = category
+        # Categorize each tweet individually for accuracy
+        # (batch classification loses nuance and misclassifies)
+        count = 0
+        for t in tweets_to_categorize:
+            try:
+                category = await categorize_single_tweet(
+                    topic_title=topic.title,
+                    og_text=og_tweet.text or "",
+                    og_grok_context=og_tweet.grok_context,
+                    tweet_text=t["text"],
+                    tweet_grok_context=t.get("grok_context"),
+                )
+                if t["id"] in assignment_map:
+                    assignment_map[t["id"]].category = category
+                    count += 1
+            except Exception as e:
+                logger.warning("Recategorization failed for tweet %d: %s", t["id"], e)
 
         await db.commit()
-        logger.info("Recategorized %d tweets in topic %d", len(new_categories), topic_id)
+        logger.info("Recategorized %d tweets in topic %d", count, topic_id)
 
 
 async def _fetch_grok_safe(tweet: Tweet) -> str | None:
