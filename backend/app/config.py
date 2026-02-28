@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     x_api_bearer_token: str = ""
     xai_api_key: str = ""
     anthropic_api_key: str = ""
+    admin_secret: str = ""
 
     model_config = {"env_file": ".env"}
 
