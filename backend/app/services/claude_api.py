@@ -129,9 +129,11 @@ async def categorize_single_tweet(
 
 Topic: "{topic_title}"
 
-OG Post (the tweet that started this topic):
+OG Post (the tweet that started this topic — its author's stance/action is the reference point):
 {og_text}
 {og_ctx}
+
+IMPORTANT: Use the topic title AND Grok context to understand the OG author's position/action. The OG tweet text alone may be short or ambiguous — the Grok context explains what actually happened. Categories like "pushback" are relative to the OG author's position/action, not the topic in general.
 
 Tweet to categorize:
 {tweet_text}
@@ -139,7 +141,7 @@ Tweet to categorize:
 
 {CATEGORIES_DESCRIPTION}
 
-How does this tweet relate to the topic "{topic_title}"? Pick exactly one category.
+Given the OG author's position/action in topic "{topic_title}", what category best describes this tweet?
 
 Respond with ONLY the category key (e.g. "context", "pushback", etc.), nothing else."""
 
