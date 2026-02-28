@@ -103,18 +103,21 @@ Respond with ONLY valid JSON (no markdown, no explanation):
 
 
 async def categorize_single_tweet(
+    topic_title: str,
     og_text: str,
     og_grok_context: str | None,
     tweet_text: str,
     tweet_grok_context: str | None,
 ) -> str:
-    """Categorize a single tweet relative to the OG post. Returns category key."""
+    """Categorize a single tweet relative to the topic. Returns category key."""
     og_ctx = f"\nGrok context: {og_grok_context}" if og_grok_context else ""
     tw_ctx = f"\nGrok context: {tweet_grok_context}" if tweet_grok_context else ""
 
     prompt = f"""You are categorizing a tweet within a topic for a daily digest.
 
-OG Post (the anchor — this tweet is a reaction to it):
+Topic: "{topic_title}"
+
+OG Post (the tweet that started this topic):
 {og_text}
 {og_ctx}
 
@@ -124,7 +127,7 @@ Tweet to categorize:
 
 {CATEGORIES_DESCRIPTION}
 
-How does this tweet relate to the OG post? Pick exactly one category.
+How does this tweet relate to the topic "{topic_title}"? Pick exactly one category.
 
 Respond with ONLY the category key (e.g. "context", "pushback", etc.), nothing else."""
 
@@ -144,6 +147,7 @@ Respond with ONLY the category key (e.g. "context", "pushback", etc.), nothing e
 
 
 async def recategorize_topic(
+    topic_title: str,
     og_text: str,
     og_grok_context: str | None,
     tweets: list[dict],
@@ -151,6 +155,7 @@ async def recategorize_topic(
     """Re-categorize all tweets in a topic relative to the OG post.
 
     Args:
+        topic_title: The topic title set by the user.
         og_text: The OG post text.
         og_grok_context: Grok context for the OG post.
         tweets: List of dicts with keys: id, text, grok_context.
@@ -168,7 +173,9 @@ async def recategorize_topic(
 
     prompt = f"""You are categorizing tweets within a topic for a daily digest.
 
-OG Post (the anchor — all tweets are reactions to this):
+Topic: "{topic_title}"
+
+OG Post (the tweet that started this topic):
 {og_text}
 {og_ctx}
 
@@ -177,7 +184,7 @@ Tweets to categorize:
 
 {CATEGORIES_DESCRIPTION}
 
-For each tweet, decide how it relates to the OG post.
+For each tweet, decide how it relates to the topic "{topic_title}".
 
 Respond with ONLY valid JSON (no markdown):
 {{"categories": {{"<tweet_id>": "<category key>", ...}}}}"""
