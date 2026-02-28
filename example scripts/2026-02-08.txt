@@ -1,0 +1,35 @@
+anthropic released a fast mode
+
+for their latest claude model opus 4.6
+
+it has a 2.5x increase in speed
+
+but most people got caught up in the price/token
+
+which was 6x more expensive
+
+than the original
+
+as much as there was a lot of disbelief around this
+
+it shows that supply of compute is not anywhere close to its demand
+
+plus the current value capture of these products has huge room for growth
+
+given the scale and accuracy at which these agents run
+
+two. superbowl ads made waves on the timeline
+
+but it was tbpn's custom claude with ads
+
+in line with their brand
+
+that made quite the impression
+
+a fun experiment of a wrapper that generates responses
+
+but with embedded ads of their sponsors
+
+though it was deprecated shortly after
+
+kek moment of the day

@@ -77,6 +77,8 @@ Tweet text:
 
 Decide:
 1. Which topic does this tweet belong to? Pick the best matching topic_id, or suggest a new topic title if none fit.
+   - Topic titles must be 10 words or less. State what happened clearly, directly, and digestibly.
+   - Example good titles: "Hegseth Clashes With Anthropic Over AI Safety", "GPT-5 Benchmarks Leak Sparks Debate"
 2. What category best describes how this tweet relates to that topic's OG post?
 3. If this relates to a topic from a previous day (cross-day continuation), note the related_topic_id.
 

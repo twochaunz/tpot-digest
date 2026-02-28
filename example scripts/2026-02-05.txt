@@ -1,0 +1,65 @@
+openai and anthropic continue to trade punches
+
+with anthropic first announcing
+
+they released their latest model
+
+opus 4.6
+
+many users were hyped
+
+as it boasted better performance
+
+and a big upgrade on context windows
+
+however
+
+this hype lasted <30 min before openai
+
+launched their own latest model
+
+with better performance benchmarks
+
+though benchmarks seem to be cherry picked
+
+for the best numbers
+
+side note: some people weren't too impressed by opus4.6
+
+saying it felt rushed
+
+and speculating it was sonnet 5 renamed
+
+which possibly could have been the reason why
+
+vercel teased some info then took it down
+
+two. lots of people shared highlights
+
+of going to the tech superbowl
+
+a meetup of openclaw enthusiasts
+
+that had thousands waiting in line
+
+to hear peter talk
+
+people even dressed their robots as lobsters
+
+which supposedly were able to order more beer as supply dwindled
+
+three.
+
+cheeky pint
+
+a stripe podcast launched it's new season
+
+with dwarkesh as the cohost
+
+and elon as their first guest
+
+besides the conversation around space, datacenters, and more
+
+people had a lot to say about their drinks
+
+kek moment of the day

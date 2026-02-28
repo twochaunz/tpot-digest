@@ -1,0 +1,59 @@
+who determines ai's morals?
+
+this wsj article
+
+covering anthropic's amanda askell
+
+was a hot topic
+
+she's a philosopher who's tasked with training claude's morals
+
+by testing prompts
+
+and building its personality
+
+she shares guidance on how people should act with chatbots
+
+and the article describes stories of what she does to design claude
+
+elon made a blunt response to the post
+
+stating people without children don't have a stake in the future
+
+a direct reference to amanda's practice of treating claude like her child
+
+this had a mixed reception of responses
+
+but many stood up for her integrity
+
+two. this ray dalio article got quite some attention
+
+it's an alert of the state of the world
+
+with chapter 6 from his book pasted in
+
+that talks about how things are escalating
+
+and how to manage capital within this environment
+
+besides the message itself being dystopian
+
+people criticized it for being the same message he frequently says
+
+stating his inability to reconcile the current state of affairs
+
+with his time growing up
+
+three. chinese labs are making a notable push in ai
+
+although bytedance released seedance
+
+to great hype
+
+they also recently launched seed 2.0
+
+a model competitive or better than top us models
+
+in benchmark performance
+
+kek moment of the day

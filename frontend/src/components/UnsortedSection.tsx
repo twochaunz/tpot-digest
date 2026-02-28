@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState, useRef } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { TweetCard } from './TweetCard'
 import { useAcceptSuggestion, useDismissSuggestion } from '../api/dayBundle'
@@ -28,12 +28,95 @@ function GripHandle() {
 function SuggestionBadge({ tweet }: { tweet: Tweet }) {
   const accept = useAcceptSuggestion()
   const dismiss = useDismissSuggestion()
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  if (!tweet.ai_topic_title && !tweet.ai_new_topic_title) return null
+  const suggestedTitle = tweet.ai_topic_title || tweet.ai_new_topic_title
+  if (!suggestedTitle) return null
 
   const isNewTopic = !tweet.ai_topic_id
-
   const catDef = tweet.ai_category ? getCategoryDef(tweet.ai_category) : null
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditTitle(suggestedTitle)
+    setEditing(true)
+    setTimeout(() => inputRef.current?.select(), 0)
+  }
+
+  const handleAccept = (e: React.MouseEvent | React.FormEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const title = editTitle.trim() !== suggestedTitle ? editTitle.trim() : undefined
+    accept.mutate({ tweetId: tweet.id, title })
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={handleAccept} onClick={e => e.stopPropagation()} style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 10px',
+        marginTop: 4,
+      }}>
+        <input
+          ref={inputRef}
+          value={editTitle}
+          onChange={e => setEditTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}
+          style={{
+            flex: 1,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--accent)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--text-primary)',
+            fontSize: 12,
+            padding: '4px 8px',
+            fontFamily: 'var(--font-body)',
+            outline: 'none',
+          }}
+        />
+        {catDef && (
+          <span style={{ fontSize: 10, color: catDef.color, fontWeight: 600 }}>
+            {catDef.label}
+          </span>
+        )}
+        <button
+          type="submit"
+          disabled={accept.isPending || !editTitle.trim()}
+          style={{
+            background: 'var(--accent)',
+            border: 'none',
+            borderRadius: 'var(--radius-md)',
+            color: '#fff',
+            cursor: accept.isPending ? 'wait' : 'pointer',
+            fontSize: 11,
+            padding: '4px 10px',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          ✓
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setEditing(false) }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-tertiary)',
+            cursor: 'pointer',
+            fontSize: 14,
+            padding: '2px 6px',
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
+      </form>
+    )
+  }
 
   return (
     <div style={{
@@ -44,7 +127,7 @@ function SuggestionBadge({ tweet }: { tweet: Tweet }) {
       marginTop: 4,
     }}>
       <button
-        onClick={(e) => { e.stopPropagation(); accept.mutate(tweet.id) }}
+        onClick={handleClick}
         disabled={accept.isPending}
         style={{
           background: 'var(--accent-muted)',
@@ -61,7 +144,7 @@ function SuggestionBadge({ tweet }: { tweet: Tweet }) {
         }}
       >
         <span style={{ fontSize: 11 }}>{isNewTopic ? '+' : '→'}</span>
-        <span>{tweet.ai_topic_title || tweet.ai_new_topic_title}</span>
+        <span>{suggestedTitle}</span>
         {catDef && (
           <span style={{
             fontSize: 10,
