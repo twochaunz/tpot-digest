@@ -14,11 +14,13 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 CATEGORIES_DESCRIPTION = """Categories (pick exactly one):
-- context — adds background info, explains, provides data or evidence about the OG post
-- signal-boost — amplifies, agrees with, or supports the OG post
-- pushback — disagrees with, challenges, or counters the OG post
-- hot-take — strong or provocative opinion related to the OG post
-- kek — humor, memes, jokes, or ironic commentary about the OG post"""
+- context — adds background info, explains, provides data or evidence about the topic/event
+- signal-boost — amplifies or shares the news without adding much new perspective
+- pushback — disagrees with, challenges, or counters the prevailing narrative or a key actor
+- hot-take — strong or provocative opinion about the topic
+- kek — humor, memes, jokes, or ironic commentary about the topic
+
+IMPORTANT: Categorize how the tweet relates to the TOPIC/EVENT, not whether it agrees or disagrees with the OG poster personally. The OG post establishes what the topic is about, not a position to agree/disagree with."""
 
 
 @dataclass
