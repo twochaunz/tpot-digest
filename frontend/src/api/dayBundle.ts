@@ -170,8 +170,8 @@ export function useOptimisticPatchTweet() {
 export function useAcceptSuggestion() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (tweetId: number) => {
-      const { data } = await api.post(`/tweets/${tweetId}/accept-suggestion`)
+    mutationFn: async ({ tweetId, title }: { tweetId: number; title?: string }) => {
+      const { data } = await api.post(`/tweets/${tweetId}/accept-suggestion`, title ? { title } : {})
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['day-bundle'] }),

@@ -1,0 +1,69 @@
+2 essays on ai this past week
+
+one. as rocks may think
+
+he starts off by comparing today's world
+
+with a big update in a game
+
+and describes the huge feats by this update already
+
+to go into the history of these rocks
+
+he breaks down the concept of reasoning
+
+from alphago's first pass
+
+to prompt engineering's shortcoming
+
+and to the latest state of reinforcement learning
+
+using deepseek as an ex
+
+he then discusses his thoughts on his current workflow
+
+of having always on agents
+
+and the implied explosion of compute
+
+that is yet to come
+
+describing it as 007 instead of 996
+
+and concludes by sharing practical advice to operate in this changing meta
+
+plus soberingly states that the claims from ai2027 seems plausible
+
+two. end game play by will manidis
+
+he starts off talking about the state of chess
+
+emphasizing a point that modern day chess
+
+particularly classical
+
+has progressed past opening prep
+
+rushed past mid game
+
+to play for the end game
+
+his main point
+
+is to share that the struggle which produces actual consequences
+
+lies in the mid game
+
+using a cheeky pint ep
+
+he gives an ex of how elon focuses more on end game remarks
+
+while brushing off middle game decisions as bottlenecks
+
+but especially with ai
+
+this doesn't address the messy middle
+
+which deserves its due diligence
+
+kek moment of the day

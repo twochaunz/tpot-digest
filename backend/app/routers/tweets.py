@@ -13,6 +13,7 @@ from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.topic import Topic
 from app.models.tweet import Tweet
+from pydantic import BaseModel
 from app.schemas.tweet import TweetAssignRequest, TweetCheckRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
 
 logger = logging.getLogger(__name__)
@@ -329,8 +330,16 @@ async def unassign_tweets(body: TweetUnassignRequest, db: AsyncSession = Depends
     return {"unassigned": len(body.tweet_ids)}
 
 
+class AcceptSuggestionBody(BaseModel):
+    title: str | None = None
+
+
 @router.post("/{tweet_id}/accept-suggestion", status_code=200)
-async def accept_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
+async def accept_suggestion(
+    tweet_id: int,
+    body: AcceptSuggestionBody | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Accept AI suggestion: assign tweet to suggested topic with category."""
     tweet = await db.get(Tweet, tweet_id)
     if not tweet:
@@ -342,10 +351,16 @@ async def accept_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
 
     if tweet.ai_topic_id:
         topic_id = tweet.ai_topic_id
+        # If user edited the title, update the existing topic
+        if body and body.title:
+            topic = await db.get(Topic, topic_id)
+            if topic:
+                topic.title = body.title
     else:
-        # Create new topic from AI suggestion
+        # Create new topic from AI suggestion (use user edit if provided)
+        title = (body.title if body and body.title else tweet.ai_new_topic_title)
         new_topic = Topic(
-            title=tweet.ai_new_topic_title,
+            title=title,
             date=tweet.saved_at.date(),
             og_tweet_id=tweet_id,
         )
