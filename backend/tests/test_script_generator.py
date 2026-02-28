@@ -80,7 +80,7 @@ def test_build_prompt():
     topic_title = "SpaceX Acquired xAI"
     og_tweet = {"text": "Breaking: SpaceX acquires xAI", "url": "https://x.com/user/status/1", "grok_context": "Major merger news", "tweet_id": "1"}
     tweets = [
-        {"tweet_id": "2", "author_handle": "user2", "text": "This is huge", "category": "signal-boost", "grok_context": "Excitement"},
+        {"tweet_id": "2", "author_handle": "user2", "text": "This is huge", "category": "echo", "grok_context": "Excitement"},
         {"tweet_id": "3", "author_handle": "user3", "text": "Not sure about this", "category": "pushback", "grok_context": "Skepticism"},
     ]
     style_guide = "Be concise and objective."
@@ -90,7 +90,7 @@ def test_build_prompt():
     assert "SpaceX Acquired xAI" in prompt
     assert "Breaking: SpaceX acquires xAI" in prompt
     assert "tweet_id" in prompt
-    assert "signal-boost" in prompt
+    assert "echo" in prompt
     assert "Be concise and objective." in prompt
 
 

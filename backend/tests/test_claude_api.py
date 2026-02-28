@@ -37,7 +37,7 @@ async def test_classify_tweet_returns_suggestion(mock_anthropic):
                 date="2026-02-27",
                 og_text="We need to pause AI development now.",
                 og_grok_context="Post went viral with 10K+ retweets.",
-                category_summary="2 context, 1 signal-boost",
+                category_summary="2 context, 1 echo",
                 similarity=0.82,
             )
         ],
@@ -79,7 +79,7 @@ async def test_recategorize_topic(mock_anthropic):
         "categories": {
             "101": "context",
             "102": "pushback",
-            "103": "signal-boost",
+            "103": "echo",
         }
     }))]
 
@@ -96,4 +96,4 @@ async def test_recategorize_topic(mock_anthropic):
         ],
     )
 
-    assert result == {101: "context", 102: "pushback", 103: "signal-boost"}
+    assert result == {101: "context", 102: "pushback", 103: "echo"}

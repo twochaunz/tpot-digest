@@ -14,13 +14,23 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 CATEGORIES_DESCRIPTION = """Categories (pick exactly one):
-- context — adds background info, explains, provides data or evidence about the topic/event
-- signal-boost — amplifies or shares the news without adding much new perspective
-- pushback — disagrees with, challenges, or counters the prevailing narrative or a key actor
-- hot-take — strong or provocative opinion about the topic
-- kek — humor, memes, jokes, or ironic commentary about the topic
 
-IMPORTANT: Categorize how the tweet relates to the TOPIC/EVENT, not whether it agrees or disagrees with the OG poster personally. The OG post establishes what the topic is about, not a position to agree/disagree with."""
+- context — Adds factual information, news developments, confirmations, or measured perspective that helps understand the situation. The tweet informs rather than argues.
+  Examples: "Confirmed via a spokesperson. OpenAI has the same red lines as Anthropic" (reporting a fact); "BREAKING: Sam Altman and OpenAI are working on a deal between Anthropic and the Pentagon" (news development)
+
+- pushback — Opposes, criticizes, or challenges the position/action in the OG post. Includes showing real-world opposition or taking a clear side against the OG position.
+  Examples: "OAI waits to see where wind blows... anthropic doesn't flinch" (critical analysis opposing the OG position); sharing video of protest art supporting the opposing side (showing physical opposition)
+
+- hot-take — Strong, provocative opinion that adds a new angle or escalates the discourse. Goes beyond reporting or simple support/opposition — the author is making a bold claim or forward-looking warning.
+  Examples: "It's extremely good that Anthropic has not backed down... in the future, there will be much more challenging situations" (strong opinion with provocative forward-looking warning)
+
+- echo — Shares or amplifies the news without adding meaningful perspective. Essentially a retweet with minimal commentary.
+  Examples: "Wow, this is huge" / "Everyone needs to see this" / a plain repost with no added take
+
+- kek — Humor, irony, memes, or sarcastic commentary about the topic.
+  Examples: "I cannot wait until the White House changes hands and all of you ghouls switch back..." (biting irony)
+
+IMPORTANT: The OG post represents a POSITION or ACTION. Categorize each tweet based on how it engages with that position within the broader discourse. Someone opposing the OG position is pushback, not signal-boost. Someone adding facts is context, even if those facts favor one side. Someone with a strong personal opinion is a hot-take."""
 
 
 @dataclass
@@ -139,7 +149,7 @@ Respond with ONLY the category key (e.g. "context", "pushback", etc.), nothing e
     )
 
     category = response.content[0].text.strip().lower().strip('"')
-    valid = {"context", "signal-boost", "pushback", "hot-take", "kek"}
+    valid = {"context", "echo", "pushback", "hot-take", "kek"}
     if category not in valid:
         logger.warning("Claude returned invalid category '%s', defaulting to 'context'", category)
         category = "context"
