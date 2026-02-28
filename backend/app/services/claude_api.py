@@ -29,10 +29,13 @@ CATEGORIES_DESCRIPTION = """Categories (pick exactly one):
 - echo — Shares or amplifies without adding perspective. Minimal commentary, essentially a retweet.
   Examples: "Wow, this is huge" / "Everyone needs to see this" / a plain repost
 
-- kek — Humor, irony, memes, sarcastic commentary.
-  Examples: "I cannot wait until the White House changes hands and all of you ghouls switch back..." (biting irony)
+- kek — PURE humor, irony, memes where the joke IS the point. The tweet exists to be funny, not to make a substantive argument.
+  Examples: "I cannot wait until the White House changes hands and all of you ghouls switch back..." (biting irony where humor is the entire point)
+  NOT kek: tweets that use sarcasm or dry humor to make a critical point — those are pushback. If the tweet's PRIMARY purpose is criticism/opposition and the humor is just the delivery style, it's pushback.
 
-CRITICAL DISTINCTION between context and pushback: If a tweet contains facts BUT the author's framing, word choice, or presentation takes a side against the OG position, it is PUSHBACK, not context. Context is strictly neutral reporting. Most opinion-laden tweets are either pushback or hot-take, not context."""
+CRITICAL DISTINCTIONS:
+- context vs pushback: If a tweet contains facts BUT the author's framing, word choice, or presentation takes a side against the OG position, it is PUSHBACK, not context. Context is strictly neutral reporting.
+- pushback vs kek: If a tweet criticizes or opposes the OG position using sarcasm, dry wit, or humor as a rhetorical device, it is PUSHBACK. Kek is reserved for tweets where entertainment/humor is the primary purpose, not a vehicle for criticism."""
 
 
 @dataclass
