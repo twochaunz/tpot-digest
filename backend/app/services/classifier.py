@@ -63,6 +63,7 @@ async def categorize_assigned_tweet(tweet_id: int, topic_id: int) -> None:
         from app.services.claude_api import categorize_single_tweet
         try:
             category = await categorize_single_tweet(
+                topic_title=topic.title,
                 og_text=og_tweet.text or "",
                 og_grok_context=og_tweet.grok_context,
                 tweet_text=tweet.text,
@@ -125,6 +126,7 @@ async def recategorize_topic_tweets(topic_id: int) -> None:
 
         try:
             new_categories = await recategorize_topic(
+                topic_title=topic.title,
                 og_text=og_tweet.text or "",
                 og_grok_context=og_tweet.grok_context,
                 tweets=tweets_to_categorize,

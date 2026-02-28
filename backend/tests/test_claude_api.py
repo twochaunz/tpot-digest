@@ -86,6 +86,7 @@ async def test_recategorize_topic(mock_anthropic):
     mock_anthropic.messages.create = AsyncMock(return_value=mock_response)
 
     result = await recategorize_topic(
+        topic_title="AI Safety Debate",
         og_text="Original controversial take about AI.",
         og_grok_context="Post by prominent AI researcher.",
         tweets=[
