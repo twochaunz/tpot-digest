@@ -111,14 +111,15 @@ async def _find_candidate_topics(
     cutoff_date = date.today() - timedelta(days=lookback_days)
 
     # pgvector cosine distance: <=> operator, similarity = 1 - distance
+    # Use CAST() instead of :: to avoid SQLAlchemy bind-param conflict
     rows = (await db.execute(
         text("""
             SELECT t.id, t.title, t.date::text, t.og_tweet_id,
-                   1 - (t.embedding <=> :vec::vector) as similarity
+                   1 - (t.embedding <=> CAST(:vec AS vector)) as similarity
             FROM topics t
             WHERE t.embedding IS NOT NULL
               AND t.date >= :cutoff
-            ORDER BY t.embedding <=> :vec::vector
+            ORDER BY t.embedding <=> CAST(:vec AS vector)
             LIMIT :lim
         """),
         {"vec": str(tweet_embedding), "cutoff": cutoff_date, "lim": limit},
