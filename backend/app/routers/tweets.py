@@ -11,6 +11,7 @@ from starlette.background import BackgroundTask
 import app.db as db_module
 from app.db import get_db
 from app.models.assignment import TweetAssignment
+from app.models.topic import Topic
 from app.models.tweet import Tweet
 from app.schemas.tweet import TweetAssignRequest, TweetCheckRequest, TweetOut, TweetSave, TweetUnassignRequest, TweetUpdate
 
@@ -334,11 +335,23 @@ async def accept_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
     tweet = await db.get(Tweet, tweet_id)
     if not tweet:
         raise HTTPException(404, "Tweet not found")
-    if not tweet.ai_topic_id:
+    if not tweet.ai_topic_id and not tweet.ai_new_topic_title:
         raise HTTPException(400, "No AI suggestion for this tweet")
 
-    topic_id = tweet.ai_topic_id
     category = tweet.ai_category
+
+    if tweet.ai_topic_id:
+        topic_id = tweet.ai_topic_id
+    else:
+        # Create new topic from AI suggestion
+        new_topic = Topic(
+            title=tweet.ai_new_topic_title,
+            date=tweet.saved_at.date(),
+            og_tweet_id=tweet_id,
+        )
+        db.add(new_topic)
+        await db.flush()
+        topic_id = new_topic.id
 
     # Create assignment
     existing = (await db.execute(
@@ -355,6 +368,7 @@ async def accept_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
     # Clear suggestion fields
     tweet.ai_topic_id = None
     tweet.ai_category = None
+    tweet.ai_new_topic_title = None
     tweet.ai_related_topic_id = None
     await db.commit()
 
@@ -373,6 +387,7 @@ async def dismiss_suggestion(tweet_id: int, db: AsyncSession = Depends(get_db)):
 
     tweet.ai_topic_id = None
     tweet.ai_category = None
+    tweet.ai_new_topic_title = None
     tweet.ai_related_topic_id = None
     await db.commit()
     return {"dismissed": True}

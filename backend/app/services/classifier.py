@@ -73,6 +73,7 @@ async def classify_pipeline(tweet_id: int) -> None:
         # Step 4: Store suggestion
         tweet.ai_topic_id = result.get("topic_id")
         tweet.ai_category = result.get("category")
+        tweet.ai_new_topic_title = result.get("new_topic_title")
         tweet.ai_related_topic_id = result.get("related_topic_id")
         await db.commit()
 

@@ -29,7 +29,9 @@ function SuggestionBadge({ tweet }: { tweet: Tweet }) {
   const accept = useAcceptSuggestion()
   const dismiss = useDismissSuggestion()
 
-  if (!tweet.ai_topic_id || !tweet.ai_topic_title) return null
+  if (!tweet.ai_topic_title && !tweet.ai_new_topic_title) return null
+
+  const isNewTopic = !tweet.ai_topic_id
 
   const catDef = tweet.ai_category ? getCategoryDef(tweet.ai_category) : null
 
@@ -58,8 +60,8 @@ function SuggestionBadge({ tweet }: { tweet: Tweet }) {
           fontFamily: 'var(--font-body)',
         }}
       >
-        <span style={{ fontSize: 11 }}>→</span>
-        <span>{tweet.ai_topic_title}</span>
+        <span style={{ fontSize: 11 }}>{isNewTopic ? '+' : '→'}</span>
+        <span>{tweet.ai_topic_title || tweet.ai_new_topic_title}</span>
         {catDef && (
           <span style={{
             fontSize: 10,

@@ -28,6 +28,7 @@ export interface Tweet {
   category?: string | null
   ai_topic_id: number | null
   ai_category: string | null
+  ai_new_topic_title: string | null
   ai_related_topic_id: number | null
   ai_topic_title: string | null
   ai_override: boolean
