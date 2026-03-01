@@ -482,22 +482,36 @@ function TopicSection({
                   key={catKey ?? 'uncategorized'}
                   id={`toc-cat-${topicId}-${catKey ?? 'uncategorized'}`}
                   style={{
-                    borderLeft: `3px solid ${group.category?.color || '#6B7280'}`,
-                    borderRadius: 'var(--radius-lg)',
+                    position: 'relative',
                     marginTop: idx > 0 ? 16 : 0,
                   }}
                 >
-                  {/* Category label */}
+                  {/* Sticky category label box */}
                   <div
                     style={{
-                      padding: '6px 12px 2px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: group.category?.color || '#6B7280',
-                      letterSpacing: '0.03em',
+                      position: 'sticky',
+                      top: 52,
+                      zIndex: 4,
+                      pointerEvents: 'none',
+                      height: 0,
                     }}
                   >
-                    {group.category?.name || 'Uncategorized'}
+                    <div
+                      style={{
+                        display: 'inline-block',
+                        background: group.category?.color || '#6B7280',
+                        color: '#fff',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '3px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        letterSpacing: '0.03em',
+                        marginLeft: 4,
+                        transform: 'translateY(-50%)',
+                      }}
+                    >
+                      {group.category?.name || 'Uncategorized'}
+                    </div>
                   </div>
 
                   {/* Tweet cards */}
