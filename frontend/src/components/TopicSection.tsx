@@ -413,6 +413,11 @@ function CategoryNavLabel({
           flexDirection: 'column',
           gap: GAP,
           zIndex: 20,
+          background: 'rgba(30, 30, 30, 0.7)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          padding: 4,
+          borderRadius: 'var(--radius-sm)',
         }}>
           {[allCategories[currentIndex], ...allCategories.filter((_, i) => i !== currentIndex)].map((cat, idx) => {
             const dist = idx
