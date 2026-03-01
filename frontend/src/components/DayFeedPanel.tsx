@@ -330,37 +330,63 @@ export function DayFeedPanel({
         const feedContent = (
           <>
             {/* Empty state */}
-            {unsortedTweets.length === 0 && topics.length === 0 && !search && (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '80px 0 40px',
-                }}
-              >
+            {unsortedTweets.length === 0 && topics.length === 0 && !search && (() => {
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const [y, m, d] = date.split('-').map(Number)
+              const panelDate = new Date(y, m - 1, d)
+              const isFuture = panelDate > today
+              const formattedDate = panelDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+
+              return (
                 <div
                   style={{
-                    fontSize: 36,
-                    marginBottom: 16,
-                    opacity: 0.3,
+                    textAlign: 'center',
+                    padding: '80px 0 40px',
                   }}
                 >
-                  &#9776;
+                  {isFuture ? (
+                    <>
+                      <h2
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 500,
+                          color: 'var(--text-secondary)',
+                          marginBottom: 8,
+                        }}
+                      >
+                        {formattedDate}'s feed is empty.
+                      </h2>
+                      <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+                        lock in or go touch grass.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          fontSize: 36,
+                          marginBottom: 16,
+                          opacity: 0.3,
+                        }}
+                      >
+                        &#9776;
+                      </div>
+                      <h2
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 500,
+                          color: 'var(--text-secondary)',
+                          marginBottom: 8,
+                        }}
+                      >
+                        No tweets for this day
+                      </h2>
+                    </>
+                  )}
                 </div>
-                <h2
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 500,
-                    color: 'var(--text-secondary)',
-                    marginBottom: 8,
-                  }}
-                >
-                  No tweets for this day
-                </h2>
-                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', maxWidth: 360, margin: '0 auto' }}>
-                  Save tweets from Twitter using the Chrome extension, and they will appear here.
-                </p>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Unsorted section */}
             <UnsortedSection
