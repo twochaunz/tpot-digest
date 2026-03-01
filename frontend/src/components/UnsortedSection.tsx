@@ -7,6 +7,7 @@ interface UnsortedSectionProps {
   tweets: Tweet[]
   onDelete: (tweetId: number) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  isAdmin?: boolean
 }
 
 // Grip handle SVG (6 dots, 2x3)
@@ -27,14 +28,17 @@ const DraggableFeedTweetCard = memo(function DraggableFeedTweetCard({
   tweet,
   onDelete,
   onContextMenu,
+  isAdmin = true,
 }: {
   tweet: Tweet
   onDelete: (id: number) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  isAdmin?: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
     data: { tweet, sourceTopicId: null },
+    disabled: !isAdmin,
   })
 
   return (
@@ -48,28 +52,30 @@ const DraggableFeedTweetCard = memo(function DraggableFeedTweetCard({
         transition: 'opacity 0.15s ease',
       }}
     >
-      {/* Drag handle */}
-      <div
-        {...attributes}
-        {...listeners}
-        style={{
-          cursor: 'grab',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '16px 2px',
-          flexShrink: 0,
-          touchAction: 'none',
-        }}
-      >
-        <GripHandle />
-      </div>
+      {/* Drag handle (admin only) */}
+      {isAdmin && (
+        <div
+          {...attributes}
+          {...listeners}
+          style={{
+            cursor: 'grab',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '16px 2px',
+            flexShrink: 0,
+            touchAction: 'none',
+          }}
+        >
+          <GripHandle />
+        </div>
+      )}
 
       {/* TweetCard */}
       <TweetCard
         tweet={tweet}
         selectable={false}
         onContextMenu={onContextMenu}
-        onDelete={onDelete}
+        onDelete={isAdmin ? onDelete : undefined}
       />
     </div>
   )
@@ -79,6 +85,7 @@ export const UnsortedSection = memo(function UnsortedSection({
   tweets,
   onDelete,
   onContextMenu,
+  isAdmin = true,
 }: UnsortedSectionProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'droppable-unsorted',
@@ -149,6 +156,7 @@ export const UnsortedSection = memo(function UnsortedSection({
             tweet={t}
             onDelete={onDelete}
             onContextMenu={onContextMenu}
+            isAdmin={isAdmin}
           />
         ))}
       </div>

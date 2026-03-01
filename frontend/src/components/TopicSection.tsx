@@ -98,6 +98,7 @@ interface TopicSectionWithDataProps {
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet, topicId?: number, ogTweetId?: number | null) => void
   onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
   tweets?: Tweet[]
+  isAdmin?: boolean
 }
 
 export function TopicSectionWithData({
@@ -111,6 +112,7 @@ export function TopicSectionWithData({
   onContextMenu,
   onTopicContextMenu,
   tweets: propTweets,
+  isAdmin,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined }, { enabled: !propTweets })
   const tweets = propTweets ?? tweetsQuery.data ?? []
@@ -153,6 +155,7 @@ export function TopicSectionWithData({
       onUpdateTitle={onUpdateTitle}
       onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId, ogTweetId)}
       onTopicContextMenu={onTopicContextMenu}
+      isAdmin={isAdmin}
     />
   )
 }
@@ -162,14 +165,17 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   tweet,
   topicId,
   onContextMenu,
+  isAdmin = true,
 }: {
   tweet: Tweet
   topicId: number
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
+  isAdmin?: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
     data: { tweet, sourceTopicId: topicId },
+    disabled: !isAdmin,
   })
 
   return (
@@ -182,10 +188,9 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
     >
       {/* Invisible drag handle overlaid on the card */}
       <div
-        {...attributes}
-        {...listeners}
+        {...(isAdmin ? { ...attributes, ...listeners } : {})}
         style={{
-          touchAction: 'none',
+          touchAction: isAdmin ? 'none' : undefined,
         }}
       >
         <TweetCard
@@ -209,6 +214,7 @@ interface TopicSectionProps {
   onUpdateTitle: (topicId: number, title: string) => void
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
+  isAdmin?: boolean
 }
 
 function TopicSection({
@@ -220,6 +226,7 @@ function TopicSection({
   onUpdateTitle,
   onContextMenu,
   onTopicContextMenu,
+  isAdmin = true,
 }: TopicSectionProps) {
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
@@ -266,7 +273,7 @@ function TopicSection({
     >
       {/* Header */}
       <div
-        onContextMenu={(e) => { e.preventDefault(); onTopicContextMenu?.(e, topicId, title) }}
+        onContextMenu={isAdmin ? (e) => { e.preventDefault(); onTopicContextMenu?.(e, topicId, title) } : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -357,11 +364,11 @@ function TopicSection({
           />
         ) : (
           <span
-            onClick={(e) => {
+            onClick={isAdmin ? (e) => {
               e.stopPropagation()
               setEditValue(title)
               setEditing(true)
-            }}
+            } : undefined}
             title={title}
             style={{
               fontSize: 17,
@@ -371,7 +378,7 @@ function TopicSection({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              cursor: 'text',
+              cursor: isAdmin ? 'text' : 'default',
             }}
           >
             {title}
@@ -461,6 +468,7 @@ function TopicSection({
                       tweet={t}
                       topicId={topicId}
                       onContextMenu={onContextMenu}
+                      isAdmin={isAdmin}
                     />
                   ))}
                 </div>
@@ -496,6 +504,7 @@ function TopicSection({
                         tweet={t}
                         topicId={topicId}
                         onContextMenu={onContextMenu}
+                        isAdmin={isAdmin}
                       />
                     ))}
                   </div>

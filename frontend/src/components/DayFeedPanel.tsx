@@ -20,6 +20,7 @@ import { UndoToast } from './UndoToast'
 import { DragOverlayCard } from './DragOverlayCard'
 import { ContextMenu, TopicContextMenu } from './ContextMenu'
 import { sortTopics, isKekTopic } from '../utils/topics'
+import { useAuth } from '../contexts/AuthContext'
 
 interface DayFeedPanelProps {
   date: string
@@ -42,6 +43,8 @@ export function DayFeedPanel({
   onGenPanelClose,
   initialTopicNum,
 }: DayFeedPanelProps) {
+  const { isAdmin } = useAuth()
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number; ogTweetId?: number | null } | null>(null)
   const [topicContextMenu, setTopicContextMenu] = useState<{ x: number; y: number; topicId: number; title: string } | null>(null)
@@ -321,111 +324,121 @@ export function DayFeedPanel({
       )}
 
       {/* Content when loaded */}
-      {!isLoading && (
-        <>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={pointerWithin}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          {/* Empty state */}
-          {unsortedTweets.length === 0 && topics.length === 0 && !search && (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '80px 0 40px',
-              }}
-            >
+      {!isLoading && (() => {
+        const feedContent = (
+          <>
+            {/* Empty state */}
+            {unsortedTweets.length === 0 && topics.length === 0 && !search && (
               <div
                 style={{
-                  fontSize: 36,
-                  marginBottom: 16,
-                  opacity: 0.3,
+                  textAlign: 'center',
+                  padding: '80px 0 40px',
                 }}
               >
-                &#9776;
+                <div
+                  style={{
+                    fontSize: 36,
+                    marginBottom: 16,
+                    opacity: 0.3,
+                  }}
+                >
+                  &#9776;
+                </div>
+                <h2
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 500,
+                    color: 'var(--text-secondary)',
+                    marginBottom: 8,
+                  }}
+                >
+                  No tweets for this day
+                </h2>
+                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', maxWidth: 360, margin: '0 auto' }}>
+                  Save tweets from Twitter using the Chrome extension, and they will appear here.
+                </p>
               </div>
-              <h2
+            )}
+
+            {/* Unsorted section */}
+            <UnsortedSection
+              tweets={unsortedTweets}
+              onDelete={handleDeleteTweet}
+              onContextMenu={isAdmin ? handleContextMenu : undefined}
+              isAdmin={isAdmin}
+            />
+
+            {/* Topic sections (vertical feed) */}
+            {topics.length > 0 && (
+              <div
                 style={{
-                  fontSize: 18,
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  marginBottom: 8,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
                 }}
               >
-                No tweets for this day
-              </h2>
-              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', maxWidth: 360, margin: '0 auto' }}>
-                Save tweets from Twitter using the Chrome extension, and they will appear here.
-              </p>
-            </div>
-          )}
+                {sortTopics(topics).map((topic) => {
+                  const filteredTweets = search
+                    ? topic.tweets.filter((t) =>
+                        t.text.toLowerCase().includes(search.toLowerCase()) ||
+                        t.author_handle.toLowerCase().includes(search.toLowerCase()) ||
+                        (t.author_display_name?.toLowerCase().includes(search.toLowerCase()) ?? false)
+                      )
+                    : topic.tweets
+                  return (
+                    <TopicSectionWithData
+                      key={topic.id}
+                      topicId={topic.id}
+                      title={topic.title}
+                      color={topic.color}
+                      date={date}
+                      search=""
+                      ogTweetId={topic.og_tweet_id}
+                      tweets={filteredTweets}
+                      onUpdateTitle={handleUpdateTopicTitle}
+                      onContextMenu={isAdmin ? handleContextMenu : undefined}
+                      onTopicContextMenu={isAdmin ? handleTopicContextMenu : undefined}
+                      isAdmin={isAdmin}
+                    />
+                  )
+                })}
+              </div>
+            )}
 
-          {/* Unsorted section */}
-          <UnsortedSection
-            tweets={unsortedTweets}
-            onDelete={handleDeleteTweet}
-            onContextMenu={handleContextMenu}
-          />
+            {/* Create topic form (only if active and admin) */}
+            {isAdmin && isActive && (
+              <div style={{ marginTop: 16, maxWidth: 600 }}>
+                <CreateTopicForm
+                  onSubmit={handleCreateTopic}
+                  loading={createTopicMutation.isPending}
+                  topicCount={topics.length}
+                />
+              </div>
+            )}
 
-          {/* Topic sections (vertical feed) */}
-          {topics.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 16,
-              }}
-            >
-              {sortTopics(topics).map((topic) => {
-                const filteredTweets = search
-                  ? topic.tweets.filter((t) =>
-                      t.text.toLowerCase().includes(search.toLowerCase()) ||
-                      t.author_handle.toLowerCase().includes(search.toLowerCase()) ||
-                      (t.author_display_name?.toLowerCase().includes(search.toLowerCase()) ?? false)
-                    )
-                  : topic.tweets
-                return (
-                  <TopicSectionWithData
-                    key={topic.id}
-                    topicId={topic.id}
-                    title={topic.title}
-                    color={topic.color}
-                    date={date}
-                    search=""
-                    ogTweetId={topic.og_tweet_id}
-                    tweets={filteredTweets}
-                    onUpdateTitle={handleUpdateTopicTitle}
-                    onContextMenu={handleContextMenu}
-                    onTopicContextMenu={handleTopicContextMenu}
-                  />
-                )
-              })}
-            </div>
-          )}
+            {/* Drag overlay (admin only) */}
+            {isAdmin && (
+              <DragOverlay>
+                {activeDragTweet ? <DragOverlayCard tweet={activeDragTweet} /> : null}
+              </DragOverlay>
+            )}
+          </>
+        )
 
-          {/* Create topic form (only if active) */}
-          {isActive && (
-            <div style={{ marginTop: 16, maxWidth: 600 }}>
-              <CreateTopicForm
-                onSubmit={handleCreateTopic}
-                loading={createTopicMutation.isPending}
-                topicCount={topics.length}
-              />
-            </div>
-          )}
+        return isAdmin ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={pointerWithin}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            {feedContent}
+          </DndContext>
+        ) : feedContent
+      })()}
 
-          {/* Drag overlay */}
-          <DragOverlay>
-            {activeDragTweet ? <DragOverlayCard tweet={activeDragTweet} /> : null}
-          </DragOverlay>
-        </DndContext>
-        </>
-      )}
-
-      {/* Tweet context menu */}
-      {contextMenu && (
+      {/* Tweet context menu (admin only) */}
+      {isAdmin && contextMenu && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
@@ -446,8 +459,8 @@ export function DayFeedPanel({
         />
       )}
 
-      {/* Topic context menu */}
-      {topicContextMenu && (
+      {/* Topic context menu (admin only) */}
+      {isAdmin && topicContextMenu && (
         <TopicContextMenu
           x={topicContextMenu.x}
           y={topicContextMenu.y}
@@ -459,12 +472,14 @@ export function DayFeedPanel({
         />
       )}
 
-      {/* Undo toast */}
-      <UndoToast
-        action={undo.toast}
-        onUndo={undo.undoLast}
-        onDismiss={undo.dismissToast}
-      />
+      {/* Undo toast (admin only) */}
+      {isAdmin && (
+        <UndoToast
+          action={undo.toast}
+          onUndo={undo.undoLast}
+          onDismiss={undo.dismissToast}
+        />
+      )}
 
       {/* Unified script panel */}
       {genPanelOpen && topics.length > 0 && (
