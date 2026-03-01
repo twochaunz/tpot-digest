@@ -719,10 +719,7 @@ function TopicSection({
                   </StickyLabelWrapper>
 
                   {/* Tweet card */}
-                  <div style={{
-                    borderRadius: 'var(--radius-lg)',
-                    background: 'rgba(245, 158, 11, 0.06)',
-                  }}>
+                  <div>
                   <div
                     onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
                     style={{ padding: '4px 0 0' }}
