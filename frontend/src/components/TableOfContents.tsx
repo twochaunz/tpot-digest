@@ -75,9 +75,10 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-lg)',
           padding: '20px 0',
-          minWidth: 280,
-          maxWidth: 400,
-          maxHeight: '70vh',
+          minWidth: 360,
+          maxWidth: 520,
+          width: '90vw',
+          maxHeight: '80vh',
           overflowY: 'auto',
           position: 'relative',
         }}
@@ -219,12 +220,15 @@ function TOCEntry({
           {count}
         </span>
       )}
-      <span style={{
-        flex: 1,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}>
+      <span
+        title={label}
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
         {label}
       </span>
     </button>
