@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { fetchAuthMe, type Role } from '../api/auth'
 import { api } from '../api/client'
@@ -18,11 +18,13 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('viewer')
   const [loading, setLoading] = useState(true)
+  // Capture search params during render (before child effects can strip them)
+  const initialSearch = useRef(window.location.search)
 
   useEffect(() => {
     async function init() {
-      // Check URL for admin key
-      const params = new URLSearchParams(window.location.search)
+      // Check URL for admin key (using captured search params)
+      const params = new URLSearchParams(initialSearch.current)
       const adminKey = params.get('admin')
       if (adminKey) {
         try {
