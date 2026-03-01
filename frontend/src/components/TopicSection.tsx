@@ -8,7 +8,7 @@ import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
 import { useAuth } from '../contexts/AuthContext'
-import { useMediaQuery } from '../hooks/useMediaQuery'
+import { useMinWidth } from '../hooks/useMediaQuery'
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
@@ -406,7 +406,7 @@ function TopicSection({
   onTopicContextMenu,
   isAdmin = true,
 }: TopicSectionProps) {
-  const isWide = useMediaQuery('(min-width: 900px)')
+  const isWide = useMinWidth(900)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)

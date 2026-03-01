@@ -21,7 +21,7 @@ import { DragOverlayCard } from './DragOverlayCard'
 import { ContextMenu, TopicContextMenu } from './ContextMenu'
 import { sortTopics, isKekTopic } from '../utils/topics'
 import { useAuth } from '../contexts/AuthContext'
-import { useMediaQuery } from '../hooks/useMediaQuery'
+import { useMinWidth } from '../hooks/useMediaQuery'
 
 interface DayFeedPanelProps {
   date: string
@@ -45,7 +45,7 @@ export function DayFeedPanel({
   initialTopicNum,
 }: DayFeedPanelProps) {
   const { isAdmin } = useAuth()
-  const isWide = useMediaQuery('(min-width: 900px)')
+  const isWide = useMinWidth(900)
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tweet: Tweet; topicId?: number; ogTweetId?: number | null } | null>(null)
