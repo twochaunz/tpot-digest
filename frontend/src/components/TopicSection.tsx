@@ -633,8 +633,7 @@ function TopicSection({
                       top: 52,
                       zIndex: labelHovered ? 10 : 4,
                       pointerEvents: 'none',
-                      height: useMarginLabels ? 0 : undefined,
-                      marginBottom: useMarginLabels ? 0 : 8,
+                      marginBottom: useMarginLabels ? -28 : 8,
                     }}
                   >
                     <CategoryNavLabel
@@ -708,8 +707,7 @@ function TopicSection({
                       top: 52,
                       zIndex: labelHovered ? 10 : 4,
                       pointerEvents: 'none',
-                      height: useMarginLabels ? 0 : undefined,
-                      marginBottom: useMarginLabels ? 0 : 8,
+                      marginBottom: useMarginLabels ? -28 : 8,
                     }}
                   >
                     <CategoryNavLabel
