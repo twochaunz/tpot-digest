@@ -208,58 +208,6 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   )
 })
 
-// --- Sticky label wrapper with JS-based containment ---
-
-function StickyLabelWrapper({
-  children,
-  stickyTop,
-  useMarginLabels,
-  labelHovered,
-}: {
-  children: React.ReactNode
-  stickyTop: number
-  useMarginLabels: boolean
-  labelHovered: boolean
-}) {
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const [parked, setParked] = useState(false)
-
-  useEffect(() => {
-    const wrapper = wrapperRef.current
-    const section = wrapper?.parentElement
-    const scrollContainer = document.querySelector<HTMLElement>('[data-active-feed="true"]')
-    if (!wrapper || !section || !scrollContainer) return
-
-    const LABEL_H = 28
-
-    const onScroll = () => {
-      const containerTop = scrollContainer.getBoundingClientRect().top
-      const sectionBottom = section.getBoundingClientRect().bottom
-      setParked(sectionBottom - containerTop <= stickyTop + LABEL_H)
-    }
-
-    scrollContainer.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-    return () => scrollContainer.removeEventListener('scroll', onScroll)
-  }, [stickyTop])
-
-  return (
-    <div
-      ref={wrapperRef}
-      style={{
-        position: parked ? 'absolute' : 'sticky',
-        top: parked ? undefined : stickyTop,
-        bottom: parked ? 0 : undefined,
-        zIndex: labelHovered ? 10 : 4,
-        pointerEvents: 'none',
-        marginBottom: !parked && useMarginLabels ? -28 : (!parked ? 8 : 0),
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
 // --- Category nav label with cascade on hover ---
 
 function CategoryNavLabel({
@@ -679,7 +627,15 @@ function TopicSection({
                   }}
                 >
                   {/* Sticky OG nav label */}
-                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} labelHovered={labelHovered}>
+                  <div
+                    style={{
+                      position: 'sticky',
+                      top: 52,
+                      zIndex: labelHovered ? 10 : 4,
+                      pointerEvents: 'none',
+                      marginBottom: useMarginLabels ? -28 : 8,
+                    }}
+                  >
                     <CategoryNavLabel
                       allCategories={allCategoryList}
                       currentCategoryKey="og"
@@ -687,7 +643,7 @@ function TopicSection({
                       onHoverChange={setLabelHovered}
                       isWide={useMarginLabels}
                     />
-                  </StickyLabelWrapper>
+                  </div>
 
                   {/* Tweet card */}
                   <div style={{
@@ -745,7 +701,15 @@ function TopicSection({
                   }}
                 >
                   {/* Sticky category nav label */}
-                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} labelHovered={labelHovered}>
+                  <div
+                    style={{
+                      position: 'sticky',
+                      top: 52,
+                      zIndex: labelHovered ? 10 : 4,
+                      pointerEvents: 'none',
+                      marginBottom: useMarginLabels ? -28 : 8,
+                    }}
+                  >
                     <CategoryNavLabel
                       allCategories={allCategoryList}
                       currentCategoryKey={catKey}
@@ -753,7 +717,7 @@ function TopicSection({
                       onHoverChange={setLabelHovered}
                       isWide={useMarginLabels}
                     />
-                  </StickyLabelWrapper>
+                  </div>
 
                   {/* Tweet cards */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
