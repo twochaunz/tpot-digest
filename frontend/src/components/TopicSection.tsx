@@ -278,7 +278,7 @@ function CategoryNavLabel({
         padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
-        marginLeft: -20,
+        marginLeft: -24,
         transform: 'translateY(4px)',
       }}>
         {displayed.name}
@@ -293,12 +293,12 @@ function CategoryNavLabel({
       style={{
         position: 'relative',
         display: 'inline-block',
-        marginLeft: -20,
+        marginLeft: -24,
         transform: 'translateY(4px)',
         pointerEvents: 'auto',
       }}
     >
-      {/* Current category label */}
+      {/* Current category label (stays in DOM, hidden on hover to preserve layout) */}
       <div
         style={{
           display: 'inline-flex',
@@ -313,11 +313,12 @@ function CategoryNavLabel({
           letterSpacing: '0.03em',
           cursor: 'pointer',
           whiteSpace: 'nowrap',
+          height: ITEM_H,
+          boxSizing: 'border-box',
           visibility: isHovered ? 'hidden' : 'visible',
         }}
       >
         {displayed.name}
-        <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
       </div>
 
       {/* Cascading menu */}
@@ -334,7 +335,6 @@ function CategoryNavLabel({
           {allCategories.map((cat, idx) => {
             const dist = Math.abs(idx - currentIndex)
             const fromY = (currentIndex - idx) * STEP
-            const isCurrent = idx === currentIndex
             return (
               <div
                 key={cat.key ?? 'uncat'}
@@ -358,7 +358,6 @@ function CategoryNavLabel({
                   animation: `catCascadeIn 0.2s ease ${dist * 0.05}s both`,
                 } as React.CSSProperties}
               >
-                {isCurrent && <span style={{ fontSize: 8 }}>&#9679;</span>}
                 {cat.name}
               </div>
             )
