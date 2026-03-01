@@ -186,7 +186,6 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   return (
     <div
       ref={setNodeRef}
-      data-tweet-card
       style={{
         opacity: isDragging ? 0.3 : 1,
         transition: 'opacity 0.15s ease',
@@ -226,10 +225,10 @@ function StickyLabelWrapper({
   labelHovered: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [parkBottom, setParkBottom] = useState<number | null>(null)
+  const [parked, setParked] = useState(false)
 
   useEffect(() => {
-    if (!useMarginLabels) { setParkBottom(null); return }
+    if (!useMarginLabels) { setParked(false); return }
     const el = ref.current
     if (!el) return
     const section = el.parentElement
@@ -251,18 +250,9 @@ function StickyLabelWrapper({
       // but only if the section top has scrolled past the sticky threshold
       const shouldPark = relBottom <= stickyTop + LABEL_H && relTop < stickyTop
 
-      if (shouldPark && !currentlyParked) {
-        currentlyParked = true
-        // Find the last tweet card in this section to align with its bottom
-        const cards = section.querySelectorAll<HTMLElement>('[data-tweet-card]')
-        const lastCard = cards[cards.length - 1]
-        const bottomOffset = lastCard
-          ? sectionRect.bottom - lastCard.getBoundingClientRect().bottom
-          : 0
-        setParkBottom(bottomOffset)
-      } else if (!shouldPark && currentlyParked) {
-        currentlyParked = false
-        setParkBottom(null)
+      if (shouldPark !== currentlyParked) {
+        currentlyParked = shouldPark
+        setParked(shouldPark)
       }
     }
 
@@ -274,9 +264,9 @@ function StickyLabelWrapper({
   return (
     <div
       ref={ref}
-      style={parkBottom != null ? {
+      style={parked ? {
         position: 'absolute',
-        bottom: parkBottom,
+        bottom: 0,
         left: 0,
         right: 0,
         zIndex: labelHovered ? 10 : 4,
@@ -729,7 +719,6 @@ function TopicSection({
                     background: 'rgba(245, 158, 11, 0.06)',
                   }}>
                   <div
-                    data-tweet-card
                     onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
                     style={{ padding: '4px 0 0' }}
                   >
