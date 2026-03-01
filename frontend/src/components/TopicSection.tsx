@@ -524,7 +524,31 @@ function TopicSection({
   const [collapsed, setCollapsed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
   const [hoveredCatKey, setHoveredCatKey] = useState<string | null>(null)
+  const [headerAtBottom, setHeaderAtBottom] = useState(false)
+
+  // Round header bottom corners when it reaches the bottom of the topic container
+  useEffect(() => {
+    const section = sectionRef.current
+    const header = headerRef.current
+    if (!section || !header) return
+    const feed = section.closest<HTMLElement>('[data-active-feed]')
+      ?? document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    if (!feed) return
+
+    let current = false
+    const onScroll = () => {
+      const feedTop = feed.getBoundingClientRect().top
+      const sectionBottom = section.getBoundingClientRect().bottom - feedTop
+      const headerH = header.offsetHeight
+      const atBottom = sectionBottom <= headerH + 8 // 8px buffer
+      if (atBottom !== current) { current = atBottom; setHeaderAtBottom(atBottom) }
+    }
+    feed.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => feed.removeEventListener('scroll', onScroll)
+  }, [])
 
   const allCategoryList = useMemo(() => {
     const list: Array<{ key: string | null; name: string; color: string }> = []
@@ -619,6 +643,7 @@ function TopicSection({
     >
       {/* Header */}
       <div
+        ref={headerRef}
         onContextMenu={isAdmin ? (e) => { e.preventDefault(); onTopicContextMenu?.(e, topicId, title) } : undefined}
         style={{
           display: 'flex',
@@ -626,7 +651,9 @@ function TopicSection({
           gap: 8,
           padding: '14px 20px',
           borderBottom: collapsed ? 'none' : '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+          borderRadius: headerAtBottom || collapsed
+            ? 'var(--radius-lg)'
+            : 'var(--radius-lg) var(--radius-lg) 0 0',
           cursor: 'pointer',
           position: 'sticky' as const,
           top: 0,
