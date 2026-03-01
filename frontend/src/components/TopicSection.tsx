@@ -262,8 +262,8 @@ function StickyLabelWrapper({
       // Park when section bottom reaches the label's bottom edge,
       // but only if the section top has scrolled past the sticky threshold
       const shouldPark = relBottom <= stickyTop + LABEL_H && relTop < stickyTop
-      // Fade out when parked label would overlap with the topic header area
-      const shouldFade = shouldPark && relBottom <= stickyTop + LABEL_H * 0.5
+      // Fade out as soon as sticky unsticks (parked = true)
+      const shouldFade = shouldPark
 
       if (shouldPark !== currentlyParked) {
         currentlyParked = shouldPark
