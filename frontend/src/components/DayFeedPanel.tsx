@@ -285,7 +285,7 @@ export function DayFeedPanel({
       style={{
         overflowY: 'auto',
         height: '100%',
-        padding: '0 16px 80px',
+        padding: '0 16px 80px 40px',
       }}
     >
       {/* Loading state */}
