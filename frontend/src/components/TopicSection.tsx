@@ -278,7 +278,7 @@ function CategoryNavLabel({
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
         marginLeft: 4,
-        transform: 'translateY(-50%)',
+        transform: 'translateY(2px)',
       }}>
         {displayed.name}
       </div>
@@ -293,7 +293,7 @@ function CategoryNavLabel({
         position: 'relative',
         display: 'inline-block',
         marginLeft: 4,
-        transform: 'translateY(-50%)',
+        transform: 'translateY(2px)',
         pointerEvents: 'auto',
       }}
     >
@@ -401,12 +401,20 @@ function TopicSection({
   const sectionRef = useRef<HTMLDivElement>(null)
   const [labelHovered, setLabelHovered] = useState(false)
 
-  const allCategoryList = useMemo(() =>
-    Array.from(tweetsByCategory.entries()).map(([key, group]) => ({
-      key,
-      name: group.category?.name || 'Uncategorized',
-      color: group.category?.color || '#6B7280',
-    })), [tweetsByCategory])
+  const allCategoryList = useMemo(() => {
+    const list: Array<{ key: string | null; name: string; color: string }> = []
+    if (ogTweet) {
+      list.push({ key: 'og', name: 'og', color: '#F59E0B' })
+    }
+    for (const [key, group] of tweetsByCategory.entries()) {
+      list.push({
+        key,
+        name: group.category?.name || 'Uncategorized',
+        color: group.category?.color || '#6B7280',
+      })
+    }
+    return list
+  }, [tweetsByCategory, ogTweet])
 
   const { setNodeRef, isOver } = useDroppable({
     id: `droppable-topic-${topicId}`,
@@ -587,25 +595,33 @@ function TopicSection({
                 <div
                   id={`toc-cat-${topicId}-og`}
                   style={{
-                    borderRadius: 'var(--radius-lg)',
+                    position: 'relative',
                     marginBottom: 12,
-                    background: 'rgba(245, 158, 11, 0.06)',
                   }}
                 >
-                  {/* OG label - same style as category labels */}
+                  {/* Sticky OG nav label */}
                   <div
                     style={{
-                      padding: '6px 12px 2px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#F59E0B',
-                      letterSpacing: '0.03em',
+                      position: 'sticky',
+                      top: 52,
+                      zIndex: labelHovered ? 10 : 4,
+                      pointerEvents: 'none',
+                      height: 0,
                     }}
                   >
-                    OG Post
+                    <CategoryNavLabel
+                      allCategories={allCategoryList}
+                      currentCategoryKey="og"
+                      topicId={topicId}
+                      onHoverChange={setLabelHovered}
+                    />
                   </div>
 
                   {/* Tweet card */}
+                  <div style={{
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'rgba(245, 158, 11, 0.06)',
+                  }}>
                   <div
                     onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
                     style={{ padding: '4px 0 0' }}
@@ -629,6 +645,7 @@ function TopicSection({
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               )}
 
