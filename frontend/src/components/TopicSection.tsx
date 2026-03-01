@@ -232,7 +232,7 @@ function CategoryNavLabel({
     return () => { if (leaveTimer.current) clearTimeout(leaveTimer.current) }
   }, [])
 
-  const ITEM_H = 24
+  const ITEM_H = 28
   const GAP = 3
   const STEP = ITEM_H + GAP
 
@@ -273,12 +273,12 @@ function CategoryNavLabel({
         display: 'inline-block',
         background: displayed.color,
         color: '#fff',
-        fontSize: 11,
+        fontSize: 15,
         fontWeight: 700,
-        padding: '3px 8px',
+        padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
-        marginLeft: 4,
+        marginLeft: -14,
         transform: 'translateY(4px)',
       }}>
         {displayed.name}
@@ -293,7 +293,7 @@ function CategoryNavLabel({
       style={{
         position: 'relative',
         display: 'inline-block',
-        marginLeft: 4,
+        marginLeft: -14,
         transform: 'translateY(4px)',
         pointerEvents: 'auto',
       }}
@@ -307,9 +307,9 @@ function CategoryNavLabel({
             gap: 4,
             background: displayed.color,
             color: '#fff',
-            fontSize: 11,
+            fontSize: 15,
             fontWeight: 700,
-            padding: '3px 8px',
+            padding: '4px 10px',
             borderRadius: 'var(--radius-sm)',
             letterSpacing: '0.03em',
             cursor: 'pointer',
@@ -317,7 +317,7 @@ function CategoryNavLabel({
           }}
         >
           {displayed.name}
-          <span style={{ fontSize: 8, opacity: 0.6 }}>&#9662;</span>
+          <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
         </div>
       )}
 
@@ -346,9 +346,9 @@ function CategoryNavLabel({
                   gap: 4,
                   background: cat.color,
                   color: '#fff',
-                  fontSize: 11,
+                  fontSize: 15,
                   fontWeight: 700,
-                  padding: '3px 8px',
+                  padding: '4px 10px',
                   borderRadius: 'var(--radius-sm)',
                   letterSpacing: '0.03em',
                   cursor: 'pointer',
@@ -359,7 +359,7 @@ function CategoryNavLabel({
                   animation: `catCascadeIn 0.2s ease ${dist * 0.05}s both`,
                 } as React.CSSProperties}
               >
-                {isCurrent && <span style={{ fontSize: 6 }}>&#9679;</span>}
+                {isCurrent && <span style={{ fontSize: 8 }}>&#9679;</span>}
                 {cat.name}
               </div>
             )
