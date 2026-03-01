@@ -601,7 +601,6 @@ function TopicSection({
                   style={{
                     position: 'relative',
                     marginBottom: 12,
-                    overflow: 'clip',
                   }}
                 >
                   {/* Sticky OG nav label */}
@@ -675,7 +674,6 @@ function TopicSection({
                   style={{
                     position: 'relative',
                     marginTop: idx > 0 ? 16 : 0,
-                    overflow: 'clip',
                   }}
                 >
                   {/* Sticky category nav label */}
