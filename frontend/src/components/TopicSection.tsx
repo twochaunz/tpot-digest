@@ -278,7 +278,7 @@ function CategoryNavLabel({
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
         marginLeft: 4,
-        transform: 'translateY(2px)',
+        transform: 'translateY(4px)',
       }}>
         {displayed.name}
       </div>
@@ -293,7 +293,7 @@ function CategoryNavLabel({
         position: 'relative',
         display: 'inline-block',
         marginLeft: 4,
-        transform: 'translateY(2px)',
+        transform: 'translateY(4px)',
         pointerEvents: 'auto',
       }}
     >
