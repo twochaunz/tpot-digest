@@ -1,9 +1,6 @@
 {$DOMAIN:localhost} {
-	# Protect dashboard routes with basic auth
-	@app path /app /app/*
-	basicauth @app {
-		{$AUTH_USER} {$AUTH_PASS_HASH}
-	}
+	# Auth is handled by backend cookie-based admin access (ADMIN_SECRET)
+	# No basicauth — dashboard is publicly readable, mutations require admin cookie
 
 	# API routes (must be before frontend catch-all)
 	handle /api/* {

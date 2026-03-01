@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
 import { TableOfContents } from '../components/TableOfContents'
+import { useAuth } from '../contexts/AuthContext'
 
 function todayDateStr(): string {
   const now = new Date()
@@ -43,6 +44,7 @@ function toDateParam(isoDate: string): string {
 export function DailyView() {
   const navigate = useNavigate()
   const { dateStr: urlDateStr, topicNum: urlTopicNum } = useParams<{ dateStr?: string; topicNum?: string }>()
+  const { isAdmin } = useAuth()
 
   const initialDate = parseDateParam(urlDateStr) || defaultDateStr()
   const [date, setDateRaw] = useState(initialDate)
@@ -207,7 +209,7 @@ export function DailyView() {
             >
               &#9000;
             </button>
-            <button
+            {isAdmin && <button
               onClick={() => setGenPanelOpen(true)}
               style={{
                 background: 'none',
@@ -227,7 +229,7 @@ export function DailyView() {
               title="Generate scripts"
             >
               &#9998;
-            </button>
+            </button>}
           </div>
 
           {/* Center: date picker */}
@@ -293,7 +295,7 @@ export function DailyView() {
               )}
             </div>
 
-            <button
+            {isAdmin && <button
               onClick={() => navigate('/app/settings')}
               style={{
                 background: 'none',
@@ -312,7 +314,7 @@ export function DailyView() {
               aria-label="Settings"
             >
               &#9881;
-            </button>
+            </button>}
           </div>
         </div>
       </header>

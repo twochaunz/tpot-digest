@@ -9,6 +9,7 @@ from app.schemas.waitlist import WaitlistRequest, WaitlistResponse
 router = APIRouter(prefix="/api/waitlist", tags=["waitlist"])
 
 
+# Intentionally public — no require_admin (landing page feature)
 @router.post("", response_model=WaitlistResponse)
 async def join_waitlist(body: WaitlistRequest, db: AsyncSession = Depends(get_db)):
     existing = (await db.execute(
