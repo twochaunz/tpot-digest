@@ -490,7 +490,7 @@ function TopicSection({
                     style={{
                       position: 'sticky',
                       top: 52,
-                      zIndex: 3,
+                      zIndex: 4,
                       pointerEvents: 'none',
                       height: 0,
                     }}
@@ -500,12 +500,13 @@ function TopicSection({
                         display: 'inline-block',
                         background: group.category?.color || '#6B7280',
                         color: '#fff',
-                        fontSize: 13,
+                        fontSize: 11,
                         fontWeight: 700,
-                        padding: '4px 10px',
+                        padding: '3px 8px',
                         borderRadius: 'var(--radius-sm)',
                         letterSpacing: '0.03em',
-                        marginLeft: -4,
+                        marginLeft: 4,
+                        transform: 'translateY(-50%)',
                       }}
                     >
                       {group.category?.name || 'Uncategorized'}
