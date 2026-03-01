@@ -391,6 +391,19 @@ function TopicSection({
 
       </div>
 
+      {/* Gradient fade below header — hides category labels as they scroll up */}
+      {!collapsed && (
+        <div style={{
+          position: 'sticky',
+          top: 51,
+          zIndex: 5,
+          height: 24,
+          marginBottom: -24,
+          background: 'linear-gradient(to bottom, var(--bg-raised), transparent)',
+          pointerEvents: 'none',
+        }} />
+      )}
+
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
         <div ref={setNodeRef} style={{
@@ -490,8 +503,8 @@ function TopicSection({
                   <div
                     style={{
                       position: 'sticky',
-                      top: 56,
-                      zIndex: 4,
+                      top: 60,
+                      zIndex: 3,
                       pointerEvents: 'none',
                       height: 0,
                       overflow: 'visible',
@@ -502,13 +515,12 @@ function TopicSection({
                         display: 'inline-block',
                         background: group.category?.color || '#6B7280',
                         color: '#fff',
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: 700,
-                        padding: '3px 8px',
+                        padding: '4px 10px',
                         borderRadius: 'var(--radius-sm)',
                         letterSpacing: '0.03em',
-                        marginLeft: -16,
-                        transform: 'translateY(-50%)',
+                        marginLeft: -24,
                       }}
                     >
                       {group.category?.name || 'Uncategorized'}
