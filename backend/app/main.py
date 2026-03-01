@@ -29,6 +29,9 @@ app.include_router(waitlist_router)
 from app.routers.scripts import router as scripts_router
 app.include_router(scripts_router)
 
+from app.auth import router as auth_router
+app.include_router(auth_router)
+
 
 @app.get("/api/health")
 async def health():
