@@ -331,7 +331,7 @@ function CategoryNavLabel({
       {isHovered && (
         <div style={{
           position: 'absolute',
-          left: 0,
+          ...(isWide ? { right: 0 } : { left: 0 }),
           top: -(currentIndex * STEP),
           display: 'flex',
           flexDirection: 'column',
