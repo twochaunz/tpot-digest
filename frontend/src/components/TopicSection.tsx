@@ -396,6 +396,7 @@ function TopicSection({
         <div ref={setNodeRef} style={{
           padding: '12px 8px',
           minHeight: 60,
+          overflow: 'visible',
         }}>
             <>
               {totalTweets === 0 && (
@@ -417,7 +418,6 @@ function TopicSection({
                 <div
                   id={`toc-cat-${topicId}-og`}
                   style={{
-                    borderLeft: '3px solid #F59E0B',
                     borderRadius: 'var(--radius-lg)',
                     marginBottom: 12,
                     background: 'rgba(245, 158, 11, 0.06)',
@@ -490,10 +490,11 @@ function TopicSection({
                   <div
                     style={{
                       position: 'sticky',
-                      top: 52,
+                      top: 56,
                       zIndex: 4,
                       pointerEvents: 'none',
                       height: 0,
+                      overflow: 'visible',
                     }}
                   >
                     <div
@@ -506,7 +507,7 @@ function TopicSection({
                         padding: '3px 8px',
                         borderRadius: 'var(--radius-sm)',
                         letterSpacing: '0.03em',
-                        marginLeft: 4,
+                        marginLeft: -16,
                         transform: 'translateY(-50%)',
                       }}
                     >
