@@ -10,6 +10,17 @@ import { isKekTopic } from '../utils/topics'
 import { useAuth } from '../contexts/AuthContext'
 import { useMinWidth, useWindowWidth } from '../hooks/useMediaQuery'
 
+// --- Measure text width using canvas (synchronous, no DOM mutation) ---
+let _measureCanvas: HTMLCanvasElement | null = null
+function measureTextWidth(text: string, fontSize: number): number {
+  if (typeof document === 'undefined') return text.length * fontSize * 0.6
+  if (!_measureCanvas) _measureCanvas = document.createElement('canvas')
+  const ctx = _measureCanvas.getContext('2d')
+  if (!ctx) return text.length * fontSize * 0.6
+  ctx.font = `700 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+  return ctx.measureText(text).width
+}
+
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
 
@@ -292,12 +303,14 @@ function CategoryNavLabel({
   topicId,
   onHoverChange,
   isWide,
+  fontSize: labelFontSize = 15,
 }: {
   allCategories: Array<{ key: string | null; name: string; color: string }>
   currentCategoryKey: string | null
   topicId: number
   onHoverChange?: (hovered: boolean) => void
   isWide: boolean
+  fontSize?: number
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -352,7 +365,7 @@ function CategoryNavLabel({
         display: 'inline-block',
         background: displayed.color,
         color: '#fff',
-        fontSize: 15,
+        fontSize: labelFontSize,
         fontWeight: 700,
         padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
@@ -387,7 +400,7 @@ function CategoryNavLabel({
           gap: 4,
           background: displayed.color,
           color: '#fff',
-          fontSize: 15,
+          fontSize: labelFontSize,
           fontWeight: 700,
           padding: '4px 10px',
           borderRadius: 'var(--radius-sm)',
@@ -400,7 +413,7 @@ function CategoryNavLabel({
         }}
       >
         {displayed.name}
-        <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
+        <span style={{ fontSize: Math.round(labelFontSize * 0.67), opacity: 0.6 }}>&#9662;</span>
       </div>
 
       {/* Cascading menu — current category pinned to top */}
@@ -433,7 +446,7 @@ function CategoryNavLabel({
                   gap: 4,
                   background: cat.color,
                   color: '#fff',
-                  fontSize: 15,
+                  fontSize: labelFontSize,
                   fontWeight: 700,
                   padding: '4px 10px',
                   borderRadius: 'var(--radius-sm)',
@@ -446,7 +459,7 @@ function CategoryNavLabel({
                   animation: `catCascadeIn 0.2s ease ${dist * 0.05}s both`,
                 } as React.CSSProperties}
               >
-                {isCurrent && <span style={{ fontSize: 8 }}>&#9679;</span>}
+                {isCurrent && <span style={{ fontSize: Math.round(labelFontSize * 0.53) }}>&#9679;</span>}
                 {cat.name}
               </div>
             )
@@ -496,8 +509,6 @@ function TopicSection({
   const feedInnerWidth = panelWidth - 56 // subtract padding (40 + 16)
   const contentWidth = Math.min(600, feedInnerWidth)
   const availableLeftSpace = 40 + Math.max(0, (feedInnerWidth - contentWidth) / 2)
-  // Use margin labels only when enough space for label + clear visible gap
-  const useMarginLabels = isWide && availableLeftSpace >= 80
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)
@@ -523,6 +534,41 @@ function TopicSection({
     }
     return list
   }, [tweetsByCategory, ogTweet])
+
+  // Measure widest label at base font size (15px) and scale down to fit margin
+  const BASE_FONT = 15
+  const MIN_FONT = 10
+  const LABEL_PAD = 34 // padding (10*2) + arrow + gap
+  const maxLabelWidth = useMemo(() => {
+    if (!allCategoryList.length) return 0
+    return Math.max(...allCategoryList.map(c => measureTextWidth(c.name, BASE_FONT) + LABEL_PAD))
+  }, [allCategoryList])
+
+  const marginGap = 8 // gap between label right edge and content left edge
+  const maxAvailableForLabel = availableLeftSpace - marginGap
+  let labelFontSize = BASE_FONT
+  if (maxLabelWidth > maxAvailableForLabel && maxLabelWidth > 0) {
+    // Scale proportionally: text shrinks, padding stays fixed
+    const textOnly = maxLabelWidth - LABEL_PAD
+    const targetTextWidth = maxAvailableForLabel - LABEL_PAD
+    if (targetTextWidth > 0 && textOnly > 0) {
+      labelFontSize = Math.round(BASE_FONT * targetTextWidth / textOnly)
+    } else {
+      labelFontSize = MIN_FONT - 1 // force inline mode
+    }
+    labelFontSize = Math.max(MIN_FONT, Math.min(BASE_FONT, labelFontSize))
+  }
+
+  // Verify the widest label at the clamped font size actually fits
+  const maxLabelWidthAtScaled = useMemo(() => {
+    if (!allCategoryList.length || labelFontSize >= BASE_FONT) return 0
+    return Math.max(...allCategoryList.map(c => measureTextWidth(c.name, labelFontSize) + LABEL_PAD))
+  }, [allCategoryList, labelFontSize])
+
+  const labelStillClipped = labelFontSize < BASE_FONT && maxLabelWidthAtScaled > maxAvailableForLabel
+
+  // Use margin labels when wide enough AND font stays readable AND label actually fits
+  const useMarginLabels = isWide && labelFontSize >= MIN_FONT && maxAvailableForLabel >= 50 && !labelStillClipped
 
   const { setNodeRef, isOver } = useDroppable({
     id: `droppable-topic-${topicId}`,
@@ -715,6 +761,7 @@ function TopicSection({
                       topicId={topicId}
                       onHoverChange={setLabelHovered}
                       isWide={useMarginLabels}
+                      fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
                     />
                   </StickyLabelWrapper>
 
@@ -778,6 +825,7 @@ function TopicSection({
                       topicId={topicId}
                       onHoverChange={setLabelHovered}
                       isWide={useMarginLabels}
+                      fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
                     />
                   </StickyLabelWrapper>
 
