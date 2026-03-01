@@ -207,7 +207,7 @@ export function DailyView() {
               aria-label="Keyboard shortcuts"
               title="Keyboard shortcuts (?)"
             >
-              &#9000;
+              ?
             </button>
             {isAdmin && <button
               onClick={() => setGenPanelOpen(true)}
