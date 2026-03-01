@@ -1,6 +1,8 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.auth import require_admin
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +46,7 @@ TOPIC_COLORS = [
 
 
 @router.post("", response_model=TopicOut, status_code=201)
-async def create_topic(body: TopicCreate, db: AsyncSession = Depends(get_db)):
+async def create_topic(body: TopicCreate, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     color = body.color
     if not color:
         count = (await db.execute(
@@ -82,7 +84,7 @@ async def list_topics(
 
 
 @router.patch("/{topic_id}", response_model=TopicOut)
-async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depends(get_db)):
+async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     topic = await db.get(Topic, topic_id)
     if not topic:
         raise HTTPException(404, "Topic not found")
@@ -149,7 +151,7 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
 
 
 @router.post("/fix-title-case", status_code=200)
-async def fix_all_title_case(db: AsyncSession = Depends(get_db)):
+async def fix_all_title_case(db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     """One-time: apply title case to all existing topics."""
     result = await db.execute(select(Topic))
     topics = result.scalars().all()
@@ -164,7 +166,7 @@ async def fix_all_title_case(db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/{topic_id}", status_code=204)
-async def delete_topic(topic_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_topic(topic_id: int, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     topic = await db.get(Topic, topic_id)
     if not topic:
         raise HTTPException(404, "Topic not found")

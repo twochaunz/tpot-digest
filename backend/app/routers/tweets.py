@@ -3,6 +3,8 @@ from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.auth import require_admin
 from fastapi.responses import JSONResponse
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,7 +82,7 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
 
 
 @router.post("", status_code=201)
-async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db)):
+async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     existing = (await db.execute(
         select(Tweet).where(Tweet.tweet_id == body.tweet_id)
     )).scalar_one_or_none()
@@ -170,7 +172,7 @@ async def list_tweets(
 
 
 @router.delete("/{tweet_id}", status_code=204)
-async def delete_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_tweet(tweet_id: int, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     tweet = await db.get(Tweet, tweet_id)
     if not tweet:
         raise HTTPException(404, "Tweet not found")
@@ -179,7 +181,7 @@ async def delete_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/{tweet_id}", response_model=TweetOut)
-async def update_tweet(tweet_id: int, body: TweetUpdate, db: AsyncSession = Depends(get_db)):
+async def update_tweet(tweet_id: int, body: TweetUpdate, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     tweet = await db.get(Tweet, tweet_id)
     if not tweet:
         raise HTTPException(404, "Tweet not found")
@@ -195,6 +197,7 @@ async def fetch_grok(
     tweet_id: int,
     force: bool = Query(False),
     db: AsyncSession = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     tweet = await db.get(Tweet, tweet_id)
     if not tweet:
@@ -217,7 +220,7 @@ async def fetch_grok(
 
 
 @router.post("/{tweet_id}/refetch", response_model=TweetOut)
-async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
+async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     tweet = await db.get(Tweet, tweet_id)
     if not tweet:
         raise HTTPException(404, "Tweet not found")
@@ -251,7 +254,7 @@ async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/refetch-all", status_code=200)
-async def refetch_all_tweets(db: AsyncSession = Depends(get_db)):
+async def refetch_all_tweets(db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     """Refetch all tweets from X API to update text/engagement/media."""
     import asyncio
     from app.services.x_api import fetch_tweet, XAPIError
@@ -300,7 +303,7 @@ async def check_saved(body: TweetCheckRequest, db: AsyncSession = Depends(get_db
 
 
 @router.post("/assign", status_code=200)
-async def assign_tweets(body: TweetAssignRequest, db: AsyncSession = Depends(get_db)):
+async def assign_tweets(body: TweetAssignRequest, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     tweets_to_categorize: list[int] = []
     for tid in body.tweet_ids:
         existing = (await db.execute(
@@ -334,7 +337,7 @@ async def assign_tweets(body: TweetAssignRequest, db: AsyncSession = Depends(get
 
 
 @router.post("/unassign", status_code=200)
-async def unassign_tweets(body: TweetUnassignRequest, db: AsyncSession = Depends(get_db)):
+async def unassign_tweets(body: TweetUnassignRequest, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     for tid in body.tweet_ids:
         existing = (await db.execute(
             select(TweetAssignment).where(
