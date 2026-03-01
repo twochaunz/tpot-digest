@@ -123,7 +123,7 @@ async def admin_login(
 
     # Set signed cookie
     cookie_value = _make_cookie_value(secret)
-    is_https = request.url.scheme == "https"
+    is_https = request.headers.get("x-forwarded-proto") == "https" or request.url.scheme == "https"
     response.set_cookie(
         key=_COOKIE_NAME,
         value=cookie_value,

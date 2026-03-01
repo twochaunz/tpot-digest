@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
       backendUrl: backendUrl.value.trim() || "http://localhost:8000",
       authUser: authUser.value.trim(),
       authPass: authPass.value,
-      adminKey: adminKey.value,
+      adminKey: adminKey.value.trim(),
     }, () => {
       feedback.textContent = "Saved!";
       feedback.style.color = "#22c55e";
