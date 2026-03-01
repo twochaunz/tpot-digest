@@ -223,9 +223,10 @@ function CategoryNavLabel({
   const [isHovered, setIsHovered] = useState(false)
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const currentIndex = Math.max(0, allCategories.findIndex(c => c.key === currentCategoryKey))
-  const displayed = allCategories[currentIndex] || allCategories[0]
-  if (!displayed) return null
+  const foundIndex = allCategories.findIndex(c => c.key === currentCategoryKey)
+  if (foundIndex < 0) return null
+  const currentIndex = foundIndex
+  const displayed = allCategories[currentIndex]
 
   useEffect(() => {
     return () => { if (leaveTimer.current) clearTimeout(leaveTimer.current) }
@@ -403,10 +404,14 @@ function TopicSection({
 
   const allCategoryList = useMemo(() => {
     const list: Array<{ key: string | null; name: string; color: string }> = []
+    const seen = new Set<string | null>()
     if (ogTweet) {
       list.push({ key: 'og', name: 'og', color: '#F59E0B' })
+      seen.add('og')
     }
     for (const [key, group] of tweetsByCategory.entries()) {
+      if (seen.has(key)) continue
+      seen.add(key)
       list.push({
         key,
         name: group.category?.name || 'Uncategorized',
