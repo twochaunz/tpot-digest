@@ -391,25 +391,11 @@ function TopicSection({
 
       </div>
 
-      {/* Gradient fade below header — hides category labels as they scroll up */}
-      {!collapsed && (
-        <div style={{
-          position: 'sticky',
-          top: 51,
-          zIndex: 5,
-          height: 24,
-          marginBottom: -24,
-          background: 'linear-gradient(to bottom, var(--bg-raised), transparent)',
-          pointerEvents: 'none',
-        }} />
-      )}
-
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
         <div ref={setNodeRef} style={{
           padding: '12px 8px',
           minHeight: 60,
-          overflow: 'visible',
         }}>
             <>
               {totalTweets === 0 && (
@@ -503,11 +489,10 @@ function TopicSection({
                   <div
                     style={{
                       position: 'sticky',
-                      top: 60,
+                      top: 52,
                       zIndex: 3,
                       pointerEvents: 'none',
                       height: 0,
-                      overflow: 'visible',
                     }}
                   >
                     <div
@@ -520,7 +505,7 @@ function TopicSection({
                         padding: '4px 10px',
                         borderRadius: 'var(--radius-sm)',
                         letterSpacing: '0.03em',
-                        marginLeft: -24,
+                        marginLeft: -4,
                       }}
                     >
                       {group.category?.name || 'Uncategorized'}
