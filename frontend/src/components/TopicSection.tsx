@@ -319,6 +319,7 @@ function CategoryNavLabel({
         }}
       >
         {displayed.name}
+        <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
       </div>
 
       {/* Cascading menu */}
