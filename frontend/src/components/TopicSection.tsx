@@ -578,6 +578,7 @@ function TopicSection({
         <div ref={setNodeRef} style={{
           padding: '12px 8px',
           minHeight: 60,
+          overflowY: 'clip',
         }}>
             <>
               {totalTweets === 0 && (
