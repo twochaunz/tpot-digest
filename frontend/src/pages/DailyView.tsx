@@ -377,16 +377,13 @@ export function DailyView() {
 }
 
 const SHORTCUTS: [string, string][] = [
+  ['t', 'Table of contents'],
   ['h / \u2190', 'Previous date'],
   ['l / \u2192', 'Next date'],
   ['j / \u2193', 'Next category section'],
   ['k / \u2191', 'Previous category section'],
   ['Enter', 'Next topic'],
   ['Shift + Enter', 'Previous topic'],
-  ['t', 'Toggle table of contents'],
-  ['\u2318K', 'Focus search'],
-  ['Esc', 'Blur search / close overlay'],
-  ['?', 'Toggle this help'],
 ]
 
 function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
