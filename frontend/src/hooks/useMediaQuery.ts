@@ -14,3 +14,18 @@ export function useMinWidth(breakpoint: number): boolean {
 
   return matches
 }
+
+export function useWindowWidth(): number {
+  const [width, setWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  )
+
+  useEffect(() => {
+    const check = () => setWidth(window.innerWidth)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  return width
+}
