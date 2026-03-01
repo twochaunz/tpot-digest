@@ -278,7 +278,7 @@ function CategoryNavLabel({
         padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
-        marginLeft: -24,
+        marginLeft: -28,
         transform: 'translateY(4px)',
       }}>
         {displayed.name}
@@ -293,7 +293,7 @@ function CategoryNavLabel({
       style={{
         position: 'relative',
         display: 'inline-block',
-        marginLeft: -24,
+        marginLeft: -28,
         transform: 'translateY(4px)',
         pointerEvents: 'auto',
       }}
@@ -319,6 +319,7 @@ function CategoryNavLabel({
         }}
       >
         {displayed.name}
+        <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
       </div>
 
       {/* Cascading menu */}
@@ -600,6 +601,7 @@ function TopicSection({
                   style={{
                     position: 'relative',
                     marginBottom: 12,
+                    overflow: 'clip',
                   }}
                 >
                   {/* Sticky OG nav label */}
@@ -673,6 +675,7 @@ function TopicSection({
                   style={{
                     position: 'relative',
                     marginTop: idx > 0 ? 16 : 0,
+                    overflow: 'clip',
                   }}
                 >
                   {/* Sticky category nav label */}
