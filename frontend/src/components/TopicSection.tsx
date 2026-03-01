@@ -278,7 +278,7 @@ function CategoryNavLabel({
         padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
-        marginLeft: -14,
+        marginLeft: -20,
         transform: 'translateY(4px)',
       }}>
         {displayed.name}
@@ -293,33 +293,32 @@ function CategoryNavLabel({
       style={{
         position: 'relative',
         display: 'inline-block',
-        marginLeft: -14,
+        marginLeft: -20,
         transform: 'translateY(4px)',
         pointerEvents: 'auto',
       }}
     >
       {/* Current category label */}
-      {!isHovered && (
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            background: displayed.color,
-            color: '#fff',
-            fontSize: 15,
-            fontWeight: 700,
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-sm)',
-            letterSpacing: '0.03em',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {displayed.name}
-          <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
-        </div>
-      )}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          background: displayed.color,
+          color: '#fff',
+          fontSize: 15,
+          fontWeight: 700,
+          padding: '4px 10px',
+          borderRadius: 'var(--radius-sm)',
+          letterSpacing: '0.03em',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          visibility: isHovered ? 'hidden' : 'visible',
+        }}
+      >
+        {displayed.name}
+        <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
+      </div>
 
       {/* Cascading menu */}
       {isHovered && (
