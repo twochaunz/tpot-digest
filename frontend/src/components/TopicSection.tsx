@@ -26,51 +26,57 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
-      <div style={{ marginTop: 10 }}>
-        <div style={{ height: 1, background: 'var(--border)' }} />
-      </div>
       <div
-        onClick={() => setCollapsed((v) => !v)}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          userSelect: 'none',
-          padding: '10px 12px',
+          marginTop: 12,
+          border: '1px solid rgba(139, 92, 246, 0.25)',
+          borderRadius: 'var(--radius-md)',
+          background: 'rgba(139, 92, 246, 0.06)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.5)',
-            transition: 'transform 0.15s ease',
-            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-          }}>&#9660;</span>
-          <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: 'rgba(255,255,255,0.5)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}>
-            Context
-          </span>
-        </div>
-        <GrokRefreshButton tweetId={tweetId} />
-      </div>
-      {!collapsed && (
-        <div style={{
-          padding: '0 12px 12px',
-          fontSize: 14,
-          color: 'var(--text-primary)',
-          lineHeight: 1.6,
-        }}
-          className="grok-context-md"
+        <div
+          onClick={() => setCollapsed((v) => !v)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            userSelect: 'none',
+            padding: '10px 12px',
+          }}
         >
-          <Markdown remarkPlugins={[remarkGfm]}>{context}</Markdown>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              fontSize: 10,
+              color: 'rgba(139, 92, 246, 0.7)',
+              transition: 'transform 0.15s ease',
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            }}>&#9660;</span>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'rgba(139, 92, 246, 0.8)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}>
+              Context
+            </span>
+          </div>
+          <GrokRefreshButton tweetId={tweetId} />
         </div>
-      )}
+        {!collapsed && (
+          <div style={{
+            padding: '0 12px 12px',
+            fontSize: 14,
+            color: 'var(--text-primary)',
+            lineHeight: 1.6,
+          }}
+            className="grok-context-md"
+          >
+            <Markdown remarkPlugins={[remarkGfm]}>{context}</Markdown>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
