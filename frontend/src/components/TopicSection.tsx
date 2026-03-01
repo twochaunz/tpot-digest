@@ -278,7 +278,7 @@ function CategoryNavLabel({
         padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
-        marginLeft: -32,
+        marginLeft: -28,
         transform: 'translateY(4px)',
       }}>
         {displayed.name}
@@ -293,7 +293,7 @@ function CategoryNavLabel({
       style={{
         position: 'relative',
         display: 'inline-block',
-        marginLeft: -32,
+        marginLeft: -28,
         transform: 'translateY(4px)',
         pointerEvents: 'auto',
       }}
@@ -359,7 +359,6 @@ function CategoryNavLabel({
                   animation: `catCascadeIn 0.2s ease ${dist * 0.05}s both`,
                 } as React.CSSProperties}
               >
-                {cat.key === currentCategoryKey && <span style={{ fontSize: 8 }}>●</span>}
                 {cat.name}
               </div>
             )
