@@ -207,7 +207,7 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   )
 })
 
-// --- Category nav label with rotation and cascade ---
+// --- Category nav label with cascade on hover ---
 
 function CategoryNavLabel({
   allCategories,
@@ -221,33 +221,15 @@ function CategoryNavLabel({
   onHoverChange?: (hovered: boolean) => void
 }) {
   const [isHovered, setIsHovered] = useState(false)
-  const [displayIndex, setDisplayIndex] = useState(0)
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentIndex = Math.max(0, allCategories.findIndex(c => c.key === currentCategoryKey))
+  const displayed = allCategories[currentIndex] || allCategories[0]
+  if (!displayed) return null
 
-  // Rotate through categories when not hovered
-  useEffect(() => {
-    if (isHovered || allCategories.length <= 1) return
-    setDisplayIndex(currentIndex)
-    const timer = setInterval(() => {
-      setDisplayIndex(prev => (prev + 1) % allCategories.length)
-    }, 2500)
-    return () => clearInterval(timer)
-  }, [isHovered, allCategories.length, currentIndex])
-
-  // Reset display when unhovered
-  useEffect(() => {
-    if (!isHovered) setDisplayIndex(currentIndex)
-  }, [isHovered, currentIndex])
-
-  // Cleanup leave timer
   useEffect(() => {
     return () => { if (leaveTimer.current) clearTimeout(leaveTimer.current) }
   }, [])
-
-  const displayed = allCategories[displayIndex] || allCategories[0]
-  if (!displayed) return null
 
   const ITEM_H = 24
   const GAP = 3
@@ -283,7 +265,7 @@ function CategoryNavLabel({
     setHover(false)
   }
 
-  // Single category - static label, no rotation needed
+  // Single category - static label
   if (allCategories.length <= 1) {
     return (
       <div style={{
@@ -315,28 +297,28 @@ function CategoryNavLabel({
         pointerEvents: 'auto',
       }}
     >
-      {/* Single rotating label */}
-      <div
-        key={displayIndex}
-        style={{
-          display: isHovered ? 'none' : 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          background: displayed.color,
-          color: '#fff',
-          fontSize: 11,
-          fontWeight: 700,
-          padding: '3px 8px',
-          borderRadius: 'var(--radius-sm)',
-          letterSpacing: '0.03em',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          animation: 'catLabelRotate 0.35s ease',
-        }}
-      >
-        {displayed.name}
-        <span style={{ fontSize: 8, opacity: 0.6 }}>&#9662;</span>
-      </div>
+      {/* Current category label */}
+      {!isHovered && (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: displayed.color,
+            color: '#fff',
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '3px 8px',
+            borderRadius: 'var(--radius-sm)',
+            letterSpacing: '0.03em',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {displayed.name}
+          <span style={{ fontSize: 8, opacity: 0.6 }}>&#9662;</span>
+        </div>
+      )}
 
       {/* Cascading menu */}
       {isHovered && (
