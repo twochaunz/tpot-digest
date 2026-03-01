@@ -403,21 +403,21 @@ function CategoryNavLabel({
         <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
       </div>
 
-      {/* Cascading menu */}
+      {/* Cascading menu — current category pinned to top */}
       {isHovered && (
         <div style={{
           position: 'absolute',
           ...(isWide ? { right: 0 } : { left: 0 }),
-          top: -(currentIndex * STEP),
+          top: 0,
           display: 'flex',
           flexDirection: 'column',
           gap: GAP,
           zIndex: 20,
         }}>
-          {allCategories.map((cat, idx) => {
-            const dist = Math.abs(idx - currentIndex)
-            const fromY = (currentIndex - idx) * STEP
-            const isCurrent = idx === currentIndex
+          {[allCategories[currentIndex], ...allCategories.filter((_, i) => i !== currentIndex)].map((cat, idx) => {
+            const dist = idx
+            const fromY = -idx * STEP
+            const isCurrent = idx === 0
             return (
               <div
                 key={cat.key ?? 'uncat'}
