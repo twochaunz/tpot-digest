@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, memo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -207,6 +207,186 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   )
 })
 
+// --- Category nav label with rotation and cascade ---
+
+function CategoryNavLabel({
+  allCategories,
+  currentCategoryKey,
+  topicId,
+  onHoverChange,
+}: {
+  allCategories: Array<{ key: string | null; name: string; color: string }>
+  currentCategoryKey: string | null
+  topicId: number
+  onHoverChange?: (hovered: boolean) => void
+}) {
+  const [isHovered, setIsHovered] = useState(false)
+  const [displayIndex, setDisplayIndex] = useState(0)
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const currentIndex = Math.max(0, allCategories.findIndex(c => c.key === currentCategoryKey))
+
+  // Rotate through categories when not hovered
+  useEffect(() => {
+    if (isHovered || allCategories.length <= 1) return
+    setDisplayIndex(currentIndex)
+    const timer = setInterval(() => {
+      setDisplayIndex(prev => (prev + 1) % allCategories.length)
+    }, 2500)
+    return () => clearInterval(timer)
+  }, [isHovered, allCategories.length, currentIndex])
+
+  // Reset display when unhovered
+  useEffect(() => {
+    if (!isHovered) setDisplayIndex(currentIndex)
+  }, [isHovered, currentIndex])
+
+  // Cleanup leave timer
+  useEffect(() => {
+    return () => { if (leaveTimer.current) clearTimeout(leaveTimer.current) }
+  }, [])
+
+  const displayed = allCategories[displayIndex] || allCategories[0]
+  if (!displayed) return null
+
+  const ITEM_H = 24
+  const GAP = 3
+  const STEP = ITEM_H + GAP
+
+  const setHover = (val: boolean) => {
+    setIsHovered(val)
+    onHoverChange?.(val)
+  }
+
+  const handleEnter = () => {
+    if (leaveTimer.current) { clearTimeout(leaveTimer.current); leaveTimer.current = null }
+    setHover(true)
+  }
+
+  const handleLeave = () => {
+    leaveTimer.current = setTimeout(() => setHover(false), 150)
+  }
+
+  const handleNav = (catKey: string | null) => {
+    const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    if (!feedPanel) return
+    const el = feedPanel.querySelector<HTMLElement>(`#toc-cat-${topicId}-${catKey ?? 'uncategorized'}`)
+    if (!el) return
+    const panelTop = feedPanel.getBoundingClientRect().top
+    const topic = el.closest<HTMLElement>('[id^="toc-topic-"]')
+    const header = topic?.querySelector<HTMLElement>(':scope > div')
+    const off = header ? header.offsetHeight : 0
+    feedPanel.scrollTo({
+      top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelTop - off,
+      behavior: 'smooth',
+    })
+    setHover(false)
+  }
+
+  // Single category - static label, no rotation needed
+  if (allCategories.length <= 1) {
+    return (
+      <div style={{
+        display: 'inline-block',
+        background: displayed.color,
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: 700,
+        padding: '3px 8px',
+        borderRadius: 'var(--radius-sm)',
+        letterSpacing: '0.03em',
+        marginLeft: 4,
+        transform: 'translateY(-50%)',
+      }}>
+        {displayed.name}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      style={{
+        position: 'relative',
+        display: 'inline-block',
+        marginLeft: 4,
+        transform: 'translateY(-50%)',
+        pointerEvents: 'auto',
+      }}
+    >
+      {/* Single rotating label */}
+      <div
+        key={displayIndex}
+        style={{
+          display: isHovered ? 'none' : 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          background: displayed.color,
+          color: '#fff',
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '3px 8px',
+          borderRadius: 'var(--radius-sm)',
+          letterSpacing: '0.03em',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          animation: 'catLabelRotate 0.35s ease',
+        }}
+      >
+        {displayed.name}
+        <span style={{ fontSize: 8, opacity: 0.6 }}>&#9662;</span>
+      </div>
+
+      {/* Cascading menu */}
+      {isHovered && (
+        <div style={{
+          position: 'absolute',
+          left: 0,
+          top: -(currentIndex * STEP),
+          display: 'flex',
+          flexDirection: 'column',
+          gap: GAP,
+          zIndex: 20,
+        }}>
+          {allCategories.map((cat, idx) => {
+            const dist = Math.abs(idx - currentIndex)
+            const fromY = (currentIndex - idx) * STEP
+            const isCurrent = idx === currentIndex
+            return (
+              <div
+                key={cat.key ?? 'uncat'}
+                onClick={(e) => { e.stopPropagation(); handleNav(cat.key) }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: cat.color,
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  letterSpacing: '0.03em',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  height: ITEM_H,
+                  boxSizing: 'border-box',
+                  '--cascade-from': `${fromY}px`,
+                  animation: `catCascadeIn 0.2s ease ${dist * 0.05}s both`,
+                } as React.CSSProperties}
+              >
+                {isCurrent && <span style={{ fontSize: 6 }}>&#9679;</span>}
+                {cat.name}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Presentational component ---
 
 interface TopicSectionProps {
@@ -237,6 +417,14 @@ function TopicSection({
   const [collapsed, setCollapsed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
+  const [labelHovered, setLabelHovered] = useState(false)
+
+  const allCategoryList = useMemo(() =>
+    Array.from(tweetsByCategory.entries()).map(([key, group]) => ({
+      key,
+      name: group.category?.name || 'Uncategorized',
+      color: group.category?.color || '#6B7280',
+    })), [tweetsByCategory])
 
   const { setNodeRef, isOver } = useDroppable({
     id: `droppable-topic-${topicId}`,
@@ -485,32 +673,22 @@ function TopicSection({
                     marginTop: idx > 0 ? 16 : 0,
                   }}
                 >
-                  {/* Sticky category label box */}
+                  {/* Sticky category nav label */}
                   <div
                     style={{
                       position: 'sticky',
                       top: 52,
-                      zIndex: 4,
+                      zIndex: labelHovered ? 10 : 4,
                       pointerEvents: 'none',
                       height: 0,
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'inline-block',
-                        background: group.category?.color || '#6B7280',
-                        color: '#fff',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '3px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        letterSpacing: '0.03em',
-                        marginLeft: 4,
-                        transform: 'translateY(-50%)',
-                      }}
-                    >
-                      {group.category?.name || 'Uncategorized'}
-                    </div>
+                    <CategoryNavLabel
+                      allCategories={allCategoryList}
+                      currentCategoryKey={catKey}
+                      topicId={topicId}
+                      onHoverChange={setLabelHovered}
+                    />
                   </div>
 
                   {/* Tweet cards */}
