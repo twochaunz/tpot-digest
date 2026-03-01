@@ -38,7 +38,7 @@ async function handleSaveTweet(message) {
   console.log("[tpot] Saving tweet to:", url);
   const headers = { "Content-Type": "application/json", ...authHeaders(config) };
   try {
-    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.tweet) });
+    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(message.tweet), signal: AbortSignal.timeout(15000) });
     if (!resp.ok) {
       const text = await resp.text();
       console.error("[tpot] Save failed:", resp.status, text.slice(0, 200));
