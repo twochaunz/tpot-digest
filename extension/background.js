@@ -1,4 +1,4 @@
-const DEFAULT_CONFIG = { backendUrl: "http://localhost:8000", authUser: "", authPass: "" };
+const DEFAULT_CONFIG = { backendUrl: "http://localhost:8000", authUser: "", authPass: "", adminKey: "" };
 
 async function getConfig() {
   return chrome.storage.sync.get(DEFAULT_CONFIG);
@@ -57,7 +57,9 @@ async function handleSaveTweet(message) {
 
 function authHeaders(config) {
   const headers = {};
-  if (config.authUser && config.authPass) {
+  if (config.adminKey) {
+    headers["X-Admin-Key"] = config.adminKey;
+  } else if (config.authUser && config.authPass) {
     headers["Authorization"] = "Basic " + btoa(config.authUser + ":" + config.authPass);
   }
   return headers;
