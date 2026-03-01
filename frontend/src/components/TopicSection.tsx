@@ -278,7 +278,7 @@ function CategoryNavLabel({
         padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
-        marginLeft: -28,
+        marginLeft: -14,
         transform: 'translateY(4px)',
       }}>
         {displayed.name}
@@ -293,34 +293,33 @@ function CategoryNavLabel({
       style={{
         position: 'relative',
         display: 'inline-block',
-        marginLeft: -28,
+        marginLeft: -14,
         transform: 'translateY(4px)',
         pointerEvents: 'auto',
       }}
     >
-      {/* Current category label (stays in DOM, hidden on hover to preserve layout) */}
-      <div
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          background: displayed.color,
-          color: '#fff',
-          fontSize: 15,
-          fontWeight: 700,
-          padding: '4px 10px',
-          borderRadius: 'var(--radius-sm)',
-          letterSpacing: '0.03em',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          height: ITEM_H,
-          boxSizing: 'border-box',
-          visibility: isHovered ? 'hidden' : 'visible',
-        }}
-      >
-        {displayed.name}
-        <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
-      </div>
+      {/* Current category label */}
+      {!isHovered && (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: displayed.color,
+            color: '#fff',
+            fontSize: 15,
+            fontWeight: 700,
+            padding: '4px 10px',
+            borderRadius: 'var(--radius-sm)',
+            letterSpacing: '0.03em',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {displayed.name}
+          <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
+        </div>
+      )}
 
       {/* Cascading menu */}
       {isHovered && (
@@ -336,6 +335,7 @@ function CategoryNavLabel({
           {allCategories.map((cat, idx) => {
             const dist = Math.abs(idx - currentIndex)
             const fromY = (currentIndex - idx) * STEP
+            const isCurrent = idx === currentIndex
             return (
               <div
                 key={cat.key ?? 'uncat'}
@@ -359,6 +359,7 @@ function CategoryNavLabel({
                   animation: `catCascadeIn 0.2s ease ${dist * 0.05}s both`,
                 } as React.CSSProperties}
               >
+                {isCurrent && <span style={{ fontSize: 8 }}>&#9679;</span>}
                 {cat.name}
               </div>
             )
@@ -578,7 +579,6 @@ function TopicSection({
         <div ref={setNodeRef} style={{
           padding: '12px 8px',
           minHeight: 60,
-          overflowY: 'clip',
         }}>
             <>
               {totalTweets === 0 && (
