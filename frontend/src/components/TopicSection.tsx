@@ -228,18 +228,19 @@ function StickyLabelWrapper({
   children,
   stickyTop,
   useMarginLabels,
-  labelHovered,
+  isElevated,
 }: {
   children: React.ReactNode
   stickyTop: number
   useMarginLabels: boolean
-  labelHovered: boolean
+  isElevated: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [parked, setParked] = useState(false)
+  const [fadeOut, setFadeOut] = useState(false)
 
   useEffect(() => {
-    if (!useMarginLabels) { setParked(false); return }
+    if (!useMarginLabels) { setParked(false); setFadeOut(false); return }
     const el = ref.current
     if (!el) return
     const section = el.parentElement
@@ -250,6 +251,7 @@ function StickyLabelWrapper({
 
     const LABEL_H = 28
     let currentlyParked = false
+    let currentlyFaded = false
 
     const onScroll = () => {
       const feedTop = feed.getBoundingClientRect().top
@@ -260,10 +262,16 @@ function StickyLabelWrapper({
       // Park when section bottom reaches the label's bottom edge,
       // but only if the section top has scrolled past the sticky threshold
       const shouldPark = relBottom <= stickyTop + LABEL_H && relTop < stickyTop
+      // Fade out when parked label would overlap with the topic header area
+      const shouldFade = shouldPark && relBottom <= stickyTop + LABEL_H * 0.5
 
       if (shouldPark !== currentlyParked) {
         currentlyParked = shouldPark
         setParked(shouldPark)
+      }
+      if (shouldFade !== currentlyFaded) {
+        currentlyFaded = shouldFade
+        setFadeOut(shouldFade)
       }
     }
 
@@ -280,12 +288,14 @@ function StickyLabelWrapper({
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: labelHovered ? 10 : 4,
+        zIndex: isElevated ? 10 : 4,
         pointerEvents: 'none',
+        opacity: fadeOut ? 0 : 1,
+        transition: 'opacity 0.15s ease',
       } : {
         position: 'sticky',
         top: stickyTop,
-        zIndex: labelHovered ? 10 : 4,
+        zIndex: isElevated ? 10 : 4,
         pointerEvents: 'none',
         marginBottom: useMarginLabels ? -28 : 8,
       }}
@@ -514,7 +524,7 @@ function TopicSection({
   const [collapsed, setCollapsed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
-  const [labelHovered, setLabelHovered] = useState(false)
+  const [hoveredCatKey, setHoveredCatKey] = useState<string | null>(null)
 
   const allCategoryList = useMemo(() => {
     const list: Array<{ key: string | null; name: string; color: string }> = []
@@ -754,12 +764,12 @@ function TopicSection({
                   }}
                 >
                   {/* Sticky OG nav label */}
-                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} labelHovered={labelHovered}>
+                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === 'og'}>
                     <CategoryNavLabel
                       allCategories={allCategoryList}
                       currentCategoryKey="og"
                       topicId={topicId}
-                      onHoverChange={setLabelHovered}
+                      onHoverChange={(h) => setHoveredCatKey(h ? 'og' : null)}
                       isWide={useMarginLabels}
                       fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
                     />
@@ -818,12 +828,12 @@ function TopicSection({
                   }}
                 >
                   {/* Sticky category nav label */}
-                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} labelHovered={labelHovered}>
+                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === catKey}>
                     <CategoryNavLabel
                       allCategories={allCategoryList}
                       currentCategoryKey={catKey}
                       topicId={topicId}
-                      onHoverChange={setLabelHovered}
+                      onHoverChange={(h) => setHoveredCatKey(h ? catKey : null)}
                       isWide={useMarginLabels}
                       fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
                     />
