@@ -8,6 +8,7 @@ import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
 import { useAuth } from '../contexts/AuthContext'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
@@ -214,11 +215,13 @@ function CategoryNavLabel({
   currentCategoryKey,
   topicId,
   onHoverChange,
+  isWide,
 }: {
   allCategories: Array<{ key: string | null; name: string; color: string }>
   currentCategoryKey: string | null
   topicId: number
   onHoverChange?: (hovered: boolean) => void
+  isWide: boolean
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -268,7 +271,7 @@ function CategoryNavLabel({
 
   // Single category - static label
   if (allCategories.length <= 1) {
-    return (
+    const labelDiv = (
       <div style={{
         display: 'inline-block',
         background: displayed.color,
@@ -278,23 +281,25 @@ function CategoryNavLabel({
         padding: '4px 10px',
         borderRadius: 'var(--radius-sm)',
         letterSpacing: '0.03em',
-        marginLeft: -30,
-        transform: 'translateY(4px)',
+        transform: isWide ? 'translateX(calc(-100% - 8px)) translateY(4px)' : undefined,
       }}>
         {displayed.name}
       </div>
     )
+    if (isWide) {
+      return <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>{labelDiv}</div>
+    }
+    return labelDiv
   }
 
-  return (
+  const outerDiv = (
     <div
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
       style={{
         position: 'relative',
         display: 'inline-block',
-        marginLeft: -30,
-        transform: 'translateY(4px)',
+        transform: isWide ? 'translateX(calc(-100% - 8px)) translateY(4px)' : undefined,
         pointerEvents: 'auto',
       }}
     >
@@ -369,6 +374,11 @@ function CategoryNavLabel({
       )}
     </div>
   )
+
+  if (isWide) {
+    return <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>{outerDiv}</div>
+  }
+  return outerDiv
 }
 
 // --- Presentational component ---
@@ -396,6 +406,7 @@ function TopicSection({
   onTopicContextMenu,
   isAdmin = true,
 }: TopicSectionProps) {
+  const isWide = useMediaQuery('(min-width: 900px)')
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)
@@ -612,7 +623,8 @@ function TopicSection({
                       top: 52,
                       zIndex: labelHovered ? 10 : 4,
                       pointerEvents: 'none',
-                      height: 0,
+                      height: isWide ? 0 : undefined,
+                      marginBottom: isWide ? 0 : 8,
                     }}
                   >
                     <CategoryNavLabel
@@ -620,6 +632,7 @@ function TopicSection({
                       currentCategoryKey="og"
                       topicId={topicId}
                       onHoverChange={setLabelHovered}
+                      isWide={isWide}
                     />
                   </div>
 
@@ -685,7 +698,8 @@ function TopicSection({
                       top: 52,
                       zIndex: labelHovered ? 10 : 4,
                       pointerEvents: 'none',
-                      height: 0,
+                      height: isWide ? 0 : undefined,
+                      marginBottom: isWide ? 0 : 8,
                     }}
                   >
                     <CategoryNavLabel
@@ -693,6 +707,7 @@ function TopicSection({
                       currentCategoryKey={catKey}
                       topicId={topicId}
                       onHoverChange={setLabelHovered}
+                      isWide={isWide}
                     />
                   </div>
 
