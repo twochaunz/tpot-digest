@@ -209,3 +209,42 @@ async def test_tampered_cookie_returns_viewer(client: AsyncClient):
         )
     assert resp.status_code == 200
     assert resp.json() == {"role": "viewer"}
+
+
+# --- require_admin on mutation endpoints ---
+
+
+@pytest.mark.asyncio
+async def test_save_tweet_requires_admin(client: AsyncClient):
+    """POST /api/tweets returns 403 without admin auth."""
+    with patch("app.auth.settings") as mock_settings:
+        mock_settings.admin_secret = "test-secret"
+        resp = await client.post("/api/tweets", json={"tweet_id": "123"})
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_delete_topic_requires_admin(client: AsyncClient):
+    """DELETE /api/topics/{id} returns 403 without admin auth."""
+    with patch("app.auth.settings") as mock_settings:
+        mock_settings.admin_secret = "test-secret"
+        resp = await client.delete("/api/topics/1")
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_get_tweets_public(client: AsyncClient):
+    """GET /api/tweets is public (no admin required)."""
+    with patch("app.auth.settings") as mock_settings:
+        mock_settings.admin_secret = "test-secret"
+        resp = await client.get("/api/tweets")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_check_saved_public(client: AsyncClient):
+    """POST /api/tweets/check is public (read-only operation)."""
+    with patch("app.auth.settings") as mock_settings:
+        mock_settings.admin_secret = "test-secret"
+        resp = await client.post("/api/tweets/check", json={"tweet_ids": []})
+    assert resp.status_code == 200

@@ -1,6 +1,8 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
+
+from app.auth import require_admin
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,6 +84,7 @@ async def generate_topic_script(
     topic_id: int,
     body: ScriptGenerateRequest,
     db: AsyncSession = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     # Fetch Grok context for tweets if requested
     if body.fetch_grok_context:
@@ -193,6 +196,7 @@ async def update_script_content(
     topic_id: int,
     body: ScriptContentUpdate,
     db: AsyncSession = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     script = (await db.execute(
         select(TopicScript)
@@ -226,6 +230,7 @@ async def generate_day_scripts(
     date: date,
     body: DayScriptGenerateRequest,
     db: AsyncSession = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     topics = (await db.execute(
         select(Topic).where(Topic.date == date).order_by(Topic.position)
