@@ -466,6 +466,7 @@ function TopicSection({
           gap: 8,
           padding: '14px 20px',
           borderBottom: collapsed ? 'none' : '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
           cursor: 'pointer',
           position: 'sticky' as const,
           top: 0,
