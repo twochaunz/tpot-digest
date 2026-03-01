@@ -1,8 +1,7 @@
 import './styles/design-system.css'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './contexts/AuthContext'
-import { LandingPage } from './pages/LandingPage'
 import { DailyView } from './pages/DailyView'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -22,7 +21,7 @@ export function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<Navigate to="/app" replace />} />
             <Route path="/app" element={<DailyView />} />
             <Route path="/app/:dateStr" element={<DailyView />} />
             <Route path="/app/:dateStr/:topicNum" element={<DailyView />} />
