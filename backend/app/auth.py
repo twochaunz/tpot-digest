@@ -32,7 +32,7 @@ def _check_rate_limit(ip: str) -> bool:
 
 # --- HMAC cookie signing ---
 
-_COOKIE_NAME = "admin_token"
+_COOKIE_NAME = "tpot_admin"
 _COOKIE_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
 
 
@@ -88,14 +88,14 @@ def is_admin(
 
 async def require_admin(
     request: Request,
-    admin_token: str | None = Cookie(default=None),
+    tpot_admin: str | None = Cookie(default=None),
     x_admin_key: str | None = Header(default=None),
 ):
     """FastAPI dependency that requires admin access. No-op when admin_secret is empty (dev mode)."""
     if not settings.admin_secret:
         return  # Dev mode: no auth required
 
-    if not is_admin(cookie_value=admin_token, admin_key_header=x_admin_key):
+    if not is_admin(cookie_value=tpot_admin, admin_key_header=x_admin_key):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
@@ -138,11 +138,11 @@ async def admin_login(
 
 @router.get("/me")
 async def me(
-    admin_token: str | None = Cookie(default=None),
+    tpot_admin: str | None = Cookie(default=None),
     x_admin_key: str | None = Header(default=None),
 ):
     """Check current auth status."""
-    if is_admin(cookie_value=admin_token, admin_key_header=x_admin_key):
+    if is_admin(cookie_value=tpot_admin, admin_key_header=x_admin_key):
         return {"role": "admin"}
     return {"role": "viewer"}
 
