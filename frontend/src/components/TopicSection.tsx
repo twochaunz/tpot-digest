@@ -29,9 +29,9 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
       <div
         style={{
           marginTop: 12,
-          border: '1px solid rgba(139, 92, 246, 0.25)',
+          border: '1px solid rgba(245, 158, 11, 0.25)',
           borderRadius: 'var(--radius-md)',
-          background: 'rgba(139, 92, 246, 0.06)',
+          background: 'rgba(245, 158, 11, 0.06)',
         }}
       >
         <div
@@ -48,14 +48,14 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{
               fontSize: 10,
-              color: 'rgba(139, 92, 246, 0.7)',
+              color: 'rgba(245, 158, 11, 0.7)',
               transition: 'transform 0.15s ease',
               transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             }}>&#9660;</span>
             <span style={{
               fontSize: 11,
               fontWeight: 600,
-              color: 'rgba(139, 92, 246, 0.8)',
+              color: 'rgba(245, 158, 11, 0.8)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}>
