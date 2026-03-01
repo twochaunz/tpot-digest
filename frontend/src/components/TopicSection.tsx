@@ -8,7 +8,7 @@ import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
 import { useAuth } from '../contexts/AuthContext'
-import { useMinWidth } from '../hooks/useMediaQuery'
+import { useMinWidth, useWindowWidth } from '../hooks/useMediaQuery'
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
@@ -407,6 +407,16 @@ function TopicSection({
   isAdmin = true,
 }: TopicSectionProps) {
   const isWide = useMinWidth(900)
+  const windowWidth = useWindowWidth()
+  // Calculate available left space for margin labels:
+  // Center carousel panel = 60% of viewport, feed panel padding = 40px left + 16px right
+  // Content is centered at maxWidth 600px
+  const panelWidth = windowWidth * 0.6
+  const feedInnerWidth = panelWidth - 56 // subtract padding (40 + 16)
+  const contentWidth = Math.min(600, feedInnerWidth)
+  const availableLeftSpace = 40 + Math.max(0, (feedInnerWidth - contentWidth) / 2)
+  // Use margin labels only when enough space for label + clear visible gap
+  const useMarginLabels = isWide && availableLeftSpace >= 80
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
   const [collapsed, setCollapsed] = useState(false)
@@ -623,8 +633,8 @@ function TopicSection({
                       top: 52,
                       zIndex: labelHovered ? 10 : 4,
                       pointerEvents: 'none',
-                      height: isWide ? 0 : undefined,
-                      marginBottom: isWide ? 0 : 8,
+                      height: useMarginLabels ? 0 : undefined,
+                      marginBottom: useMarginLabels ? 0 : 8,
                     }}
                   >
                     <CategoryNavLabel
@@ -632,7 +642,7 @@ function TopicSection({
                       currentCategoryKey="og"
                       topicId={topicId}
                       onHoverChange={setLabelHovered}
-                      isWide={isWide}
+                      isWide={useMarginLabels}
                     />
                   </div>
 
@@ -698,8 +708,8 @@ function TopicSection({
                       top: 52,
                       zIndex: labelHovered ? 10 : 4,
                       pointerEvents: 'none',
-                      height: isWide ? 0 : undefined,
-                      marginBottom: isWide ? 0 : 8,
+                      height: useMarginLabels ? 0 : undefined,
+                      marginBottom: useMarginLabels ? 0 : 8,
                     }}
                   >
                     <CategoryNavLabel
@@ -707,7 +717,7 @@ function TopicSection({
                       currentCategoryKey={catKey}
                       topicId={topicId}
                       onHoverChange={setLabelHovered}
-                      isWide={isWide}
+                      isWide={useMarginLabels}
                     />
                   </div>
 
