@@ -298,28 +298,29 @@ function CategoryNavLabel({
         pointerEvents: 'auto',
       }}
     >
-      {/* Current category label */}
-      {!isHovered && (
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            background: displayed.color,
-            color: '#fff',
-            fontSize: 15,
-            fontWeight: 700,
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-sm)',
-            letterSpacing: '0.03em',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {displayed.name}
-          <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
-        </div>
-      )}
+      {/* Current category label (stays in DOM, hidden on hover to preserve layout) */}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          background: displayed.color,
+          color: '#fff',
+          fontSize: 15,
+          fontWeight: 700,
+          padding: '4px 10px',
+          borderRadius: 'var(--radius-sm)',
+          letterSpacing: '0.03em',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          height: ITEM_H,
+          boxSizing: 'border-box',
+          visibility: isHovered ? 'hidden' : 'visible',
+        }}
+      >
+        {displayed.name}
+        <span style={{ fontSize: 10, opacity: 0.6 }}>&#9662;</span>
+      </div>
 
       {/* Cascading menu */}
       {isHovered && (
