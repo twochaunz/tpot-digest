@@ -69,7 +69,7 @@ async def test_valid_key_sets_cookie_and_returns_admin(client: AsyncClient):
     # Check that a cookie was set
     cookie_header = resp.headers.get("set-cookie")
     assert cookie_header is not None
-    assert "admin_token" in cookie_header
+    assert "tpot_admin" in cookie_header
     assert "httponly" in cookie_header.lower()
     assert "samesite=lax" in cookie_header.lower()
 
@@ -114,9 +114,9 @@ async def test_me_with_valid_cookie_returns_admin(client: AsyncClient):
         # Extract cookie from response and send it
         cookie_header = login_resp.headers.get("set-cookie")
         # Parse cookie value
-        cookie_value = cookie_header.split("admin_token=")[1].split(";")[0]
+        cookie_value = cookie_header.split("tpot_admin=")[1].split(";")[0]
 
-        resp = await client.get("/api/auth/me", cookies={"admin_token": cookie_value})
+        resp = await client.get("/api/auth/me", cookies={"tpot_admin": cookie_value})
     assert resp.status_code == 200
     assert resp.json() == {"role": "admin"}
 
@@ -162,9 +162,9 @@ async def test_logout_clears_cookie(client: AsyncClient):
     assert resp.json() == {"role": "viewer"}
     cookie_header = resp.headers.get("set-cookie")
     assert cookie_header is not None
-    assert "admin_token" in cookie_header
+    assert "tpot_admin" in cookie_header
     # Cookie should be cleared (max-age=0 or expires in the past)
-    assert "max-age=0" in cookie_header.lower() or 'admin_token=""' in cookie_header or "admin_token=;" in cookie_header
+    assert "max-age=0" in cookie_header.lower() or 'tpot_admin=""' in cookie_header or "tpot_admin=;" in cookie_header
 
 
 # --- require_admin dependency tests ---
@@ -205,7 +205,7 @@ async def test_tampered_cookie_returns_viewer(client: AsyncClient):
         mock_settings.admin_secret = "my-secret-key"
         resp = await client.get(
             "/api/auth/me",
-            cookies={"admin_token": "admin:12345:tampered_signature"},
+            cookies={"tpot_admin": "admin:12345:tampered_signature"},
         )
     assert resp.status_code == 200
     assert resp.json() == {"role": "viewer"}
