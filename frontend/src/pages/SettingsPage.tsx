@@ -1,7 +1,13 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 export function SettingsPage() {
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
+
+  if (!isAdmin) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Admin access required</div>
+  }
 
   return (
     <div
