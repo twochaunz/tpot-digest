@@ -15,6 +15,8 @@ interface TweetCardProps {
   width?: number | string
   /** When true, renders a minimal card suitable for drag overlays */
   overlay?: boolean
+  /** When true, shows admin-only controls like download */
+  isAdmin?: boolean
 }
 
 function screenshotUrl(path: string | null): string | null {
@@ -62,6 +64,7 @@ export const TweetCard = memo(function TweetCard({
   onDelete,
   width = '100%',
   overlay = false,
+  isAdmin = false,
 }: TweetCardProps) {
   const [hovered, setHovered] = useState(false)
   const cleanRef = useRef<HTMLDivElement>(null)
@@ -246,29 +249,31 @@ export const TweetCard = memo(function TweetCard({
               </button>
             )}
 
-            {/* Download button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDownload()
-              }}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(0,0,0,0.5)',
-                border: 'none',
-                color: '#fff',
-                fontSize: 12,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              title="Download as PNG"
-            >
-              &#8595;
-            </button>
+            {/* Download button (admin only) */}
+            {isAdmin && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDownload()
+                }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(0,0,0,0.5)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="Download as PNG"
+              >
+                &#8595;
+              </button>
+            )}
           </div>
         )}
       </div>

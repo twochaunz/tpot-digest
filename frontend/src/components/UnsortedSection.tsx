@@ -76,6 +76,7 @@ const DraggableFeedTweetCard = memo(function DraggableFeedTweetCard({
         selectable={false}
         onContextMenu={onContextMenu}
         onDelete={isAdmin ? onDelete : undefined}
+        isAdmin={isAdmin}
       />
     </div>
   )

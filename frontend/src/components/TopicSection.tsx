@@ -213,6 +213,7 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
           tweet={tweet}
           selectable={false}
           onContextMenu={onContextMenu}
+          isAdmin={isAdmin}
         />
       </div>
     </div>
@@ -808,7 +809,7 @@ function TopicSection({
                     onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(e, ogTweet) }}
                     style={{ padding: '4px 0 0' }}
                   >
-                    <TweetCard tweet={ogTweet} selectable={false} />
+                    <TweetCard tweet={ogTweet} selectable={false} isAdmin={isAdmin} />
                   </div>
 
                   {/* Grok Context section */}
