@@ -7,6 +7,7 @@ import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
+import { useAuth } from '../contexts/AuthContext'
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
   const [collapsed, setCollapsed] = useState(true)
@@ -63,7 +64,10 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
 }
 
 function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string }) {
+  const { isAdmin } = useAuth()
   const fetchGrok = useFetchGrokContext()
+
+  if (!isAdmin) return null
 
   return (
     <button
