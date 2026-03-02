@@ -93,6 +93,7 @@ export function DailyView() {
       const tag = (e.target as HTMLElement).tagName
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA'
 
+      // These work everywhere (desktop and mobile)
       if ((e.key === 't' || e.key === 'T') && !isInput) {
         e.preventDefault()
         setTocOpen(prev => !prev)
@@ -108,6 +109,9 @@ export function DailyView() {
       if (e.key === 'Escape' && document.activeElement === searchRef.current) {
         searchRef.current?.blur()
       }
+
+      // Skip j/k/Enter navigation on mobile (swipe replaces it)
+      if (isMobile) return
 
       // Up/Down: navigate between category sections
       // Return/Shift+Return: navigate between topic sections
@@ -165,7 +169,7 @@ export function DailyView() {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [isMobile])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300)
