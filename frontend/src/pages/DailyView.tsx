@@ -214,14 +214,14 @@ export function DailyView() {
                   background: 'none',
                   border: '1.5px solid var(--text-tertiary)',
                   borderRadius: '50%',
-                  width: 24,
-                  height: 24,
+                  width: isMobile ? 28 : 30,
+                  height: isMobile ? 28 : 30,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
                   color: 'var(--text-tertiary)',
-                  fontSize: 13,
+                  fontSize: isMobile ? 16 : 18,
                   fontWeight: 700,
                   transition: 'all 0.15s ease',
                 }}
@@ -244,7 +244,7 @@ export function DailyView() {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 color: 'var(--text-tertiary)',
-                fontSize: 16,
+                fontSize: 18,
                 transition: 'all 0.15s ease',
               }}
               aria-label="Generate scripts"
@@ -332,7 +332,7 @@ export function DailyView() {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 color: 'var(--text-tertiary)',
-                fontSize: 16,
+                fontSize: 18,
                 transition: 'all 0.15s ease',
               }}
               aria-label="Settings"
@@ -354,7 +354,7 @@ export function DailyView() {
                   justifyContent: 'center',
                   cursor: 'pointer',
                   color: 'var(--text-tertiary)',
-                  fontSize: 16,
+                  fontSize: 18,
                   transition: 'all 0.15s ease',
                 }}
                 aria-label="Table of Contents"

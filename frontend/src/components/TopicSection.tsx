@@ -681,6 +681,19 @@ function TopicSection({
   const headerRef = useRef<HTMLDivElement>(null)
   const [hoveredCatKey, setHoveredCatKey] = useState<string | null>(null)
   const [headerAtBottom, setHeaderAtBottom] = useState(false)
+  const [headerHeight, setHeaderHeight] = useState(52)
+
+  // Track actual header height for sticky positioning of nav row
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const ro = new ResizeObserver(() => {
+      setHeaderHeight(header.offsetHeight)
+    })
+    ro.observe(header)
+    setHeaderHeight(header.offsetHeight)
+    return () => ro.disconnect()
+  }, [])
 
   // Round header bottom corners when it reaches the bottom of the topic container
   useEffect(() => {
@@ -920,7 +933,7 @@ function TopicSection({
         <NarrowCategoryNavRow
           allCategories={allCategoryList}
           topicId={topicId}
-          stickyTop={52}
+          stickyTop={headerHeight}
         />
       )}
 
@@ -956,7 +969,7 @@ function TopicSection({
                 >
                   {/* Sticky OG nav label */}
                   {useMarginLabels && (
-                    <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === 'og'}>
+                    <StickyLabelWrapper stickyTop={headerHeight} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === 'og'}>
                       <CategoryNavLabel
                         allCategories={allCategoryList}
                         currentCategoryKey="og"
@@ -1022,7 +1035,7 @@ function TopicSection({
                 >
                   {/* Sticky category nav label */}
                   {useMarginLabels && (
-                    <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === catKey}>
+                    <StickyLabelWrapper stickyTop={headerHeight} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === catKey}>
                       <CategoryNavLabel
                         allCategories={allCategoryList}
                         currentCategoryKey={catKey}

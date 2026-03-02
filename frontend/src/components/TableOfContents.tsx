@@ -79,7 +79,7 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         zIndex: 100,
         background: 'rgba(0, 0, 0, 0.7)',
         display: 'flex',
-        alignItems: isMobile ? 'flex-end' : 'center',
+        alignItems: 'center',
         justifyContent: 'center',
       }}
     >
@@ -87,14 +87,12 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         style={{
           background: 'var(--bg-raised)',
           border: '1px solid var(--border)',
-          borderRadius: isMobile
-            ? 'var(--radius-lg) var(--radius-lg) 0 0'
-            : 'var(--radius-lg)',
+          borderRadius: 'var(--radius-lg)',
           padding: '20px 0',
           minWidth: isMobile ? undefined : 360,
-          maxWidth: isMobile ? undefined : 520,
-          width: isMobile ? '100%' : '90vw',
-          maxHeight: isMobile ? '70vh' : '80vh',
+          maxWidth: isMobile ? 400 : 520,
+          width: '90vw',
+          maxHeight: '80vh',
           overflowY: 'auto',
           position: 'relative',
         }}

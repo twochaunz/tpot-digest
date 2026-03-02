@@ -154,6 +154,7 @@ export function DatePicker({ value, onChange, maxDate, compact }: DatePickerProp
         onMouseLeave={() => setHovered(null)}
         style={{
           ...arrowBtn,
+          fontSize: compact ? 16 : 18,
           color: hovered === 'prev' ? 'var(--text-primary)' : 'var(--text-tertiary)',
         }}
         aria-label="Previous day"
@@ -358,6 +359,7 @@ export function DatePicker({ value, onChange, maxDate, compact }: DatePickerProp
         disabled={isAtMax}
         style={{
           ...arrowBtn,
+          fontSize: compact ? 16 : 18,
           color: isAtMax ? 'var(--text-tertiary)' : hovered === 'next' ? 'var(--text-primary)' : 'var(--text-tertiary)',
           cursor: isAtMax ? 'not-allowed' : 'pointer',
           opacity: isAtMax ? 0.4 : 1,
