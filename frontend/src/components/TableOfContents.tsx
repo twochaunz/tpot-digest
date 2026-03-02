@@ -51,7 +51,19 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
     // Small delay so overlay unmounts before scroll
     requestAnimationFrame(() => {
       const el = document.getElementById(id)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (!el) return
+      // Scroll within the feed panel to avoid pushing the page header off screen
+      const feedPanel = el.closest<HTMLElement>('[data-active-feed]')
+        ?? document.querySelector<HTMLElement>('[data-active-feed="true"]')
+      if (feedPanel) {
+        const panelTop = feedPanel.getBoundingClientRect().top
+        feedPanel.scrollTo({
+          top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelTop,
+          behavior: 'smooth',
+        })
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
     })
   }
 
