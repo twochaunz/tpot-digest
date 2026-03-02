@@ -13,6 +13,17 @@ export interface DayBundle {
   unsorted: Tweet[]
 }
 
+export function useLatestDate() {
+  return useQuery<string | null>({
+    queryKey: ['latest-date'],
+    queryFn: async () => {
+      const { data } = await api.get('/days/latest-date')
+      return data.date
+    },
+    staleTime: 60_000,
+  })
+}
+
 export function useDayBundle(date: string) {
   return useQuery<DayBundle>({
     queryKey: ['day-bundle', date],

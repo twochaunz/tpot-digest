@@ -4,6 +4,7 @@ import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
 import { TableOfContents } from '../components/TableOfContents'
 import { useAuth } from '../contexts/AuthContext'
+import { useLatestDate } from '../api/dayBundle'
 
 function todayDateStr(): string {
   const now = new Date()
@@ -46,17 +47,28 @@ export function DailyView() {
   const { dateStr: urlDateStr, topicNum: urlTopicNum } = useParams<{ dateStr?: string; topicNum?: string }>()
   const { isAdmin } = useAuth()
 
+  const { data: latestDate } = useLatestDate()
+  const today = todayDateStr()
+  const maxDate = isAdmin ? today : (latestDate || today)
+
   const initialDate = parseDateParam(urlDateStr) || defaultDateStr()
   const [date, setDateRaw] = useState(initialDate)
-  const today = todayDateStr()
   const pendingTopicNum = useRef<number | null>(urlTopicNum ? parseInt(urlTopicNum, 10) : null)
 
+  // For non-admin: clamp to latest date once it loads
+  useEffect(() => {
+    if (!isAdmin && latestDate && date > latestDate) {
+      setDateRaw(latestDate)
+      navigate(`/app/${toDateParam(latestDate)}`, { replace: true })
+    }
+  }, [isAdmin, latestDate, date, navigate])
+
   const setDate = useCallback((d: string) => {
-    if (d > today) return
+    if (d > maxDate) return
     setDateRaw(d)
     pendingTopicNum.current = null
     navigate(`/app/${toDateParam(d)}`, { replace: true })
-  }, [today, navigate])
+  }, [maxDate, navigate])
   // Sync URL on initial load if no date param was provided
   useEffect(() => {
     if (!urlDateStr) {
@@ -233,7 +245,7 @@ export function DailyView() {
           </div>
 
           {/* Center: date picker */}
-          <DatePicker value={date} onChange={setDate} maxDate={today} />
+          <DatePicker value={date} onChange={setDate} maxDate={maxDate} />
 
           {/* Right: search + settings */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>

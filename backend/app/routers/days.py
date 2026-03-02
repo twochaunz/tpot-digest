@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -19,6 +19,18 @@ def _tweet_out_with_category(tweet: Tweet, category: str | None) -> TweetOut:
     out = TweetOut.model_validate(tweet)
     out.category = category
     return out
+
+
+@router.get("/latest-date")
+async def get_latest_date(db: AsyncSession = Depends(get_db)):
+    """Return the latest date (in LA timezone) that has at least one tweet."""
+    la = ZoneInfo("America/Los_Angeles")
+    result = await db.execute(select(func.max(Tweet.saved_at)))
+    latest = result.scalar_one_or_none()
+    if not latest:
+        return {"date": None}
+    latest_la = latest.astimezone(la)
+    return {"date": latest_la.strftime("%Y-%m-%d")}
 
 
 @router.get("/{day}/bundle", response_model=DayBundle)
