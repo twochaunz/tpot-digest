@@ -8,7 +8,7 @@ import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
 import { useAuth } from '../contexts/AuthContext'
-import { useMinWidth, useWindowWidth } from '../hooks/useMediaQuery'
+import { useMinWidth, useWindowWidth, useIsMobile } from '../hooks/useMediaQuery'
 
 // --- Measure text width using canvas (synchronous, no DOM mutation) ---
 let _measureCanvas: HTMLCanvasElement | null = null
@@ -22,10 +22,11 @@ function measureTextWidth(text: string, fontSize: number): number {
 }
 
 function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
+  const isMobile = useIsMobile()
   const [collapsed, setCollapsed] = useState(true)
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+    <div style={{ maxWidth: isMobile ? undefined : 600, margin: '0 auto', width: '100%' }}>
       <div
         style={{
           marginTop: 12,
@@ -329,6 +330,7 @@ function CategoryNavLabel({
   isWide: boolean
   fontSize?: number
 }) {
+  const isMobile = useIsMobile()
   const [isHovered, setIsHovered] = useState(false)
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -393,7 +395,7 @@ function CategoryNavLabel({
       </div>
     )
     if (isWide) {
-      return <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>{labelDiv}</div>
+      return <div style={{ maxWidth: isMobile ? undefined : 600, margin: '0 auto', width: '100%' }}>{labelDiv}</div>
     }
     return labelDiv
   }
@@ -487,7 +489,7 @@ function CategoryNavLabel({
   )
 
   if (isWide) {
-    return <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>{outerDiv}</div>
+    return <div style={{ maxWidth: isMobile ? undefined : 600, margin: '0 auto', width: '100%' }}>{outerDiv}</div>
   }
   return outerDiv
 }
@@ -659,6 +661,7 @@ function TopicSection({
   onTopicContextMenu,
   isAdmin = true,
 }: TopicSectionProps) {
+  const isMobile = useIsMobile()
   const isWide = useMinWidth(900)
   const windowWidth = useWindowWidth()
   // Calculate available left space for margin labels:
@@ -978,7 +981,7 @@ function TopicSection({
 
                   {/* No context yet - show fetch button */}
                   {!ogTweet.grok_context && (
-                    <div style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+                    <div style={{ maxWidth: isMobile ? undefined : 600, margin: '0 auto', width: '100%' }}>
                       <div style={{ marginTop: 10 }}>
                         <div style={{ height: 1, background: 'var(--border)' }} />
                       </div>

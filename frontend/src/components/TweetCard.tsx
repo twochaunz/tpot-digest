@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { toPng } from 'html-to-image'
 import { Tweet as ReactTweet } from 'react-tweet'
 import type { Tweet } from '../api/tweets'
+import { useIsMobile } from '../hooks/useMediaQuery'
 
 interface TweetCardProps {
   tweet: Tweet
@@ -66,6 +67,7 @@ export const TweetCard = memo(function TweetCard({
   overlay = false,
   isAdmin = false,
 }: TweetCardProps) {
+  const isMobile = useIsMobile()
   const [hovered, setHovered] = useState(false)
   const cleanRef = useRef<HTMLDivElement>(null)
 
@@ -90,7 +92,7 @@ export const TweetCard = memo(function TweetCard({
       <div
         style={{
           width,
-          maxWidth: 600,
+          maxWidth: isMobile ? undefined : 600,
           background: 'var(--bg-raised)',
           border: '2px solid var(--accent)',
           borderRadius: 'var(--radius-md)',
@@ -124,7 +126,7 @@ export const TweetCard = memo(function TweetCard({
         }
         style={{
           width,
-          maxWidth: 600,
+          maxWidth: isMobile ? undefined : 600,
           margin: '0 auto',
           background: hovered ? 'var(--bg-hover)' : 'var(--bg-raised)',
           border: selected
