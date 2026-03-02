@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useDayBundle } from '../api/dayBundle'
 import { sortTopics } from '../utils/topics'
+import { useIsMobile } from '../hooks/useMediaQuery'
 
 interface TableOfContentsProps {
   date: string
@@ -9,6 +10,7 @@ interface TableOfContentsProps {
 }
 
 export function TableOfContents({ date, search, onClose }: TableOfContentsProps) {
+  const isMobile = useIsMobile()
   const overlayRef = useRef<HTMLDivElement>(null)
   const bundleQuery = useDayBundle(date)
   const bundle = bundleQuery.data
@@ -77,7 +79,7 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         zIndex: 100,
         background: 'rgba(0, 0, 0, 0.7)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
       }}
     >
@@ -85,12 +87,14 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
         style={{
           background: 'var(--bg-raised)',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: isMobile
+            ? 'var(--radius-lg) var(--radius-lg) 0 0'
+            : 'var(--radius-lg)',
           padding: '20px 0',
-          minWidth: 360,
-          maxWidth: 520,
-          width: '90vw',
-          maxHeight: '80vh',
+          minWidth: isMobile ? undefined : 360,
+          maxWidth: isMobile ? undefined : 520,
+          width: isMobile ? '100%' : '90vw',
+          maxHeight: isMobile ? '70vh' : '80vh',
           overflowY: 'auto',
           position: 'relative',
         }}
@@ -137,6 +141,7 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
               label="Unsorted"
               count={filteredUnsorted.length}
               onClick={() => scrollToSection('toc-unsorted')}
+              wrap={isMobile}
             />
           )}
 
@@ -156,6 +161,7 @@ export function TableOfContents({ date, search, onClose }: TableOfContentsProps)
                 color={topic.color}
                 count={count}
                 onClick={() => scrollToSection(`toc-topic-${topic.id}`)}
+                wrap={isMobile}
               />
             )
           })}
@@ -182,21 +188,23 @@ function TOCEntry({
   count,
   color,
   onClick,
+  wrap,
 }: {
   label: string
   count?: number
   color?: string | null
   onClick: () => void
+  wrap?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       style={{
         display: 'flex',
-        alignItems: 'center',
+        alignItems: wrap ? 'flex-start' : 'center',
         gap: 10,
         width: '100%',
-        padding: '10px 20px',
+        padding: wrap ? '12px 20px' : '10px 20px',
         background: 'none',
         border: 'none',
         cursor: 'pointer',
@@ -228,6 +236,7 @@ function TOCEntry({
           fontWeight: 700,
           color: '#fff',
           padding: '0 5px',
+          marginTop: wrap ? 1 : 0,
         }}>
           {count}
         </span>
@@ -236,9 +245,10 @@ function TOCEntry({
         title={label}
         style={{
           flex: 1,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
+          overflow: wrap ? undefined : 'hidden',
+          textOverflow: wrap ? undefined : 'ellipsis',
+          whiteSpace: wrap ? 'normal' : 'nowrap',
+          lineHeight: wrap ? 1.4 : undefined,
         }}
       >
         {label}
