@@ -685,6 +685,15 @@ function TopicSection({
   const [headerAtBottom, setHeaderAtBottom] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(52)
 
+  // Listen for TOC expand requests
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const handler = () => setCollapsed(false)
+    el.addEventListener('toc-expand', handler)
+    return () => el.removeEventListener('toc-expand', handler)
+  }, [])
+
   // Track actual header height for sticky positioning of nav row
   useEffect(() => {
     const header = headerRef.current
