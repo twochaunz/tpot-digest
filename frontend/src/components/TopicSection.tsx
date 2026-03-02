@@ -554,9 +554,9 @@ function NarrowCategoryNavRow({
 
   // Auto-scale font to fit all categories in one row
   const NAV_PAD = 20 // horizontal padding on the row container
-  const PILL_HPAD = 16 // horizontal padding inside each pill (8*2)
+  const PILL_HPAD = 24 // horizontal padding inside each pill (12*2)
   const DOT_WIDTH = 12 // dot + gap for active pill
-  const GAP = 4
+  const GAP = 8
   const MAX_FONT = 13
   const MIN_FONT = 9
 
@@ -598,10 +598,11 @@ function NarrowCategoryNavRow({
         top: stickyTop,
         zIndex: 4,
         display: 'flex',
-        gap: GAP,
-        padding: `6px ${NAV_PAD}px`,
+        justifyContent: 'center',
+        gap: 8,
+        padding: `8px ${NAV_PAD}px`,
         background: 'var(--bg-raised)',
-        borderBottom: '1px solid var(--border)',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
       }}
     >
       {allCategories.map((cat) => {
@@ -613,21 +614,22 @@ function NarrowCategoryNavRow({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 3,
-              background: cat.color,
-              color: '#fff',
+              gap: 4,
+              background: isActive ? cat.color : 'transparent',
+              color: isActive ? '#fff' : 'var(--text-secondary)',
+              border: isActive ? 'none' : '1px solid var(--border)',
               fontSize,
-              fontWeight: 700,
-              padding: '3px 8px',
-              borderRadius: 'var(--radius-sm)',
-              letterSpacing: '0.03em',
+              fontWeight: 600,
+              padding: '6px 12px',
+              borderRadius: 999,
+              letterSpacing: '0.02em',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              opacity: isActive ? 1 : 0.4,
-              transition: 'opacity 0.15s ease',
+              transition: 'all 0.2s ease',
+              minHeight: 32,
             }}
           >
-            {isActive && <span style={{ fontSize: Math.round(fontSize * 0.55) }}>&#9679;</span>}
+            {isActive && <span style={{ fontSize: Math.round(fontSize * 0.5) }}>&#9679;</span>}
             {cat.name}
           </div>
         )
@@ -802,7 +804,8 @@ function TopicSection({
           alignItems: 'center',
           gap: 8,
           padding: '14px 20px',
-          borderBottom: collapsed ? 'none' : '1px solid var(--border)',
+          borderBottom: collapsed ? 'none' :
+            (!useMarginLabels && allCategoryList.length > 1) ? 'none' : '1px solid var(--border)',
           borderRadius: headerAtBottom || collapsed
             ? 'var(--radius-lg)'
             : 'var(--radius-lg) var(--radius-lg) 0 0',
