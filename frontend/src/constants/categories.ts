@@ -7,10 +7,10 @@ export interface CategoryDef {
 
 export const CATEGORIES: CategoryDef[] = [
   { key: 'context', label: 'context', color: '#60A5FA', sortOrder: 1 },
-  { key: 'kek', label: 'kek', color: '#C084FC', sortOrder: 2 },
-  { key: 'echo', label: 'echo', color: '#34D399', sortOrder: 3 },
-  { key: 'pushback', label: 'pushback', color: '#FB923C', sortOrder: 4 },
-  { key: 'hot-take', label: 'hot take', color: '#F87171', sortOrder: 5 },
+  { key: 'echo', label: 'echo', color: '#34D399', sortOrder: 2 },
+  { key: 'pushback', label: 'pushback', color: '#FB923C', sortOrder: 3 },
+  { key: 'hot-take', label: 'hot take', color: '#F87171', sortOrder: 4 },
+  { key: 'kek', label: 'kek', color: '#C084FC', sortOrder: 5 },
 ]
 
 export const CATEGORY_MAP = new Map(CATEGORIES.map(c => [c.key, c]))
