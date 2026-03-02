@@ -560,7 +560,7 @@ function NarrowCategoryNavRow({
   const DOT_WIDTH = 12 // dot + gap for active pill
   const GAP = 8
   const MAX_FONT = 13
-  const MIN_FONT = 9
+  const MIN_FONT = 11
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [fontSize, setFontSize] = useState(MAX_FONT)
@@ -602,7 +602,7 @@ function NarrowCategoryNavRow({
         display: 'flex',
         justifyContent: 'center',
         gap: 8,
-        padding: compact ? `4px ${NAV_PAD}px` : `8px ${NAV_PAD}px`,
+        padding: compact ? `10px ${NAV_PAD}px` : `8px ${NAV_PAD}px`,
         background: 'var(--bg-raised)',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
       }}
