@@ -17,6 +17,7 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     environment:
       DATABASE_URL: postgresql+asyncpg://${DB_USER:-tpot}:${DB_PASSWORD}@db:5432/tpot_digest
       DATA_DIR: /app/data
