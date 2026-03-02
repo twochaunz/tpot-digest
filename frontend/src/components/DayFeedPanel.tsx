@@ -335,7 +335,7 @@ export function DayFeedPanel({
             {unsortedTweets.length === 0 && topics.length === 0 && !search && (() => {
               const [y, m, d] = date.split('-').map(Number)
               const panelDate = new Date(y, m - 1, d)
-              const formattedDate = panelDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+              const formattedDate = `${panelDate.getMonth() + 1}/${panelDate.getDate()}`
 
               return (
                 <div
@@ -348,15 +348,15 @@ export function DayFeedPanel({
                     <>
                       <h2
                         style={{
-                          fontSize: 18,
-                          fontWeight: 500,
+                          fontSize: 24,
+                          fontWeight: 600,
                           color: 'var(--text-secondary)',
-                          marginBottom: 8,
+                          marginBottom: 24,
                         }}
                       >
                         {formattedDate}'s feed is empty.
                       </h2>
-                      <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+                      <p style={{ fontSize: 18, color: 'var(--text-tertiary)' }}>
                         lock in or go touch grass.
                       </p>
                     </>
