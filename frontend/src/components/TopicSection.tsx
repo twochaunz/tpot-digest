@@ -904,8 +904,8 @@ function TopicSection({
               color: 'var(--text-primary)',
               flex: 1,
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              textOverflow: isMobile ? undefined : 'ellipsis',
+              whiteSpace: isMobile ? 'normal' : 'nowrap',
               cursor: isAdmin ? 'text' : 'default',
             }}
           >
