@@ -500,10 +500,12 @@ function NarrowCategoryNavRow({
   allCategories,
   topicId,
   stickyTop,
+  compact,
 }: {
   allCategories: Array<{ key: string | null; name: string; color: string }>
   topicId: number
   stickyTop: number
+  compact?: boolean
 }) {
   const [activeKey, setActiveKey] = useState<string | null>(allCategories[0]?.key ?? null)
 
@@ -600,7 +602,7 @@ function NarrowCategoryNavRow({
         display: 'flex',
         justifyContent: 'center',
         gap: 8,
-        padding: `8px ${NAV_PAD}px`,
+        padding: compact ? `4px ${NAV_PAD}px` : `8px ${NAV_PAD}px`,
         background: 'var(--bg-raised)',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
       }}
@@ -816,7 +818,7 @@ function TopicSection({
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '14px 20px',
+          padding: isMobile ? '10px 14px' : '14px 20px',
           borderBottom: collapsed ? 'none' :
             (!useMarginLabels && allCategoryList.length > 1) ? 'none' : '1px solid var(--border)',
           borderRadius: headerAtBottom || collapsed
@@ -934,13 +936,14 @@ function TopicSection({
           allCategories={allCategoryList}
           topicId={topicId}
           stickyTop={headerHeight}
+          compact={isMobile}
         />
       )}
 
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
         <div ref={setNodeRef} style={{
-          padding: '12px 8px',
+          padding: isMobile ? '6px 6px' : '12px 8px',
           minHeight: 60,
         }}>
             <>
