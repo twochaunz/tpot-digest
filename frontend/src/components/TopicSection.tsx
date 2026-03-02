@@ -60,7 +60,7 @@ function GrokContextSection({ tweetId, context }: { tweetId: number; context: st
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}>
-              Context
+              Explainer
             </span>
           </div>
           <GrokRefreshButton tweetId={tweetId} />
@@ -101,7 +101,7 @@ function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string
         padding: '2px 4px',
         opacity: fetchGrok.isPending ? 0.5 : 0.7,
       }}
-      title="Refresh context"
+      title="Refresh explainer"
     >
       {fetchGrok.isPending ? 'Fetching...' : label ?? '\u21BB'}
     </button>
