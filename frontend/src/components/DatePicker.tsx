@@ -42,9 +42,9 @@ function firstDayOfWeek(year: number, month: number): number {
 
 const arrowBtn: React.CSSProperties = {
   background: 'none',
-  border: '1px solid var(--border)',
+  border: 'none',
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-secondary)',
+  color: 'var(--text-tertiary)',
   width: 32,
   height: 32,
   display: 'flex',
@@ -154,8 +154,7 @@ export function DatePicker({ value, onChange, maxDate, compact }: DatePickerProp
         onMouseLeave={() => setHovered(null)}
         style={{
           ...arrowBtn,
-          borderColor: hovered === 'prev' ? 'var(--border-strong)' : 'var(--border)',
-          color: hovered === 'prev' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          color: hovered === 'prev' ? 'var(--text-primary)' : 'var(--text-tertiary)',
         }}
         aria-label="Previous day"
       >
@@ -359,8 +358,7 @@ export function DatePicker({ value, onChange, maxDate, compact }: DatePickerProp
         disabled={isAtMax}
         style={{
           ...arrowBtn,
-          borderColor: isAtMax ? 'var(--border)' : hovered === 'next' ? 'var(--border-strong)' : 'var(--border)',
-          color: isAtMax ? 'var(--text-tertiary)' : hovered === 'next' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          color: isAtMax ? 'var(--text-tertiary)' : hovered === 'next' ? 'var(--text-primary)' : 'var(--text-tertiary)',
           cursor: isAtMax ? 'not-allowed' : 'pointer',
           opacity: isAtMax ? 0.4 : 1,
         }}
