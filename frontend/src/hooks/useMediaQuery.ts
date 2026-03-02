@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react'
 
 export function useMinWidth(breakpoint: number): boolean {
   const [matches, setMatches] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= breakpoint : false
+    typeof window !== 'undefined'
+      ? window.matchMedia(`(min-width: ${breakpoint}px)`).matches
+      : false
   )
 
   useEffect(() => {
-    const check = () => setMatches(window.innerWidth >= breakpoint)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
+    const mql = window.matchMedia(`(min-width: ${breakpoint}px)`)
+    setMatches(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
   }, [breakpoint])
 
   return matches
@@ -31,18 +34,9 @@ export function useWindowWidth(): number {
 }
 
 export function useIsTouchDevice(): boolean {
-  const [isTouch, setIsTouch] = useState(() =>
-    typeof window !== 'undefined'
-      ? ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-      : false
-  )
-
-  useEffect(() => {
-    const check = () => setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
-    check()
-  }, [])
-
-  return isTouch
+  return typeof window !== 'undefined'
+    ? ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+    : false
 }
 
 export function useIsMobile(): boolean {

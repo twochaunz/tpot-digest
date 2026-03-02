@@ -21,12 +21,19 @@ export function useSwipeGesture(callbacks: SwipeCallbacks): SwipeHandlers {
   const startX = useRef(0)
   const startY = useRef(0)
   const startTime = useRef(0)
+  const startScrollTop = useRef(0)
+  // Use ref to always read latest callbacks without recreating handlers
+  const callbacksRef = useRef(callbacks)
+  callbacksRef.current = callbacks
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0]
     startX.current = touch.clientX
     startY.current = touch.clientY
     startTime.current = Date.now()
+    // Record scroll position to detect if the feed actually scrolled
+    const feed = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    startScrollTop.current = feed?.scrollTop ?? 0
   }, [])
 
   const onTouchMove = useCallback((_e: React.TouchEvent) => {
@@ -45,19 +52,27 @@ export function useSwipeGesture(callbacks: SwipeCallbacks): SwipeHandlers {
     const absX = Math.abs(deltaX)
     const absY = Math.abs(deltaY)
 
+    // Check if the feed scrolled during this touch — if so, it was a scroll, not a swipe
+    const feed = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    const scrollDelta = Math.abs((feed?.scrollTop ?? 0) - startScrollTop.current)
+
     // Determine angle from horizontal
     const angleDeg = Math.atan2(absY, absX) * (180 / Math.PI)
 
     if (angleDeg < MAX_ANGLE_DEG && absX >= MIN_HORIZONTAL) {
-      // Horizontal swipe
-      if (deltaX < 0) callbacks.onSwipeLeft?.()
-      else callbacks.onSwipeRight?.()
+      // Horizontal swipe — only if feed didn't scroll much
+      if (scrollDelta < 10) {
+        if (deltaX < 0) callbacksRef.current.onSwipeLeft?.()
+        else callbacksRef.current.onSwipeRight?.()
+      }
     } else if (angleDeg > (90 - MAX_ANGLE_DEG) && absY >= MIN_VERTICAL) {
-      // Vertical swipe
-      if (deltaY < 0) callbacks.onSwipeUp?.()
-      else callbacks.onSwipeDown?.()
+      // Vertical swipe — only if feed didn't scroll during the gesture
+      if (scrollDelta < 10) {
+        if (deltaY < 0) callbacksRef.current.onSwipeUp?.()
+        else callbacksRef.current.onSwipeDown?.()
+      }
     }
-  }, [callbacks])
+  }, [])
 
   return { onTouchStart, onTouchMove, onTouchEnd }
 }
