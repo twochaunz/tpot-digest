@@ -5,6 +5,7 @@ import { DayCarousel } from '../components/DayCarousel'
 import { TableOfContents } from '../components/TableOfContents'
 import { useAuth } from '../contexts/AuthContext'
 import { useLatestDate } from '../api/dayBundle'
+import { useIsMobile, useIsTouchDevice } from '../hooks/useMediaQuery'
 
 function todayDateStr(): string {
   const now = new Date()
@@ -46,6 +47,8 @@ export function DailyView() {
   const navigate = useNavigate()
   const { dateStr: urlDateStr, topicNum: urlTopicNum } = useParams<{ dateStr?: string; topicNum?: string }>()
   const { isAdmin } = useAuth()
+  const isMobile = useIsMobile()
+  const isTouchDevice = useIsTouchDevice()
 
   const { data: latestDate } = useLatestDate()
   const today = todayDateStr()
@@ -193,35 +196,37 @@ export function DailyView() {
           style={{
             maxWidth: 1400,
             margin: '0 auto',
-            padding: '16px 24px',
+            padding: isMobile ? '10px 12px' : '16px 24px',
             display: 'flex',
             alignItems: 'center',
           }}
         >
           {/* Left: keyboard shortcuts + generate scripts */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={() => setKeysOpen(true)}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                width: 34,
-                height: 34,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                fontSize: 16,
-                transition: 'all 0.15s ease',
-              }}
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts (?)"
-            >
-              ?
-            </button>
-            {isAdmin && <button
+            {!(isMobile && isTouchDevice) && (
+              <button
+                onClick={() => setKeysOpen(true)}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  width: 34,
+                  height: 34,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  fontSize: 16,
+                  transition: 'all 0.15s ease',
+                }}
+                aria-label="Keyboard shortcuts"
+                title="Keyboard shortcuts (?)"
+              >
+                ?
+              </button>
+            )}
+            {!isMobile && isAdmin && <button
               onClick={() => setGenPanelOpen(true)}
               style={{
                 background: 'none',
@@ -245,69 +250,71 @@ export function DailyView() {
           </div>
 
           {/* Center: date picker */}
-          <DatePicker value={date} onChange={setDate} maxDate={maxDate} />
+          <DatePicker value={date} onChange={setDate} maxDate={maxDate} compact={isMobile} />
 
-          {/* Right: search + settings */}
+          {/* Right: search + settings + TOC (mobile) */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
-            <div style={{ position: 'relative' }}>
-              <input
-                ref={searchRef}
-                type="text"
-                placeholder="Search tweets"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                style={{
-                  width: searchFocused || search ? 240 : 180,
-                  background: 'var(--bg-raised)',
-                  border: `1px solid ${searchFocused ? 'var(--accent)' : 'var(--border)'}`,
-                  borderRadius: 'var(--radius-md)',
-                  padding: '7px 12px 7px 32px',
-                  color: 'var(--text-primary)',
-                  fontSize: 13,
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                  fontFamily: 'var(--font-body)',
-                }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  left: 10,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 14,
-                  pointerEvents: 'none',
-                }}
-              >
-                &#8981;
-              </span>
-              {/* Cmd+K hint badge */}
-              {!searchFocused && !search && (
+            {!isMobile && (
+              <div style={{ position: 'relative' }}>
+                <input
+                  ref={searchRef}
+                  type="text"
+                  placeholder="Search tweets"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                  style={{
+                    width: searchFocused || search ? 240 : 180,
+                    background: 'var(--bg-raised)',
+                    border: `1px solid ${searchFocused ? 'var(--accent)' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius-md)',
+                    padding: '7px 12px 7px 32px',
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                />
                 <span
                   style={{
                     position: 'absolute',
-                    right: 8,
+                    left: 10,
                     top: '50%',
                     transform: 'translateY(-50%)',
                     color: 'var(--text-tertiary)',
-                    fontSize: 10,
-                    fontFamily: 'var(--font-body)',
-                    background: 'var(--bg-elevated)',
-                    padding: '2px 6px',
-                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 14,
                     pointerEvents: 'none',
-                    border: '1px solid var(--border)',
                   }}
                 >
-                  &#8984;K
+                  &#8981;
                 </span>
-              )}
-            </div>
+                {/* Cmd+K hint badge */}
+                {!searchFocused && !search && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--text-tertiary)',
+                      fontSize: 10,
+                      fontFamily: 'var(--font-body)',
+                      background: 'var(--bg-elevated)',
+                      padding: '2px 6px',
+                      borderRadius: 'var(--radius-sm)',
+                      pointerEvents: 'none',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    &#8984;K
+                  </span>
+                )}
+              </div>
+            )}
 
-            {isAdmin && <button
+            {!isMobile && isAdmin && <button
               onClick={() => navigate('/app/settings')}
               style={{
                 background: 'none',
@@ -327,6 +334,29 @@ export function DailyView() {
             >
               &#9881;
             </button>}
+
+            {isMobile && (
+              <button
+                onClick={() => setTocOpen(true)}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  width: 34,
+                  height: 34,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  fontSize: 16,
+                  transition: 'all 0.15s ease',
+                }}
+                aria-label="Table of Contents"
+              >
+                &#9776;
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -340,35 +370,6 @@ export function DailyView() {
         onGenPanelClose={() => setGenPanelOpen(false)}
         initialTopicNum={pendingTopicNum.current}
       />
-
-      {/* TOC FAB button */}
-      {!tocOpen && (
-        <button
-          onClick={() => setTocOpen(true)}
-          aria-label="Table of Contents"
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-            fontSize: 20,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            zIndex: 50,
-            transition: 'all 0.15s ease',
-          }}
-        >
-          &#9776;
-        </button>
-      )}
 
       {/* TOC overlay */}
       {tocOpen && (
