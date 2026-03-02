@@ -19,7 +19,7 @@ ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 _grok_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 _anthropic_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
 
-CATEGORY_ORDER = ["context", "kek", "echo", "pushback", "hot-take"]
+CATEGORY_ORDER = ["context", "echo", "pushback", "hot-take", "kek"]
 
 DEFAULT_STYLE_GUIDE = """PURPOSE:
 - Give the viewer MORE than reading the tweets themselves — in under 30 seconds per topic

@@ -205,8 +205,25 @@ export function DailyView() {
             alignItems: 'center',
           }}
         >
-          {/* Left: keyboard shortcuts + generate scripts */}
+          {/* Left: logo + keyboard shortcuts + generate scripts */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <img
+              src="/a-logo.svg"
+              alt="abridged tech"
+              onClick={() => {
+                const target = defaultDateStr()
+                setDate(target > maxDate ? maxDate : target)
+              }}
+              style={{
+                width: isMobile ? 22 : 26,
+                height: isMobile ? 22 : 26,
+                cursor: 'pointer',
+                opacity: 0.7,
+                transition: 'opacity 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
+            />
             {!(isMobile && isTouchDevice) && (
               <button
                 onClick={() => setKeysOpen(true)}
