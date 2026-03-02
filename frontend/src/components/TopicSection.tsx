@@ -1045,7 +1045,7 @@ function TopicSection({
                     marginTop: idx > 0 ? 16 : 0,
                   }}
                 >
-                  {/* Sticky category nav label */}
+                  {/* Sticky category nav label (wide screens) */}
                   {useMarginLabels && (
                     <StickyLabelWrapper stickyTop={headerHeight} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === catKey}>
                       <CategoryNavLabel
@@ -1057,6 +1057,29 @@ function TopicSection({
                         fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
                       />
                     </StickyLabelWrapper>
+                  )}
+
+                  {/* Inline category divider (narrow screens) */}
+                  {!useMarginLabels && group.category && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '4px 4px 8px',
+                    }}>
+                      <div style={{ height: 1, flex: 1, background: `${group.category.color}40` }} />
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: group.category.color,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {group.category.name}
+                      </span>
+                      <div style={{ height: 1, flex: 1, background: `${group.category.color}40` }} />
+                    </div>
                   )}
 
                   {/* Tweet cards */}
