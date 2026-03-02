@@ -208,7 +208,7 @@ export function DailyView() {
           {/* Left: logo + keyboard shortcuts + generate scripts */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
             <img
-              src="/a-logo.svg"
+              src="/a-logo-white.svg"
               alt="abridged tech"
               onClick={() => {
                 const target = defaultDateStr()
