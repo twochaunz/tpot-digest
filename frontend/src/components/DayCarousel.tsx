@@ -31,6 +31,16 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
   // Shared drag state across panels
   const [activeDragTweet, setActiveDragTweet] = useState<Tweet | null>(null)
 
+  // Scroll position memory across date navigation
+  const scrollPositions = useRef<Map<string, number>>(new Map())
+
+  const saveScrollPosition = useCallback(() => {
+    const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    if (feedPanel) {
+      scrollPositions.current.set(date, feedPanel.scrollTop)
+    }
+  }, [date])
+
   // Generate 5 days: current -2 to +2
   const days = Array.from({ length: 5 }, (_, i) => shiftDate(date, i - 2))
 
@@ -72,6 +82,17 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
     scrollToCenter('instant')
   }, [date, scrollToCenter])
 
+  // Restore feed scroll position when returning to a date
+  useEffect(() => {
+    const saved = scrollPositions.current.get(date)
+    if (saved !== undefined) {
+      requestAnimationFrame(() => {
+        const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+        if (feedPanel) feedPanel.scrollTop = saved
+      })
+    }
+  }, [date])
+
   // On scroll settle, detect which panel is centered
   const handleScroll = useCallback(() => {
     if (isScrollingRef.current) return
@@ -96,6 +117,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
             // Not the center panel -- shift date
             const offset = i - 2
             const newDate = shiftDate(date, offset)
+            saveScrollPosition()
             onDateChange(newDate)
           }
           break
@@ -103,7 +125,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
         accum += panel.offsetWidth
       }
     }, 150)
-  }, [date, onDateChange])
+  }, [date, onDateChange, saveScrollPosition])
 
   // Keyboard navigation
   useEffect(() => {
@@ -113,15 +135,17 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
 
       if (e.key === 'ArrowLeft' || e.key === 'h') {
         e.preventDefault()
+        saveScrollPosition()
         onDateChange(shiftDate(date, -1))
       } else if (e.key === 'ArrowRight' || e.key === 'l') {
         e.preventDefault()
+        saveScrollPosition()
         onDateChange(shiftDate(date, 1))
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [date, onDateChange])
+  }, [date, onDateChange, saveScrollPosition])
 
   if (isMobile) {
     return (
@@ -178,7 +202,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
             {/* Click overlay for side panels */}
             {!isCenter && (
               <div
-                onClick={() => onDateChange(dayDate)}
+                onClick={() => { saveScrollPosition(); onDateChange(dayDate) }}
                 style={{
                   position: 'absolute',
                   inset: 0,
