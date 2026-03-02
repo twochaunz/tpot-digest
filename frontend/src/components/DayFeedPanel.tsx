@@ -346,19 +346,32 @@ export function DayFeedPanel({
                 >
                   {isRightOfActive ? (
                     <>
-                      <h2
+                      <div
                         style={{
-                          fontSize: 24,
+                          fontSize: 28,
                           fontWeight: 600,
-                          color: 'var(--text-secondary)',
-                          marginBottom: 24,
+                          color: 'var(--text-primary)',
+                          marginBottom: 8,
                         }}
                       >
-                        {formattedDate}'s feed is empty.
-                      </h2>
-                      <p style={{ fontSize: 18, color: 'var(--text-tertiary)' }}>
-                        lock in or go touch grass.
-                      </p>
+                        {formattedDate}'s feed
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 28,
+                          fontWeight: 600,
+                          color: 'var(--text-primary)',
+                          marginBottom: 32,
+                        }}
+                      >
+                        is empty.
+                      </div>
+                      <div style={{ fontSize: 20, color: 'var(--text-secondary)' }}>
+                        lock in or
+                      </div>
+                      <div style={{ fontSize: 20, color: 'var(--text-secondary)' }}>
+                        go touch grass.
+                      </div>
                     </>
                   ) : (
                     <>
