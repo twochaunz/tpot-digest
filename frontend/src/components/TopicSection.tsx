@@ -492,6 +492,164 @@ function CategoryNavLabel({
   return outerDiv
 }
 
+// --- Narrow-screen category nav row (all categories side-by-side) ---
+
+function NarrowCategoryNavRow({
+  allCategories,
+  topicId,
+  stickyTop,
+}: {
+  allCategories: Array<{ key: string | null; name: string; color: string }>
+  topicId: number
+  stickyTop: number
+}) {
+  const [activeKey, setActiveKey] = useState<string | null>(allCategories[0]?.key ?? null)
+
+  // Track which category section is in view
+  useEffect(() => {
+    const feed = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    if (!feed) return
+
+    const onScroll = () => {
+      const feedTop = feed.getBoundingClientRect().top
+      const threshold = feedTop + stickyTop + 60 // just below the sticky row
+
+      // Walk category sections bottom-up: first one whose top is above threshold wins
+      let found: string | null = null
+      for (const cat of allCategories) {
+        const id = `toc-cat-${topicId}-${cat.key ?? 'uncategorized'}`
+        const el = feed.querySelector<HTMLElement>(`#${id}`)
+        if (!el) continue
+        const rect = el.getBoundingClientRect()
+        if (rect.top <= threshold) {
+          found = cat.key
+        }
+      }
+      if (found !== null || allCategories.length > 0) {
+        setActiveKey(found ?? allCategories[0]?.key ?? null)
+      }
+    }
+
+    feed.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => feed.removeEventListener('scroll', onScroll)
+  }, [allCategories, topicId, stickyTop])
+
+  const handleNav = (catKey: string | null) => {
+    const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    if (!feedPanel) return
+    const el = feedPanel.querySelector<HTMLElement>(`#toc-cat-${topicId}-${catKey ?? 'uncategorized'}`)
+    if (!el) return
+    const panelTop = feedPanel.getBoundingClientRect().top
+    const topic = el.closest<HTMLElement>('[id^="toc-topic-"]')
+    const header = topic?.querySelector<HTMLElement>(':scope > div')
+    const off = header ? header.offsetHeight : 0
+    feedPanel.scrollTo({
+      top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelTop - off - 36,
+      behavior: 'smooth',
+    })
+  }
+
+  // Auto-scale font to fit all categories in one row
+  const NAV_PAD = 20 // horizontal padding on the row container
+  const PILL_HPAD = 16 // horizontal padding inside each pill (8*2)
+  const DOT_WIDTH = 12 // dot + gap for active pill
+  const GAP = 4
+  const MAX_FONT = 13
+  const MIN_FONT = 9
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [fontSize, setFontSize] = useState(MAX_FONT)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const availableWidth = container.offsetWidth - NAV_PAD * 2
+    const totalGaps = (allCategories.length - 1) * GAP
+
+    let size = MAX_FONT
+    while (size > MIN_FONT) {
+      const totalWidth = allCategories.reduce((sum, cat) => {
+        const textW = measureTextWidth(cat.name, size)
+        return sum + textW + PILL_HPAD + DOT_WIDTH
+      }, 0) + totalGaps
+      if (totalWidth <= availableWidth) break
+      size--
+    }
+    setFontSize(size)
+  }, [allCategories])
+
+  // Also recalc on resize
+  useEffect(() => {
+    const onResize = () => {
+      const container = containerRef.current
+      if (!container) return
+      const availableWidth = container.offsetWidth - NAV_PAD * 2
+      const totalGaps = (allCategories.length - 1) * GAP
+
+      let size = MAX_FONT
+      while (size > MIN_FONT) {
+        const totalWidth = allCategories.reduce((sum, cat) => {
+          const textW = measureTextWidth(cat.name, size)
+          return sum + textW + PILL_HPAD + DOT_WIDTH
+        }, 0) + totalGaps
+        if (totalWidth <= availableWidth) break
+        size--
+      }
+      setFontSize(size)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [allCategories])
+
+  if (allCategories.length <= 1) return null
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: 'sticky',
+        top: stickyTop,
+        zIndex: 4,
+        display: 'flex',
+        gap: GAP,
+        padding: `6px ${NAV_PAD}px`,
+        background: 'var(--bg-raised)',
+        borderBottom: '1px solid var(--border)',
+      }}
+    >
+      {allCategories.map((cat) => {
+        const isActive = cat.key === activeKey
+        return (
+          <div
+            key={cat.key ?? 'uncat'}
+            onClick={() => handleNav(cat.key)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 3,
+              background: cat.color,
+              color: '#fff',
+              fontSize,
+              fontWeight: 700,
+              padding: '3px 8px',
+              borderRadius: 'var(--radius-sm)',
+              letterSpacing: '0.03em',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              opacity: isActive ? 1 : 0.4,
+              transition: 'opacity 0.15s ease',
+            }}
+          >
+            {isActive && <span style={{ fontSize: Math.round(fontSize * 0.55) }}>&#9679;</span>}
+            {cat.name}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // --- Presentational component ---
 
 interface TopicSectionProps {
@@ -767,6 +925,15 @@ function TopicSection({
 
       </div>
 
+      {/* Narrow-screen category nav row */}
+      {!collapsed && !useMarginLabels && allCategoryList.length > 1 && (
+        <NarrowCategoryNavRow
+          allCategories={allCategoryList}
+          topicId={topicId}
+          stickyTop={52}
+        />
+      )}
+
       {/* Body (droppable) - collapsible */}
       {!collapsed && (
         <div ref={setNodeRef} style={{
@@ -798,16 +965,18 @@ function TopicSection({
                   }}
                 >
                   {/* Sticky OG nav label */}
-                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === 'og'}>
-                    <CategoryNavLabel
-                      allCategories={allCategoryList}
-                      currentCategoryKey="og"
-                      topicId={topicId}
-                      onHoverChange={(h) => setHoveredCatKey(h ? 'og' : null)}
-                      isWide={useMarginLabels}
-                      fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
-                    />
-                  </StickyLabelWrapper>
+                  {useMarginLabels && (
+                    <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === 'og'}>
+                      <CategoryNavLabel
+                        allCategories={allCategoryList}
+                        currentCategoryKey="og"
+                        topicId={topicId}
+                        onHoverChange={(h) => setHoveredCatKey(h ? 'og' : null)}
+                        isWide={useMarginLabels}
+                        fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
+                      />
+                    </StickyLabelWrapper>
+                  )}
 
                   {/* Tweet card */}
                   <div>
@@ -862,16 +1031,18 @@ function TopicSection({
                   }}
                 >
                   {/* Sticky category nav label */}
-                  <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === catKey}>
-                    <CategoryNavLabel
-                      allCategories={allCategoryList}
-                      currentCategoryKey={catKey}
-                      topicId={topicId}
-                      onHoverChange={(h) => setHoveredCatKey(h ? catKey : null)}
-                      isWide={useMarginLabels}
-                      fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
-                    />
-                  </StickyLabelWrapper>
+                  {useMarginLabels && (
+                    <StickyLabelWrapper stickyTop={52} useMarginLabels={useMarginLabels} isElevated={hoveredCatKey === catKey}>
+                      <CategoryNavLabel
+                        allCategories={allCategoryList}
+                        currentCategoryKey={catKey}
+                        topicId={topicId}
+                        onHoverChange={(h) => setHoveredCatKey(h ? catKey : null)}
+                        isWide={useMarginLabels}
+                        fontSize={useMarginLabels ? labelFontSize : BASE_FONT}
+                      />
+                    </StickyLabelWrapper>
+                  )}
 
                   {/* Tweet cards */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
