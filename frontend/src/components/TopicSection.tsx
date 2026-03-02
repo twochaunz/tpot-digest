@@ -514,7 +514,7 @@ function NarrowCategoryNavRow({
       const feedTop = feed.getBoundingClientRect().top
       const threshold = feedTop + stickyTop + 60 // just below the sticky row
 
-      // Walk category sections bottom-up: first one whose top is above threshold wins
+      // Walk category sections top-down: last one whose top is above threshold wins
       let found: string | null = null
       for (const cat of allCategories) {
         const id = `toc-cat-${topicId}-${cat.key ?? 'uncategorized'}`
@@ -561,7 +561,7 @@ function NarrowCategoryNavRow({
   const containerRef = useRef<HTMLDivElement>(null)
   const [fontSize, setFontSize] = useState(MAX_FONT)
 
-  useEffect(() => {
+  const recalcFontSize = useCallback(() => {
     const container = containerRef.current
     if (!container) return
     const availableWidth = container.offsetWidth - NAV_PAD * 2
@@ -579,28 +579,12 @@ function NarrowCategoryNavRow({
     setFontSize(size)
   }, [allCategories])
 
-  // Also recalc on resize
-  useEffect(() => {
-    const onResize = () => {
-      const container = containerRef.current
-      if (!container) return
-      const availableWidth = container.offsetWidth - NAV_PAD * 2
-      const totalGaps = (allCategories.length - 1) * GAP
+  useEffect(() => { recalcFontSize() }, [recalcFontSize])
 
-      let size = MAX_FONT
-      while (size > MIN_FONT) {
-        const totalWidth = allCategories.reduce((sum, cat) => {
-          const textW = measureTextWidth(cat.name, size)
-          return sum + textW + PILL_HPAD + DOT_WIDTH
-        }, 0) + totalGaps
-        if (totalWidth <= availableWidth) break
-        size--
-      }
-      setFontSize(size)
-    }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [allCategories])
+  useEffect(() => {
+    window.addEventListener('resize', recalcFontSize)
+    return () => window.removeEventListener('resize', recalcFontSize)
+  }, [recalcFontSize])
 
   if (allCategories.length <= 1) return null
 
