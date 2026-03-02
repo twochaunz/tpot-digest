@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { DayFeedPanel } from './DayFeedPanel'
 import type { Tweet } from '../api/tweets'
+import { useIsMobile } from '../hooks/useMediaQuery'
 
 function shiftDate(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split('-').map(Number)
@@ -22,6 +23,7 @@ interface DayCarouselProps {
 }
 
 export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPanelClose, initialTopicNum }: DayCarouselProps) {
+  const isMobile = useIsMobile()
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const isScrollingRef = useRef(false)
@@ -120,6 +122,23 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [date, onDateChange])
+
+  if (isMobile) {
+    return (
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <DayFeedPanel
+          date={date}
+          search={search}
+          isActive={true}
+          activeDragTweet={activeDragTweet}
+          setActiveDragTweet={setActiveDragTweet}
+          genPanelOpen={genPanelOpen}
+          onGenPanelClose={onGenPanelClose}
+          initialTopicNum={initialTopicNum}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
