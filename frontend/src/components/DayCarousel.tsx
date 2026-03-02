@@ -78,10 +78,10 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
     }, behavior === 'instant' ? 50 : 500)
   }, [])
 
-  // On mount and date change, scroll to center
+  // On mount, date change, or switching from mobile back to carousel, scroll to center
   useEffect(() => {
-    scrollToCenter('instant')
-  }, [date, scrollToCenter])
+    if (!isMobile) scrollToCenter('instant')
+  }, [date, isMobile, scrollToCenter])
 
   // Restore feed scroll position when returning to a date
   useEffect(() => {
