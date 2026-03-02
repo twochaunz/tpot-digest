@@ -32,6 +32,7 @@ interface DayFeedPanelProps {
   genPanelOpen: boolean
   onGenPanelClose: () => void
   initialTopicNum?: number | null
+  isRightOfActive?: boolean
 }
 
 export function DayFeedPanel({
@@ -43,6 +44,7 @@ export function DayFeedPanel({
   genPanelOpen,
   onGenPanelClose,
   initialTopicNum,
+  isRightOfActive,
 }: DayFeedPanelProps) {
   const { isAdmin } = useAuth()
   const isWide = useMinWidth(900)
@@ -331,11 +333,8 @@ export function DayFeedPanel({
           <>
             {/* Empty state */}
             {unsortedTweets.length === 0 && topics.length === 0 && !search && (() => {
-              const today = new Date()
-              today.setHours(0, 0, 0, 0)
               const [y, m, d] = date.split('-').map(Number)
               const panelDate = new Date(y, m - 1, d)
-              const isFuture = panelDate > today
               const formattedDate = panelDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 
               return (
@@ -345,7 +344,7 @@ export function DayFeedPanel({
                     padding: '80px 0 40px',
                   }}
                 >
-                  {isFuture ? (
+                  {isRightOfActive ? (
                     <>
                       <h2
                         style={{
