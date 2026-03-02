@@ -282,7 +282,7 @@ export function DailyView() {
                     top: '50%',
                     transform: 'translateY(-50%)',
                     color: 'var(--text-tertiary)',
-                    fontSize: 14,
+                    fontSize: 18,
                     pointerEvents: 'none',
                   }}
                 >
@@ -316,16 +316,11 @@ export function DailyView() {
                 onClick={() => setKeysOpen(true)}
                 style={{
                   background: 'none',
-                  border: '1.5px solid var(--text-tertiary)',
-                  borderRadius: '50%',
-                  width: 30,
-                  height: 30,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  border: 'none',
+                  padding: 0,
                   cursor: 'pointer',
                   color: 'var(--text-tertiary)',
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: 700,
                   transition: 'all 0.15s ease',
                 }}
