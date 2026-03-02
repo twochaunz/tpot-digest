@@ -180,6 +180,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
                   genPanelOpen={isCenter ? genPanelOpen : false}
                   onGenPanelClose={onGenPanelClose}
                   initialTopicNum={isCenter ? initialTopicNum : undefined}
+                  isRightOfActive={i > 2}
                 />
               ) : (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
