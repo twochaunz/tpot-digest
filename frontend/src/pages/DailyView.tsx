@@ -212,16 +212,17 @@ export function DailyView() {
                 onClick={() => setKeysOpen(true)}
                 style={{
                   background: 'none',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)',
-                  width: 34,
-                  height: 34,
+                  border: '1.5px solid var(--text-tertiary)',
+                  borderRadius: '50%',
+                  width: 24,
+                  height: 24,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                  fontSize: 16,
+                  color: 'var(--text-tertiary)',
+                  fontSize: 13,
+                  fontWeight: 700,
                   transition: 'all 0.15s ease',
                 }}
                 aria-label="Keyboard shortcuts"
@@ -234,7 +235,7 @@ export function DailyView() {
               onClick={() => setGenPanelOpen(true)}
               style={{
                 background: 'none',
-                border: '1px solid var(--border)',
+                border: 'none',
                 borderRadius: 'var(--radius-md)',
                 width: 34,
                 height: 34,
@@ -242,7 +243,7 @@ export function DailyView() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: 'var(--text-secondary)',
+                color: 'var(--text-tertiary)',
                 fontSize: 16,
                 transition: 'all 0.15s ease',
               }}
@@ -322,7 +323,7 @@ export function DailyView() {
               onClick={() => navigate('/app/settings')}
               style={{
                 background: 'none',
-                border: '1px solid var(--border)',
+                border: 'none',
                 borderRadius: 'var(--radius-md)',
                 width: 34,
                 height: 34,
@@ -330,7 +331,7 @@ export function DailyView() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: 'var(--text-secondary)',
+                color: 'var(--text-tertiary)',
                 fontSize: 16,
                 transition: 'all 0.15s ease',
               }}
@@ -344,7 +345,7 @@ export function DailyView() {
                 onClick={() => setTocOpen(true)}
                 style={{
                   background: 'none',
-                  border: '1px solid var(--border)',
+                  border: 'none',
                   borderRadius: 'var(--radius-md)',
                   width: 34,
                   height: 34,
@@ -352,7 +353,7 @@ export function DailyView() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  color: 'var(--text-secondary)',
+                  color: 'var(--text-tertiary)',
                   fontSize: 16,
                   transition: 'all 0.15s ease',
                 }}
