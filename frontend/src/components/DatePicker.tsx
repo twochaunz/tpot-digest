@@ -18,8 +18,8 @@ function formatDisplay(dateStr: string): string {
 }
 
 function formatCompact(dateStr: string): string {
-  const [, m, d] = dateStr.split('-').map(Number)
-  return `${m}/${d}`
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return `${m}/${d}/${y}`
 }
 
 function shiftDate(dateStr: string, days: number): string {
@@ -171,7 +171,7 @@ export function DatePicker({ value, onChange, maxDate, compact }: DatePickerProp
             fontSize: compact ? 16 : 18,
             fontWeight: 600,
             color: 'var(--text-primary)',
-            minWidth: compact ? 48 : 160,
+            minWidth: compact ? 90 : 160,
             textAlign: 'center',
             letterSpacing: '-0.01em',
             cursor: 'pointer',
