@@ -29,3 +29,22 @@ export function useWindowWidth(): number {
 
   return width
 }
+
+export function useIsTouchDevice(): boolean {
+  const [isTouch, setIsTouch] = useState(() =>
+    typeof window !== 'undefined'
+      ? ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+      : false
+  )
+
+  useEffect(() => {
+    const check = () => setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
+    check()
+  }, [])
+
+  return isTouch
+}
+
+export function useIsMobile(): boolean {
+  return !useMinWidth(768)
+}
