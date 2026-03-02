@@ -4,6 +4,7 @@ interface DatePickerProps {
   value: string // YYYY-MM-DD
   onChange: (date: string) => void
   maxDate?: string // YYYY-MM-DD — dates after this are disabled
+  compact?: boolean
 }
 
 function formatDisplay(dateStr: string): string {
@@ -14,6 +15,11 @@ function formatDisplay(dateStr: string): string {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+function formatCompact(dateStr: string): string {
+  const [, m, d] = dateStr.split('-').map(Number)
+  return `${m}/${d}`
 }
 
 function shiftDate(dateStr: string, days: number): string {
@@ -56,7 +62,7 @@ const MONTH_NAMES = [
 
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-export function DatePicker({ value, onChange, maxDate }: DatePickerProps) {
+export function DatePicker({ value, onChange, maxDate, compact }: DatePickerProps) {
   const [hovered, setHovered] = useState<'prev' | 'next' | null>(null)
   const [dateHovered, setDateHovered] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -162,10 +168,10 @@ export function DatePicker({ value, onChange, maxDate }: DatePickerProps) {
           onMouseEnter={() => setDateHovered(true)}
           onMouseLeave={() => setDateHovered(false)}
           style={{
-            fontSize: 18,
+            fontSize: compact ? 16 : 18,
             fontWeight: 600,
             color: 'var(--text-primary)',
-            minWidth: 160,
+            minWidth: compact ? 48 : 160,
             textAlign: 'center',
             letterSpacing: '-0.01em',
             cursor: 'pointer',
@@ -177,7 +183,7 @@ export function DatePicker({ value, onChange, maxDate }: DatePickerProps) {
             userSelect: 'none',
           }}
         >
-          {formatDisplay(value)}
+          {compact ? formatCompact(value) : formatDisplay(value)}
         </span>
 
         {calendarOpen && (
