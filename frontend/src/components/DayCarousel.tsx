@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react'
 import { DayFeedPanel } from './DayFeedPanel'
 import type { Tweet } from '../api/tweets'
 import { useIsMobile } from '../hooks/useMediaQuery'
+import { useSwipeGesture } from '../hooks/useSwipeGesture'
 
 function shiftDate(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split('-').map(Number)
@@ -147,9 +148,42 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [date, onDateChange, saveScrollPosition])
 
+  const navigateToTopic = useCallback((direction: 'next' | 'prev') => {
+    const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
+    if (!feedPanel) return
+    const topics = Array.from(feedPanel.querySelectorAll<HTMLElement>('[id^="toc-topic-"]'))
+    if (topics.length === 0) return
+
+    const panelTop = feedPanel.getBoundingClientRect().top
+    let currentIdx = 0
+    let minDist = Infinity
+    for (let i = 0; i < topics.length; i++) {
+      const dist = Math.abs(topics[i].getBoundingClientRect().top - panelTop)
+      if (dist < minDist) { minDist = dist; currentIdx = i }
+    }
+
+    const targetIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1
+    if (targetIdx < 0 || targetIdx >= topics.length) return
+
+    feedPanel.scrollTo({
+      top: feedPanel.scrollTop + topics[targetIdx].getBoundingClientRect().top - panelTop,
+      behavior: 'smooth',
+    })
+  }, [])
+
+  const swipeHandlers = useSwipeGesture({
+    onSwipeLeft: () => { saveScrollPosition(); onDateChange(shiftDate(date, 1)) },
+    onSwipeRight: () => { saveScrollPosition(); onDateChange(shiftDate(date, -1)) },
+    onSwipeUp: () => navigateToTopic('next'),
+    onSwipeDown: () => navigateToTopic('prev'),
+  })
+
   if (isMobile) {
     return (
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div
+        style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}
+        {...swipeHandlers}
+      >
         <DayFeedPanel
           date={date}
           search={search}
