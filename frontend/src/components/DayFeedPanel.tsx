@@ -21,7 +21,7 @@ import { DragOverlayCard } from './DragOverlayCard'
 import { ContextMenu, TopicContextMenu } from './ContextMenu'
 import { sortTopics, isKekTopic } from '../utils/topics'
 import { useAuth } from '../contexts/AuthContext'
-import { useMinWidth } from '../hooks/useMediaQuery'
+import { useMinWidth, useIsMobile } from '../hooks/useMediaQuery'
 
 interface DayFeedPanelProps {
   date: string
@@ -47,6 +47,7 @@ export function DayFeedPanel({
   isRightOfActive,
 }: DayFeedPanelProps) {
   const { isAdmin } = useAuth()
+  const isMobile = useIsMobile()
   const isWide = useMinWidth(900)
 
   // Context menu state
@@ -447,7 +448,7 @@ export function DayFeedPanel({
 
             {/* Create topic form (only if active and admin) */}
             {isAdmin && isActive && (
-              <div style={{ marginTop: 16, maxWidth: 600 }}>
+              <div style={{ marginTop: 16, maxWidth: isMobile ? undefined : 600 }}>
                 <CreateTopicForm
                   onSubmit={handleCreateTopic}
                   loading={createTopicMutation.isPending}
