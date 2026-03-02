@@ -130,6 +130,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
 
   // Keyboard navigation
   useEffect(() => {
+    if (isMobile) return  // No keyboard nav on mobile — swipe replaces it
     function handleKeyDown(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
@@ -146,7 +147,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [date, onDateChange, saveScrollPosition])
+  }, [date, onDateChange, isMobile, saveScrollPosition])
 
   const navigateToTopic = useCallback((direction: 'next' | 'prev') => {
     const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
