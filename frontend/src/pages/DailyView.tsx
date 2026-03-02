@@ -224,30 +224,6 @@ export function DailyView() {
               onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
             />
-            {!(isMobile && isTouchDevice) && (
-              <button
-                onClick={() => setKeysOpen(true)}
-                style={{
-                  background: 'none',
-                  border: '1.5px solid var(--text-tertiary)',
-                  borderRadius: '50%',
-                  width: isMobile ? 28 : 30,
-                  height: isMobile ? 28 : 30,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'var(--text-tertiary)',
-                  fontSize: isMobile ? 16 : 18,
-                  fontWeight: 700,
-                  transition: 'all 0.15s ease',
-                }}
-                aria-label="Keyboard shortcuts"
-                title="Keyboard shortcuts (?)"
-              >
-                ?
-              </button>
-            )}
             {!isMobile && isAdmin && <button
               onClick={() => setGenPanelOpen(true)}
               style={{
@@ -334,6 +310,30 @@ export function DailyView() {
                   </span>
                 )}
               </div>
+            )}
+            {!(isMobile && isTouchDevice) && (
+              <button
+                onClick={() => setKeysOpen(true)}
+                style={{
+                  background: 'none',
+                  border: '1.5px solid var(--text-tertiary)',
+                  borderRadius: '50%',
+                  width: 30,
+                  height: 30,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--text-tertiary)',
+                  fontSize: 18,
+                  fontWeight: 700,
+                  transition: 'all 0.15s ease',
+                }}
+                aria-label="Keyboard shortcuts"
+                title="Keyboard shortcuts (?)"
+              >
+                ?
+              </button>
             )}
 
             {!isMobile && isAdmin && <button
