@@ -3,10 +3,10 @@ import { api } from './client'
 
 export interface DigestBlock {
   id: string
-  type: 'text' | 'topic'
+  type: 'text' | 'topic' | 'tweet'
   content?: string | null    // text blocks
   topic_id?: number | null   // topic blocks
-  note?: string | null       // topic blocks
+  tweet_id?: number | null   // tweet blocks (DB integer id)
 }
 
 export interface DigestDraft {
