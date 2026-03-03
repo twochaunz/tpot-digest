@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 
+export interface DigestBlock {
+  id: string
+  type: 'text' | 'topic'
+  content?: string | null    // text blocks
+  topic_id?: number | null   // topic blocks
+  note?: string | null       // topic blocks
+}
+
 export interface DigestDraft {
   id: number
   date: string
-  intro_text: string | null
-  topic_ids: number[]
-  topic_notes: Record<string, string>
+  content_blocks: DigestBlock[]
   scheduled_for: string | null
   sent_at: string | null
   recipient_count: number | null
@@ -45,7 +51,7 @@ export function useDigestDraft(draftId: number | null) {
 
 export function useCreateDigestDraft() {
   const qc = useQueryClient()
-  return useMutation<DigestDraft, Error, { date: string; topic_ids: number[]; intro_text?: string }>({
+  return useMutation<DigestDraft, Error, { date: string; content_blocks: DigestBlock[] }>({
     mutationFn: async (body) => {
       const { data } = await api.post('/digest/drafts', body)
       return data
@@ -56,7 +62,7 @@ export function useCreateDigestDraft() {
 
 export function useUpdateDigestDraft() {
   const qc = useQueryClient()
-  return useMutation<DigestDraft, Error, { id: number; intro_text?: string; topic_ids?: number[]; topic_notes?: Record<string, string>; scheduled_for?: string }>({
+  return useMutation<DigestDraft, Error, { id: number; content_blocks?: DigestBlock[]; scheduled_for?: string }>({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await api.patch(`/digest/drafts/${id}`, body)
       return data
@@ -64,6 +70,7 @@ export function useUpdateDigestDraft() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['digest-drafts'] })
       qc.setQueryData(['digest-draft', data.id], data)
+      qc.invalidateQueries({ queryKey: ['digest-preview', data.id] })
     },
   })
 }
@@ -72,7 +79,11 @@ export function useDeleteDigestDraft() {
   const qc = useQueryClient()
   return useMutation<void, Error, number>({
     mutationFn: async (id) => { await api.delete(`/digest/drafts/${id}`) },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),
+    onSuccess: (_data, deletedId) => {
+      qc.invalidateQueries({ queryKey: ['digest-drafts'] })
+      qc.removeQueries({ queryKey: ['digest-draft', deletedId] })
+      qc.removeQueries({ queryKey: ['digest-preview', deletedId] })
+    },
   })
 }
 

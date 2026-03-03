@@ -3,25 +3,28 @@ import datetime as _dt
 from pydantic import BaseModel
 
 
+class DigestBlock(BaseModel):
+    id: str
+    type: str  # 'text' | 'topic'
+    content: str | None = None    # text blocks
+    topic_id: int | None = None   # topic blocks
+    note: str | None = None       # topic blocks
+
+
 class DigestDraftCreate(BaseModel):
     date: _dt.date
-    topic_ids: list[int] = []
-    intro_text: str | None = None
+    content_blocks: list[DigestBlock] = []
 
 
 class DigestDraftUpdate(BaseModel):
-    intro_text: str | None = None
-    topic_ids: list[int] | None = None
-    topic_notes: dict[str, str] | None = None
+    content_blocks: list[DigestBlock] | None = None
     scheduled_for: _dt.datetime | None = None
 
 
 class DigestDraftOut(BaseModel):
     id: int
     date: _dt.date
-    topic_ids: list[int]
-    topic_notes: dict | None
-    intro_text: str | None
+    content_blocks: list[dict]
     status: str
     scheduled_for: _dt.datetime | None
     sent_at: _dt.datetime | None

@@ -57,14 +57,19 @@ async def client():
 async def test_create_digest_draft(client: AsyncClient):
     resp = await client.post("/api/digest/drafts", json={
         "date": "2026-03-01",
-        "topic_ids": [1, 2],
-        "intro_text": "Hello readers",
+        "content_blocks": [
+            {"id": "b1", "type": "text", "content": "Hello readers"},
+            {"id": "b2", "type": "topic", "topic_id": 1},
+        ],
     })
     assert resp.status_code == 201
     data = resp.json()
     assert data["status"] == "draft"
-    assert data["topic_ids"] == [1, 2]
-    assert data["intro_text"] == "Hello readers"
+    assert len(data["content_blocks"]) == 2
+    assert data["content_blocks"][0]["type"] == "text"
+    assert data["content_blocks"][0]["content"] == "Hello readers"
+    assert data["content_blocks"][1]["type"] == "topic"
+    assert data["content_blocks"][1]["topic_id"] == 1
 
 
 @pytest.mark.asyncio
@@ -72,19 +77,24 @@ async def test_update_digest_draft(client: AsyncClient):
     # Create a draft first
     create_resp = await client.post("/api/digest/drafts", json={
         "date": "2026-03-01",
-        "topic_ids": [1],
+        "content_blocks": [
+            {"id": "b1", "type": "topic", "topic_id": 1},
+        ],
     })
     draft_id = create_resp.json()["id"]
 
     # Update it
     resp = await client.patch(f"/api/digest/drafts/{draft_id}", json={
-        "intro_text": "Updated intro",
-        "topic_notes": {"1": "Note about topic 1"},
+        "content_blocks": [
+            {"id": "b0", "type": "text", "content": "Updated intro"},
+            {"id": "b1", "type": "topic", "topic_id": 1, "note": "Note about topic 1"},
+        ],
     })
     assert resp.status_code == 200
     data = resp.json()
-    assert data["intro_text"] == "Updated intro"
-    assert data["topic_notes"]["1"] == "Note about topic 1"
+    assert len(data["content_blocks"]) == 2
+    assert data["content_blocks"][0]["content"] == "Updated intro"
+    assert data["content_blocks"][1]["note"] == "Note about topic 1"
 
 
 @pytest.mark.asyncio
@@ -115,10 +125,12 @@ async def test_preview_digest(client: AsyncClient):
 
         topic_id = topic.id
 
-    # Create draft with that topic
+    # Create draft with that topic as a block
     create_resp = await client.post("/api/digest/drafts", json={
         "date": today.isoformat(),
-        "topic_ids": [topic_id],
+        "content_blocks": [
+            {"id": "b1", "type": "topic", "topic_id": topic_id},
+        ],
     })
     draft_id = create_resp.json()["id"]
 
@@ -136,7 +148,7 @@ async def test_preview_digest(client: AsyncClient):
 async def test_delete_draft(client: AsyncClient):
     create_resp = await client.post("/api/digest/drafts", json={
         "date": "2026-03-01",
-        "topic_ids": [],
+        "content_blocks": [],
     })
     draft_id = create_resp.json()["id"]
 
@@ -153,7 +165,7 @@ async def test_cannot_edit_sent_draft(client: AsyncClient):
     # Create a draft and mark it as sent directly in DB
     create_resp = await client.post("/api/digest/drafts", json={
         "date": "2026-03-01",
-        "topic_ids": [],
+        "content_blocks": [],
     })
     draft_id = create_resp.json()["id"]
 
@@ -165,6 +177,6 @@ async def test_cannot_edit_sent_draft(client: AsyncClient):
 
     # Try to update
     resp = await client.patch(f"/api/digest/drafts/{draft_id}", json={
-        "intro_text": "Should fail",
+        "content_blocks": [{"id": "b1", "type": "text", "content": "Should fail"}],
     })
     assert resp.status_code == 400
