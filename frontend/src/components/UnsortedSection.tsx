@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
+import { useIsMobile } from '../hooks/useMediaQuery'
 
 interface UnsortedSectionProps {
   tweets: Tweet[]
@@ -88,6 +89,7 @@ export const UnsortedSection = memo(function UnsortedSection({
   onContextMenu,
   isAdmin = true,
 }: UnsortedSectionProps) {
+  const isMobile = useIsMobile()
   const { setNodeRef, isOver } = useDroppable({
     id: 'droppable-unsorted',
   })
@@ -98,6 +100,9 @@ export const UnsortedSection = memo(function UnsortedSection({
     <div
       id="toc-unsorted"
       style={{
+        maxWidth: isMobile ? undefined : 600,
+        margin: '0 auto',
+        width: '100%',
         background: 'var(--bg-raised)',
         border: isOver ? '2px dashed var(--accent)' : '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
