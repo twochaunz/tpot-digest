@@ -9,7 +9,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 _XAI_URL = "https://api.x.ai/v1/chat/completions"
-_MODEL = "grok-3-mini-fast"
+_MODEL = "grok-4-fast-non-reasoning"
 
 _SYSTEM_PROMPT = """You are a title formatter for a tech news digest. Given a topic title and some tweet context, return the title with correct casing.
 
