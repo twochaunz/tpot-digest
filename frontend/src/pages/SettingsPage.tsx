@@ -431,14 +431,6 @@ export function SettingsPage() {
                 --tweet-skeleton-gradient: linear-gradient(270deg, #fafafa, #eaeaea, #eaeaea, #fafafa) !important;
                 color-scheme: light !important;
               }
-              /* Prevent dark-theme ancestor rules from hiding tweet chrome */
-              .tweet-screenshot-area [class*="actions"],
-              .tweet-screenshot-area [class*="replies"],
-              .tweet-screenshot-area [class*="authorFollow"],
-              .tweet-screenshot-area a[class*="infoLink"],
-              .tweet-screenshot-area a[class*="brand"] {
-                display: revert !important;
-              }
             `}</style>
             <div
               ref={tweetRef}
