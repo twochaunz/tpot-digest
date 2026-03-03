@@ -223,6 +223,8 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
             key={dayDate}
             style={{
               flex: `0 0 ${config.widthPct}%`,
+              minWidth: 0,
+              overflow: 'hidden',
               scrollSnapAlign: 'center',
               transform: `scale(${config.scale})`,
               opacity: config.opacity,
