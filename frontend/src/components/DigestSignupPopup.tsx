@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
 import { useSubscribe, useCheckSubscription } from '../api/subscribers'
+import { useAuth } from '../contexts/AuthContext'
 
 export function DigestSignupPopup() {
+  const { isAdmin } = useAuth()
   const [visible, setVisible] = useState(true)
   const [email, setEmail] = useState('')
   const [success, setSuccess] = useState(false)
@@ -31,7 +33,7 @@ export function DigestSignupPopup() {
     }
   }, [email, subscribe])
 
-  if (!visible || checkLoading || subCheck?.subscribed) return null
+  if (isAdmin || !visible || checkLoading || subCheck?.subscribed) return null
 
   return (
     <div
