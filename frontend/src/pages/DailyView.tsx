@@ -325,9 +325,9 @@ export function DailyView() {
                   transition: 'all 0.15s ease',
                 }}
                 aria-label="Keyboard shortcuts"
-                title="Keyboard shortcuts (?)"
+                title="Keyboard shortcuts"
               >
-                ?
+                &#128214;
               </button>
             )}
 
