@@ -257,7 +257,7 @@ async def send_digest(draft_id: int, db: AsyncSession = Depends(get_db)):
             blocks=blocks,
             unsubscribe_url=unsubscribe_url,
         )
-        email_result = send_digest_email(sub.email, subject, html)
+        email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
         if email_result:
             sent_count += 1
 
@@ -303,7 +303,7 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
                 blocks=blocks,
                 unsubscribe_url=unsubscribe_url,
             )
-            email_result = send_digest_email(sub.email, subject, html)
+            email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
             if email_result:
                 sent_count += 1
 
