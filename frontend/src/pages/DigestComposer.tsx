@@ -15,6 +15,7 @@ import {
   useSendTestDigest,
   useSendDigest,
   useSubscriberCount,
+  useSubscribers,
 } from '../api/digest'
 import {
   DndContext,
@@ -529,6 +530,9 @@ export function DigestComposer() {
   const { data: draft } = useDigestDraft(selectedDraftId)
   const { data: preview } = useDigestPreview(selectedDraftId)
   const { data: subCount } = useSubscriberCount()
+  const [showSubs, setShowSubs] = useState(false)
+  const [subSearch, setSubSearch] = useState('')
+  const { data: subscribers } = useSubscribers(showSubs)
 
   const createDraft = useCreateDigestDraft()
   const updateDraft = useUpdateDigestDraft()
@@ -736,9 +740,24 @@ export function DigestComposer() {
           <div style={{ flex: 1 }} />
 
           {subCount && (
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+            <button
+              onClick={() => setShowSubs(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 12,
+                color: 'var(--text-tertiary)',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+                fontFamily: 'var(--font-body)',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+            >
               {subCount.count} subscriber{subCount.count !== 1 ? 's' : ''}
-            </span>
+            </button>
           )}
         </div>
       </header>
@@ -1095,6 +1114,97 @@ export function DigestComposer() {
           </div>
         )}
       </main>
+
+      {/* Subscribers modal */}
+      {showSubs && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10000,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => { setShowSubs(false); setSubSearch('') }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              width: 420,
+              maxHeight: '70vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Subscribers{subscribers ? ` (${subscribers.filter(s => !s.unsubscribed_at).length})` : ''}
+                </h3>
+                <button
+                  onClick={() => { setShowSubs(false); setSubSearch('') }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: 18, cursor: 'pointer' }}
+                >
+                  &times;
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search subscribers..."
+                value={subSearch}
+                onChange={(e) => setSubSearch(e.target.value)}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: 'var(--bg-base)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  outline: 'none',
+                  fontFamily: 'var(--font-body)',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '8px 12px' }}>
+              {!subscribers ? (
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading...</div>
+              ) : (
+                subscribers
+                  .filter(s => s.email.toLowerCase().includes(subSearch.toLowerCase()))
+                  .map(s => (
+                    <div
+                      key={s.id}
+                      style={{
+                        padding: '8px 10px',
+                        fontSize: 13,
+                        color: s.unsubscribed_at ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderRadius: 'var(--radius-sm)',
+                        textDecoration: s.unsubscribed_at ? 'line-through' : 'none',
+                      }}
+                    >
+                      <span>{s.email}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        {new Date(s.subscribed_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
