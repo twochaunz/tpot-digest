@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useSubscribe, useCheckSubscription } from '../api/subscribers'
+import { useSubscribe } from '../api/subscribers'
 import { useAuth } from '../contexts/AuthContext'
 
 export function DigestSignupPopup() {
@@ -9,7 +9,6 @@ export function DigestSignupPopup() {
   const [success, setSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  const { data: subCheck, isLoading: checkLoading } = useCheckSubscription()
   const subscribe = useSubscribe()
 
   const handleDismiss = useCallback(() => {
@@ -33,7 +32,7 @@ export function DigestSignupPopup() {
     }
   }, [email, subscribe])
 
-  if (isAdmin || !visible || checkLoading || subCheck?.subscribed) return null
+  if (isAdmin || !visible) return null
 
   return (
     <div
@@ -51,42 +50,19 @@ export function DigestSignupPopup() {
         fontFamily: 'var(--font-body, system-ui, sans-serif)',
       }}
     >
-      {/* Close button */}
-      <button
-        onClick={handleDismiss}
-        style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          background: 'none',
-          border: 'none',
-          color: 'var(--text-secondary)',
-          fontSize: 20,
-          cursor: 'pointer',
-          lineHeight: 1,
-          padding: '0 4px',
-        }}
-        aria-label="Dismiss"
-      >
-        &times;
-      </button>
-
       {success ? (
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-            Check your email
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            We sent you a confirmation link. Click it to subscribe.
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+            You're subscribed 😀
           </div>
         </div>
       ) : (
         <>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-            Keep up without wasting time scrolling
+            Top tech discourse, sent out daily.
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
-            Top tech discourse, sent out daily.
+            Keep up with the news, inside jokes, drama of tech.
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -135,6 +111,23 @@ export function DigestSignupPopup() {
               {subscribe.isPending ? 'Subscribing...' : 'Subscribe'}
             </button>
           </form>
+          <button
+            onClick={handleDismiss}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              fontSize: 12,
+              cursor: 'pointer',
+              padding: 0,
+              marginTop: 12,
+              fontFamily: 'inherit',
+              width: '100%',
+              textAlign: 'center',
+            }}
+          >
+            I actually like wasting my day on twitter &rsaquo;
+          </button>
         </>
       )}
     </div>

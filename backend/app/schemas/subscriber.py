@@ -15,12 +15,9 @@ class SubscribeResponse(BaseModel):
 class SubscriberOut(BaseModel):
     id: int
     email: str
-    confirmed_at: datetime | None
     unsubscribed_at: datetime | None
     subscribed_at: datetime
 
     model_config = {"from_attributes": True}
 
 
-class SubscriptionCheck(BaseModel):
-    subscribed: bool
