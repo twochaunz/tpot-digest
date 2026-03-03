@@ -19,6 +19,8 @@ if config.config_file_name is not None:
 # Import all models so that Base.metadata is fully populated
 from app.db import Base  # noqa: E402
 from app.models import Tweet, Topic, TweetAssignment  # noqa: E402, F401
+from app.models.subscriber import Subscriber  # noqa: E402, F401
+from app.models.digest_draft import DigestDraft  # noqa: E402, F401
 
 target_metadata = Base.metadata
 
