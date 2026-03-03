@@ -127,3 +127,21 @@ export function useSubscriberCount() {
     },
   })
 }
+
+export interface SubscriberInfo {
+  id: number
+  email: string
+  unsubscribed_at: string | null
+  subscribed_at: string
+}
+
+export function useSubscribers(enabled: boolean) {
+  return useQuery<SubscriberInfo[]>({
+    queryKey: ['subscribers'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscribers')
+      return data
+    },
+    enabled,
+  })
+}
