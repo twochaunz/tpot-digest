@@ -43,4 +43,4 @@ ssh "${SSH_OPTS[@]}" "$SERVER" bash <<EOF
 EOF
 
 echo ""
-echo "Done. Your app should be live at https://tpot.wonchan.com"
+echo "Done. Your app should be live at https://abridged.tech"
