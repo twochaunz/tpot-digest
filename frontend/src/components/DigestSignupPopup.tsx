@@ -1,63 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useSubscribe, useCheckSubscription } from '../api/subscribers'
 
-const DISMISS_KEY = 'digest_popup_dismissed_at'
-const DISMISS_DAYS = 7
-const SHOW_DELAY_MS = 5000
-const SCROLL_THRESHOLD = 0.3
-
-function isDismissedRecently(): boolean {
-  const dismissed = localStorage.getItem(DISMISS_KEY)
-  if (!dismissed) return false
-  const dismissedAt = new Date(dismissed).getTime()
-  const now = Date.now()
-  return now - dismissedAt < DISMISS_DAYS * 24 * 60 * 60 * 1000
-}
-
 export function DigestSignupPopup() {
-  const [visible, setVisible] = useState(false)
+  const [visible, setVisible] = useState(true)
   const [email, setEmail] = useState('')
   const [success, setSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const triggered = useRef(false)
 
   const { data: subCheck, isLoading: checkLoading } = useCheckSubscription()
   const subscribe = useSubscribe()
 
-  const showPopup = useCallback(() => {
-    if (triggered.current) return
-    triggered.current = true
-    setVisible(true)
-  }, [])
-
-  useEffect(() => {
-    // Don't show if already subscribed, recently dismissed, or still checking
-    if (checkLoading) return
-    if (subCheck?.subscribed) return
-    if (isDismissedRecently()) return
-
-    // Timer trigger
-    const timer = setTimeout(showPopup, SHOW_DELAY_MS)
-
-    // Scroll trigger
-    function handleScroll() {
-      const scrollRatio = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)
-      if (scrollRatio >= SCROLL_THRESHOLD) {
-        showPopup()
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('scroll', handleScroll)
-    }
-  }, [checkLoading, subCheck, showPopup])
-
   const handleDismiss = useCallback(() => {
     setVisible(false)
-    localStorage.setItem(DISMISS_KEY, new Date().toISOString())
   }, [])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -77,7 +31,7 @@ export function DigestSignupPopup() {
     }
   }, [email, subscribe])
 
-  if (!visible) return null
+  if (!visible || checkLoading || subCheck?.subscribed) return null
 
   return (
     <div
@@ -127,10 +81,10 @@ export function DigestSignupPopup() {
       ) : (
         <>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-            Get the daily digest
+            Keep up without wasting time scrolling
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
-            The best tweets from tech Twitter, curated and delivered to your inbox every day.
+            Top tech discourse, sent out daily.
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
