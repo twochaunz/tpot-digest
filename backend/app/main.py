@@ -34,4 +34,43 @@ app.include_router(auth_router)
 async def health():
     return {"status": "ok"}
 
+
+import math
+import re
+import httpx
+
+
+def _tweet_token(tweet_id: str) -> str:
+    """Replicate react-tweet's getToken: (id/1e15*PI).toString(36), strip dots/zeros."""
+    num = int(tweet_id) / 1e15 * math.pi
+    # Float to base-36 string (matching JS Number.toString(36))
+    integer_part = int(num)
+    frac = num - integer_part
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    result = digits[integer_part] if integer_part < 36 else ""
+    if integer_part >= 36:
+        s = ""
+        n = integer_part
+        while n:
+            s = digits[n % 36] + s
+            n //= 36
+        result = s
+    result += "."
+    for _ in range(20):
+        frac *= 36
+        d = int(frac)
+        result += digits[d]
+        frac -= d
+    return re.sub(r"(0+|\.)", "", result)
+
+
+@app.get("/api/tweet-embed/{tweet_id}")
+async def tweet_embed_proxy(tweet_id: str):
+    """Proxy Twitter syndication API for react-tweet (their Vercel proxy returns stale data)."""
+    token = _tweet_token(tweet_id)
+    url = f"https://cdn.syndication.twimg.com/tweet-result?id={tweet_id}&lang=en&token={token}"
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url)
+    return {"data": resp.json()}
+
 app.mount("/api/screenshots", StaticFiles(directory=settings.data_dir), name="screenshots")
