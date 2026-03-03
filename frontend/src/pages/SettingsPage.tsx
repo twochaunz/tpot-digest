@@ -17,12 +17,12 @@ export function SettingsPage() {
   const handleDownload = useCallback(async () => {
     if (!tweetRef.current) return
     setDownloading(true)
+    const originals: { img: HTMLImageElement; src: string; crossOrigin: string | null }[] = []
     try {
       const el = tweetRef.current
 
       // Swap cross-origin images to proxied URLs in-place, remember originals
       const imgs = el.querySelectorAll('img')
-      const originals: { img: HTMLImageElement; src: string }[] = []
       await Promise.all(
         Array.from(imgs).map(
           (img) =>
@@ -32,7 +32,7 @@ export function SettingsPage() {
                 resolve()
                 return
               }
-              originals.push({ img, src })
+              originals.push({ img, src, crossOrigin: img.getAttribute('crossorigin') })
               img.crossOrigin = 'anonymous'
               img.src = `/api/image-proxy?url=${encodeURIComponent(src)}`
               img.onload = () => resolve()
@@ -44,12 +44,9 @@ export function SettingsPage() {
       const dataUrl = await toPng(el, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        width: 600,
+        height: 315,
       })
-
-      // Restore original image sources
-      for (const { img, src } of originals) {
-        img.src = src
-      }
 
       const link = document.createElement('a')
       link.download = `tweet-${tweetId}.png`
@@ -58,6 +55,15 @@ export function SettingsPage() {
     } catch (err) {
       console.error('Download failed:', err)
     } finally {
+      // Always restore original image sources, even if toPng throws
+      for (const { img, src, crossOrigin } of originals) {
+        if (crossOrigin === null) {
+          img.removeAttribute('crossorigin')
+        } else {
+          img.crossOrigin = crossOrigin
+        }
+        img.src = src
+      }
       setDownloading(false)
     }
   }, [tweetId])
@@ -403,17 +409,61 @@ export function SettingsPage() {
               </button>
             </div>
 
-            {/* Embedded tweet */}
+            {/* Embedded tweet — force light theme, OG image dimensions */}
+            <style>{`
+              .tweet-screenshot-area .react-tweet-theme {
+                /* Override global .react-tweet-theme { background: none; border: none } */
+                background-color: #fff !important;
+                border: 1px solid rgb(207, 217, 222) !important;
+                border-radius: 12px !important;
+                /* Force light theme variables (override dark mode / prefers-color-scheme) */
+                --tweet-border: 1px solid rgb(207, 217, 222) !important;
+                --tweet-font-color: rgb(15, 20, 25) !important;
+                --tweet-font-color-secondary: rgb(83, 100, 113) !important;
+                --tweet-bg-color: #fff !important;
+                --tweet-bg-color-hover: rgb(247, 249, 249) !important;
+                --tweet-quoted-bg-color-hover: rgba(0, 0, 0, 0.03) !important;
+                --tweet-color-blue-primary: rgb(29, 155, 240) !important;
+                --tweet-color-blue-secondary: rgb(0, 111, 214) !important;
+                --tweet-twitter-icon-color: rgb(15, 20, 25) !important;
+                --tweet-verified-old-color: rgb(130, 154, 171) !important;
+                --tweet-verified-blue-color: rgb(29, 155, 240) !important;
+                --tweet-skeleton-gradient: linear-gradient(270deg, #fafafa, #eaeaea, #eaeaea, #fafafa) !important;
+                color-scheme: light !important;
+              }
+              /* Prevent dark-theme ancestor rules from hiding tweet chrome */
+              .tweet-screenshot-area [class*="actions"],
+              .tweet-screenshot-area [class*="replies"],
+              .tweet-screenshot-area [class*="authorFollow"],
+              .tweet-screenshot-area a[class*="infoLink"],
+              .tweet-screenshot-area a[class*="brand"] {
+                display: revert !important;
+              }
+            `}</style>
             <div
               ref={tweetRef}
               data-theme="light"
+              className="tweet-screenshot-area"
               style={{
-                maxWidth: 550,
+                width: 600,
+                height: 315,
                 margin: '0 auto',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 12,
+                overflow: 'hidden',
+                border: '1px solid #e1e8ed',
               }}
             >
-              <Tweet id={tweetId} apiUrl={`/api/tweet-embed/${tweetId}`} />
+              <div style={{ width: 500 }}>
+                <Tweet id={tweetId} apiUrl={`/api/tweet-embed/${tweetId}`} />
+              </div>
             </div>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8 }}>
+              600 x 315 @ 2x = 1200 x 630 OG image
+            </p>
           </div>
         </div>
       </main>
