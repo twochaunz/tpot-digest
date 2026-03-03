@@ -30,6 +30,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       DIGEST_FROM_EMAIL: ${DIGEST_FROM_EMAIL:-today's tech discourse <today@abridged.tech>}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
     volumes:
       - app_data:/app/data
     depends_on:

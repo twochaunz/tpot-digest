@@ -12,31 +12,9 @@ from app.models.topic import Topic
 from app.models.tweet import Tweet
 from app.schemas.topic import TopicCreate, TopicOut, TopicUpdate
 from app.services.grok_api import fetch_grok_context, GrokAPIError
+from app.services.smart_title import smart_title_case, _fallback_title_case as title_case
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
-
-# Words that stay lowercase in title case (AP style), unless first/last word
-_SMALL_WORDS = {
-    'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
-    'at', 'by', 'in', 'of', 'on', 'to', 'up', 'as', 'is', 'if', 'it',
-    'vs', 'via', 'from', 'with', 'into', 'over',
-}
-
-
-def title_case(text: str) -> str:
-    """AP-style title case. 'kek' always stays lowercase."""
-    if text.lower() == 'kek':
-        return 'kek'
-    words = text.split()
-    result = []
-    for i, word in enumerate(words):
-        if word.lower() == 'kek':
-            result.append('kek')
-        elif i == 0 or i == len(words) - 1 or word.lower() not in _SMALL_WORDS:
-            result.append(word.capitalize())
-        else:
-            result.append(word.lower())
-    return ' '.join(result)
 
 
 TOPIC_COLORS = [
@@ -53,7 +31,23 @@ async def create_topic(body: TopicCreate, db: AsyncSession = Depends(get_db), _a
             select(func.count()).select_from(Topic).where(Topic.date == body.date)
         )).scalar() or 0
         color = TOPIC_COLORS[count % len(TOPIC_COLORS)]
-    topic = Topic(title=title_case(body.title), date=body.date, color=color)
+
+    # Fetch unsorted tweets for this date as context for smart title casing
+    unsorted_stmt = (
+        select(Tweet.text)
+        .outerjoin(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
+        .where(
+            func.date(Tweet.saved_at) == body.date,
+            TweetAssignment.id.is_(None),
+        )
+        .order_by(Tweet.saved_at.desc())
+        .limit(5)
+    )
+    tweet_rows = (await db.execute(unsorted_stmt)).scalars().all()
+    tweet_texts = [t for t in tweet_rows if t]
+
+    smart_title = await smart_title_case(body.title, tweet_texts)
+    topic = Topic(title=smart_title, date=body.date, color=color)
     db.add(topic)
     await db.commit()
     await db.refresh(topic)
