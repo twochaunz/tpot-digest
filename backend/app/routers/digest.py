@@ -240,7 +240,6 @@ async def send_digest(draft_id: int, db: AsyncSession = Depends(get_db)):
     # Fetch active subscribers
     result = await db.execute(
         select(Subscriber).where(
-            Subscriber.confirmed_at.is_not(None),
             Subscriber.unsubscribed_at.is_(None),
         )
     )
@@ -252,7 +251,7 @@ async def send_digest(draft_id: int, db: AsyncSession = Depends(get_db)):
 
     sent_count = 0
     for sub in subscribers:
-        unsubscribe_url = f"https://tpot.wonchan.com/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
+        unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
         html = render_digest_email(
             date_str=date_str,
             blocks=blocks,
@@ -287,7 +286,6 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
         # Fetch active subscribers
         sub_result = await db.execute(
             select(Subscriber).where(
-                Subscriber.confirmed_at.is_not(None),
                 Subscriber.unsubscribed_at.is_(None),
             )
         )
@@ -299,7 +297,7 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
 
         sent_count = 0
         for sub in subscribers:
-            unsubscribe_url = f"https://tpot.wonchan.com/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
+            unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
             html = render_digest_email(
                 date_str=date_str,
                 blocks=blocks,
