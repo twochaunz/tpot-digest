@@ -1,4 +1,4 @@
-"""Smart title casing via OpenRouter with tweet context."""
+"""Smart title casing via xAI Grok with tweet context."""
 
 import logging
 
@@ -8,8 +8,8 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+_XAI_URL = "https://api.x.ai/v1/chat/completions"
+_MODEL = "grok-3-mini-fast"
 
 _SYSTEM_PROMPT = """You are a title formatter for a tech news digest. Given a topic title and some tweet context, return the title with correct casing.
 
@@ -26,8 +26,8 @@ async def smart_title_case(raw_title: str, tweet_texts: list[str]) -> str:
     if raw_title.lower() == "kek":
         return "kek"
 
-    if not settings.openrouter_api_key:
-        logger.warning("OPENROUTER_API_KEY not set -- falling back to dumb title case")
+    if not settings.xai_api_key:
+        logger.warning("XAI_API_KEY not set -- falling back to dumb title case")
         return _fallback_title_case(raw_title)
 
     # Build context from tweets (truncate each to ~200 chars, max 5 tweets)
@@ -40,11 +40,11 @@ async def smart_title_case(raw_title: str, tweet_texts: list[str]) -> str:
     user_msg = f"Title: {raw_title}\n\nTweet context:\n{context}"
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                _OPENROUTER_URL,
+                _XAI_URL,
                 headers={
-                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Authorization": f"Bearer {settings.xai_api_key}",
                     "Content-Type": "application/json",
                 },
                 json={
