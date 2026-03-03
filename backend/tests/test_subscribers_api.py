@@ -49,20 +49,28 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_subscribe(client: AsyncClient):
-    with patch("app.routers.subscribers.send_confirmation_email"):
-        resp = await client.post("/api/subscribers", json={"email": "test@example.com"})
+    resp = await client.post("/api/subscribers", json={"email": "test@example.com"})
     assert resp.status_code == 201
     data = resp.json()
-    assert data["message"] == "Confirmation email sent"
+    assert data["message"] == "Subscribed"
     assert data["already_registered"] is False
     # Cookie should be set
     assert "digest_sub" in resp.cookies
 
+    # Should be confirmed immediately
+    async with async_session() as session:
+        from sqlalchemy import select
+        from app.models.subscriber import Subscriber
+        result = await session.execute(
+            select(Subscriber).where(Subscriber.email == "test@example.com")
+        )
+        sub = result.scalar_one()
+        assert sub.confirmed_at is not None
+
 
 @pytest.mark.asyncio
 async def test_subscribe_duplicate(client: AsyncClient):
-    with patch("app.routers.subscribers.send_confirmation_email"):
-        resp1 = await client.post("/api/subscribers", json={"email": "dup@example.com"})
+    resp1 = await client.post("/api/subscribers", json={"email": "dup@example.com"})
     assert resp1.status_code == 201
 
     resp2 = await client.post("/api/subscribers", json={"email": "dup@example.com"})
@@ -144,8 +152,13 @@ async def test_check_subscription(client: AsyncClient):
 async def test_email_service_renders_template():
     from app.services.email import render_digest_email
 
-    topics = [
+    blocks = [
         {
+            "type": "text",
+            "content": "Welcome to today's digest",
+        },
+        {
+            "type": "topic",
             "title": "AI News",
             "note": "Big day for AI",
             "tweets": [
@@ -163,8 +176,7 @@ async def test_email_service_renders_template():
 
     html = render_digest_email(
         date_str="March 1, 2026",
-        intro_text="Welcome to today's digest",
-        topics=topics,
+        blocks=blocks,
         unsubscribe_url="https://example.com/unsubscribe",
     )
 

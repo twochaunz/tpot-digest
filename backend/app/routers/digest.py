@@ -35,43 +35,55 @@ def _format_date(d) -> str:
 
 
 async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[dict]:
-    """Build list of topic dicts with their tweets for rendering."""
-    topics = []
-    topic_notes = draft.topic_notes or {}
+    """Build list of block dicts for rendering from content_blocks."""
+    result_blocks = []
 
-    for topic_id in draft.topic_ids:
-        topic = await db.get(Topic, topic_id)
-        if not topic:
-            continue
+    for block in (draft.content_blocks or []):
+        block_type = block.get("type")
 
-        # Fetch assigned tweets for this topic
-        stmt = (
-            select(Tweet)
-            .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
-            .where(TweetAssignment.topic_id == topic_id)
-            .order_by(Tweet.saved_at)
-        )
-        result = await db.execute(stmt)
-        tweet_rows = result.scalars().all()
+        if block_type == "text":
+            content = block.get("content")
+            if content:
+                result_blocks.append({"type": "text", "content": content})
 
-        tweet_dicts = []
-        for tw in tweet_rows:
-            tweet_dicts.append({
-                "author_handle": tw.author_handle,
-                "author_display_name": tw.author_display_name,
-                "author_avatar_url": tw.author_avatar_url,
-                "text": tw.text,
-                "engagement": tw.engagement,
-                "url": tw.url,
+        elif block_type == "topic":
+            topic_id = block.get("topic_id")
+            if not topic_id:
+                continue
+
+            topic = await db.get(Topic, topic_id)
+            if not topic:
+                continue
+
+            # Fetch assigned tweets for this topic
+            stmt = (
+                select(Tweet)
+                .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
+                .where(TweetAssignment.topic_id == topic_id)
+                .order_by(Tweet.saved_at)
+            )
+            rows = await db.execute(stmt)
+            tweet_rows = rows.scalars().all()
+
+            tweet_dicts = []
+            for tw in tweet_rows:
+                tweet_dicts.append({
+                    "author_handle": tw.author_handle,
+                    "author_display_name": tw.author_display_name,
+                    "author_avatar_url": tw.author_avatar_url,
+                    "text": tw.text,
+                    "engagement": tw.engagement,
+                    "url": tw.url,
+                })
+
+            result_blocks.append({
+                "type": "topic",
+                "title": topic.title,
+                "note": block.get("note"),
+                "tweets": tweet_dicts,
             })
 
-        topics.append({
-            "title": topic.title,
-            "note": topic_notes.get(str(topic_id)),
-            "tweets": tweet_dicts,
-        })
-
-    return topics
+    return result_blocks
 
 
 @router.post("/drafts", response_model=DigestDraftOut, status_code=201)
@@ -79,8 +91,7 @@ async def create_draft(body: DigestDraftCreate, db: AsyncSession = Depends(get_d
     """Create a new digest draft."""
     draft = DigestDraft(
         date=body.date,
-        topic_ids=body.topic_ids,
-        intro_text=body.intro_text,
+        content_blocks=[b.model_dump() for b in body.content_blocks],
     )
     db.add(draft)
     await db.commit()
@@ -121,6 +132,10 @@ async def update_draft(draft_id: int, body: DigestDraftUpdate, db: AsyncSession 
     if "scheduled_for" in data and data["scheduled_for"] is not None:
         draft.status = "scheduled"
 
+    if "content_blocks" in data and data["content_blocks"] is not None:
+        draft.content_blocks = [b if isinstance(b, dict) else b.model_dump() for b in data["content_blocks"]]
+        data.pop("content_blocks")
+
     for field, value in data.items():
         setattr(draft, field, value)
 
@@ -148,14 +163,13 @@ async def preview_draft(draft_id: int, db: AsyncSession = Depends(get_db)):
     if not draft:
         raise HTTPException(404, "Draft not found")
 
-    topics = await _build_digest_content(draft, db)
+    blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
     subject = f"abridged -- {date_str}"
 
     html = render_digest_email(
         date_str=date_str,
-        intro_text=draft.intro_text,
-        topics=topics,
+        blocks=blocks,
         unsubscribe_url="{{unsubscribe_url}}",
     )
 
@@ -183,14 +197,13 @@ async def send_test(draft_id: int, body: DigestSendTestRequest | None = None, db
     if not to_email:
         raise HTTPException(400, "No admin_email configured and no email provided")
 
-    topics = await _build_digest_content(draft, db)
+    blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
     subject = f"[TEST] abridged -- {date_str}"
 
     html = render_digest_email(
         date_str=date_str,
-        intro_text=draft.intro_text,
-        topics=topics,
+        blocks=blocks,
         unsubscribe_url="#",
     )
 
@@ -216,7 +229,7 @@ async def send_digest(draft_id: int, db: AsyncSession = Depends(get_db)):
     )
     subscribers = result.scalars().all()
 
-    topics = await _build_digest_content(draft, db)
+    blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
     subject = f"abridged -- {date_str}"
 
@@ -225,12 +238,11 @@ async def send_digest(draft_id: int, db: AsyncSession = Depends(get_db)):
         unsubscribe_url = f"https://tpot.wonchan.com/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
         html = render_digest_email(
             date_str=date_str,
-            intro_text=draft.intro_text,
-            topics=topics,
+            blocks=blocks,
             unsubscribe_url=unsubscribe_url,
         )
-        result = send_digest_email(sub.email, subject, html)
-        if result:
+        email_result = send_digest_email(sub.email, subject, html)
+        if email_result:
             sent_count += 1
 
     draft.status = "sent"
@@ -264,7 +276,7 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
         )
         subscribers = sub_result.scalars().all()
 
-        topics = await _build_digest_content(draft, db)
+        blocks = await _build_digest_content(draft, db)
         date_str = _format_date(draft.date)
         subject = f"abridged -- {date_str}"
 
@@ -273,8 +285,7 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
             unsubscribe_url = f"https://tpot.wonchan.com/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
             html = render_digest_email(
                 date_str=date_str,
-                intro_text=draft.intro_text,
-                topics=topics,
+                blocks=blocks,
                 unsubscribe_url=unsubscribe_url,
             )
             email_result = send_digest_email(sub.email, subject, html)

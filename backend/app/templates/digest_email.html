@@ -19,22 +19,22 @@
       <p style="font-size:15px;color:#71767b;margin:0;">{{ date_str }}</p>
     </div>
 
-    {% if intro_text %}
-    <!-- Intro -->
+    {% for block in blocks %}
+    {% if block.type == 'text' %}
+    <!-- Text block -->
     <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
-      <p style="margin:0;font-size:15px;line-height:1.5;color:#e7e9ea;">{{ intro_text }}</p>
+      <p style="margin:0;font-size:15px;line-height:1.5;color:#e7e9ea;">{{ block.content }}</p>
     </div>
-    {% endif %}
 
-    {% for topic in topics %}
-    <!-- Topic: {{ topic.title }} -->
+    {% elif block.type == 'topic' %}
+    <!-- Topic: {{ block.title }} -->
     <div style="margin-bottom:28px;">
-      <h2 style="font-size:18px;font-weight:700;color:#e7e9ea;margin:0 0 4px 0;padding-bottom:8px;border-bottom:1px solid #2f3336;">{{ topic.title }}</h2>
-      {% if topic.note %}
-      <p style="font-size:14px;color:#71767b;margin:4px 0 12px 0;line-height:1.4;">{{ topic.note }}</p>
+      <h2 style="font-size:18px;font-weight:700;color:#e7e9ea;margin:0 0 4px 0;padding-bottom:8px;border-bottom:1px solid #2f3336;">{{ block.title }}</h2>
+      {% if block.note %}
+      <p style="font-size:14px;color:#71767b;margin:4px 0 12px 0;line-height:1.4;">{{ block.note }}</p>
       {% endif %}
 
-      {% for tweet in topic.tweets %}
+      {% for tweet in block.tweets %}
       <!-- Tweet card -->
       <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px;margin-bottom:8px;">
         <!-- Author row -->
@@ -71,6 +71,7 @@
       </div>
       {% endfor %}
     </div>
+    {% endif %}
     {% endfor %}
 
     <!-- Footer -->

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle } from '../api/dayBundle'
 import { sortTopics } from '../utils/topics'
 import {
+  type DigestBlock,
   useDigestDrafts,
   useDigestDraft,
   useCreateDigestDraft,
@@ -14,6 +15,21 @@ import {
   useSendDigest,
   useSubscriberCount,
 } from '../api/digest'
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 function todayDateStr(): string {
   const now = new Date()
@@ -23,22 +39,284 @@ function todayDateStr(): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+let _blockCounter = 0
+function nextBlockId(): string {
+  return `block-${Date.now()}-${_blockCounter++}`
+}
+
+/* ---- Sortable block row ---- */
+function SortableBlock({
+  block,
+  topics,
+  isSent,
+  onUpdateBlock,
+  onDeleteBlock,
+}: {
+  block: DigestBlock
+  topics: { id: number; title: string; color: string | null; tweet_count: number }[]
+  isSent: boolean
+  onUpdateBlock: (id: string, patch: Partial<DigestBlock>) => void
+  onDeleteBlock: (id: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 0,
+    marginBottom: 8,
+  }
+
+  const topic = block.type === 'topic' && block.topic_id
+    ? topics.find((t) => t.id === block.topic_id)
+    : null
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {/* Gutter: drag handle + delete */}
+      <div style={{
+        width: 32,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        paddingTop: 10,
+        gap: 2,
+      }}>
+        <span
+          {...attributes}
+          {...listeners}
+          style={{
+            cursor: isSent ? 'default' : 'grab',
+            color: 'var(--text-tertiary)',
+            fontSize: 14,
+            lineHeight: 1,
+            padding: '2px 4px',
+            userSelect: 'none',
+            touchAction: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 20,
+            height: 20,
+          }}
+          title="Drag to reorder"
+        >
+          &#10303;
+        </span>
+        {!isSent && (
+          <button
+            onClick={() => onDeleteBlock(block.id)}
+            title="Remove block"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              lineHeight: 1,
+              fontSize: 14,
+              color: 'var(--text-tertiary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 20,
+              height: 20,
+              borderRadius: 4,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#e53e3e' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)' }}
+          >
+            &times;
+          </button>
+        )}
+      </div>
+
+      {/* Block content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {block.type === 'text' && (
+          <textarea
+            value={block.content || ''}
+            onChange={(e) => onUpdateBlock(block.id, { content: e.target.value })}
+            disabled={isSent}
+            placeholder="Write text content..."
+            rows={3}
+            style={markdownTextareaStyle}
+          />
+        )}
+
+        {block.type === 'topic' && topic && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span style={{
+                minWidth: 22,
+                height: 22,
+                borderRadius: 11,
+                background: topic.color || 'var(--accent)',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#fff',
+                padding: '0 5px',
+              }}>
+                {topic.tweet_count}
+              </span>
+              <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
+                {topic.title}
+              </span>
+            </div>
+            <textarea
+              value={block.note || ''}
+              onChange={(e) => onUpdateBlock(block.id, { note: e.target.value })}
+              disabled={isSent}
+              placeholder="Add a note for this topic..."
+              rows={2}
+              style={{ ...markdownTextareaStyle, background: 'var(--bg-base)' }}
+            />
+          </div>
+        )}
+
+        {/* Topic block with missing topic */}
+        {block.type === 'topic' && !topic && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 14px',
+            color: 'var(--text-tertiary)',
+            fontSize: 13,
+          }}>
+            Topic #{block.topic_id} (not found for this date)
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ---- Topic picker dropdown ---- */
+function TopicPicker({
+  topics,
+  usedTopicIds,
+  onSelect,
+}: {
+  topics: { id: number; title: string; color: string | null; tweet_count: number }[]
+  usedTopicIds: Set<number>
+  onSelect: (topicId: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const available = topics.filter((t) => !usedTopicIds.has(t.id))
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        disabled={available.length === 0}
+        style={{
+          ...addBtnStyle,
+          opacity: available.length === 0 ? 0.4 : 1,
+          cursor: available.length === 0 ? 'default' : 'pointer',
+        }}
+      >
+        + Topic
+      </button>
+
+      {open && available.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          marginTop: 4,
+          background: 'var(--bg-raised)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          zIndex: 100,
+          padding: 4,
+          minWidth: 220,
+          maxHeight: 300,
+          overflowY: 'auto',
+        }}>
+          {available.map((t) => (
+            <div
+              key={t.id}
+              onClick={() => { onSelect(t.id); setOpen(false) }}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                borderRadius: 6,
+                fontSize: 13,
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <span style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: t.color || 'var(--accent)',
+                flexShrink: 0,
+              }} />
+              {t.title}
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+                {t.tweet_count} tweet{t.tweet_count !== 1 ? 's' : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ---- Main DigestComposer ---- */
 export function DigestComposer() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
 
   const [date, setDate] = useState(todayDateStr())
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null)
-  const [selectedTopicIds, setSelectedTopicIds] = useState<number[]>([])
-  const [topicNotes, setTopicNotes] = useState<Record<string, string>>({})
-  const [introText, setIntroText] = useState('')
+  const [blocks, setBlocks] = useState<DigestBlock[]>([])
   const [scheduledFor, setScheduledFor] = useState('')
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
   const { data: bundle } = useDayBundle(date)
   const { data: drafts } = useDigestDrafts()
   const { data: draft } = useDigestDraft(selectedDraftId)
-  const { data: preview } = useDigestPreview(selectedDraftId)
+  const { data: preview } = useDigestPreview(showPreview ? selectedDraftId : null)
   const { data: subCount } = useSubscriberCount()
 
   const createDraft = useCreateDigestDraft()
@@ -50,9 +328,7 @@ export function DigestComposer() {
   // Load draft data when a draft is selected
   useEffect(() => {
     if (draft) {
-      setSelectedTopicIds(draft.topic_ids)
-      setTopicNotes(draft.topic_notes || {})
-      setIntroText(draft.intro_text || '')
+      setBlocks(draft.content_blocks || [])
       setScheduledFor(draft.scheduled_for || '')
       setDate(draft.date)
     }
@@ -70,17 +346,43 @@ export function DigestComposer() {
 
   const topics = sortTopics(bundle?.topics || [])
 
-  const toggleTopic = (topicId: number) => {
-    setSelectedTopicIds((prev) =>
-      prev.includes(topicId)
-        ? prev.filter((id) => id !== topicId)
-        : [...prev, topicId]
-    )
-  }
+  // Set of topic IDs already used in blocks
+  const usedTopicIds = new Set(
+    blocks.filter((b) => b.type === 'topic' && b.topic_id).map((b) => b.topic_id!)
+  )
 
-  const setTopicNote = (topicId: number, note: string) => {
-    setTopicNotes((prev) => ({ ...prev, [String(topicId)]: note }))
-  }
+  const updateBlock = useCallback((id: string, patch: Partial<DigestBlock>) => {
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)))
+  }, [])
+
+  const deleteBlock = useCallback((id: string) => {
+    setBlocks((prev) => prev.filter((b) => b.id !== id))
+  }, [])
+
+  const addTextBlock = useCallback(() => {
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'text', content: '' }])
+  }, [])
+
+  const addTopicBlock = useCallback((topicId: number) => {
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic', topic_id: topicId, note: '' }])
+  }, [])
+
+  // DnD
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setBlocks((prev) => {
+      const oldIndex = prev.findIndex((b) => b.id === active.id)
+      const newIndex = prev.findIndex((b) => b.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return prev
+      return arrayMove(prev, oldIndex, newIndex)
+    })
+  }, [])
 
   const showStatus = (text: string, type: 'success' | 'error') => {
     setStatusMessage({ text, type })
@@ -92,17 +394,14 @@ export function DigestComposer() {
       if (selectedDraftId) {
         await updateDraft.mutateAsync({
           id: selectedDraftId,
-          intro_text: introText || undefined,
-          topic_ids: selectedTopicIds,
-          topic_notes: topicNotes,
+          content_blocks: blocks,
           scheduled_for: scheduledFor || undefined,
         })
         showStatus('Draft saved', 'success')
       } else {
         const created = await createDraft.mutateAsync({
           date,
-          topic_ids: selectedTopicIds,
-          intro_text: introText || undefined,
+          content_blocks: blocks,
         })
         setSelectedDraftId(created.id)
         showStatus('Draft created', 'success')
@@ -139,10 +438,9 @@ export function DigestComposer() {
     try {
       await deleteDraft.mutateAsync(selectedDraftId)
       setSelectedDraftId(null)
-      setSelectedTopicIds([])
-      setTopicNotes({})
-      setIntroText('')
+      setBlocks([])
       setScheduledFor('')
+      setShowPreview(false)
       showStatus('Draft deleted', 'success')
     } catch {
       showStatus('Failed to delete draft', 'error')
@@ -159,6 +457,8 @@ export function DigestComposer() {
 
   const isSent = draft?.status === 'sent'
   const isBusy = createDraft.isPending || updateDraft.isPending || sendTest.isPending || sendDigest.isPending
+  const blockIds = blocks.map((b) => b.id)
+  const topicCount = blocks.filter((b) => b.type === 'topic').length
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
@@ -275,6 +575,8 @@ export function DigestComposer() {
               onChange={(e) => {
                 setDate(e.target.value)
                 setSelectedDraftId(null)
+                setBlocks([])
+                setShowPreview(false)
               }}
               style={inputStyle}
             />
@@ -285,7 +587,13 @@ export function DigestComposer() {
               <label style={labelStyle}>Existing Drafts</label>
               <select
                 value={selectedDraftId ?? ''}
-                onChange={(e) => setSelectedDraftId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => {
+                  setSelectedDraftId(e.target.value ? Number(e.target.value) : null)
+                  if (!e.target.value) {
+                    setBlocks([])
+                    setShowPreview(false)
+                  }
+                }}
                 style={inputStyle}
               >
                 <option value="">New draft</option>
@@ -300,12 +608,12 @@ export function DigestComposer() {
 
           {isSent && (
             <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 500 }}>
-              Already sent ({draft.recipient_count} recipients)
+              Already sent ({draft!.recipient_count} recipients)
             </span>
           )}
         </div>
 
-        {/* Topic Selection */}
+        {/* Block List */}
         <div
           style={{
             background: 'var(--bg-raised)',
@@ -315,143 +623,47 @@ export function DigestComposer() {
           }}
         >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h3 style={sectionTitleStyle}>Topics</h3>
+            <h3 style={sectionTitleStyle}>Content Blocks</h3>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
-              Select topics to include in the digest ({selectedTopicIds.length} selected)
+              {blocks.length} block{blocks.length !== 1 ? 's' : ''} &middot; {topicCount} topic{topicCount !== 1 ? 's' : ''}
             </p>
           </div>
 
-          <div style={{ padding: '4px 0' }}>
-            {topics.length === 0 ? (
-              <div style={{ padding: '16px 20px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-                No topics for this date
+          <div style={{ padding: '16px 20px' }}>
+            {blocks.length === 0 ? (
+              <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                No blocks yet. Add a text or topic block below.
               </div>
             ) : (
-              topics.map((topic) => {
-                const isSelected = selectedTopicIds.includes(topic.id)
-                const accentColor = topic.color || 'var(--accent)'
-                return (
-                  <div
-                    key={topic.id}
-                    style={{
-                      padding: '10px 20px',
-                      transition: 'background 0.1s ease',
-                    }}
-                  >
-                    <div
-                      onClick={() => !isSent && toggleTopic(topic.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        cursor: isSent ? 'default' : 'pointer',
-                        userSelect: 'none',
-                      }}
-                    >
-                      {/* Toggle switch */}
-                      <div
-                        style={{
-                          width: 36,
-                          height: 20,
-                          borderRadius: 10,
-                          background: isSelected ? accentColor : 'var(--bg-elevated)',
-                          border: isSelected ? 'none' : '1px solid var(--border)',
-                          position: 'relative',
-                          transition: 'background 0.2s ease',
-                          flexShrink: 0,
-                          opacity: isSent ? 0.5 : 1,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 8,
-                            background: '#fff',
-                            position: 'absolute',
-                            top: isSelected ? 2 : 1,
-                            left: isSelected ? 18 : 2,
-                            transition: 'left 0.2s ease',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                          }}
-                        />
-                      </div>
-
-                      {/* Count badge (same as TopicSection header) */}
-                      <span
-                        style={{
-                          minWidth: 22,
-                          height: 22,
-                          borderRadius: 11,
-                          background: accentColor,
-                          flexShrink: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: '#fff',
-                          padding: '0 5px',
-                        }}
-                      >
-                        {topic.tweet_count}
-                      </span>
-
-                      {/* Title */}
-                      <span style={{
-                        fontWeight: 500,
-                        fontSize: 14,
-                        color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        transition: 'color 0.15s ease',
-                      }}>
-                        {topic.title}
-                      </span>
-                    </div>
-
-                    {/* Topic note (markdown-style) */}
-                    {isSelected && (
-                      <div style={{ marginTop: 8, marginLeft: 48 }}>
-                        <textarea
-                          placeholder="Add a note for this topic (markdown supported)..."
-                          value={topicNotes[String(topic.id)] || ''}
-                          onChange={(e) => setTopicNote(topic.id, e.target.value)}
-                          disabled={isSent}
-                          rows={2}
-                          style={markdownTextareaStyle}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )
-              })
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+                  {blocks.map((block) => (
+                    <SortableBlock
+                      key={block.id}
+                      block={block}
+                      topics={topics}
+                      isSent={!!isSent}
+                      onUpdateBlock={updateBlock}
+                      onDeleteBlock={deleteBlock}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
-          </div>
-        </div>
 
-        {/* Intro Text */}
-        <div
-          style={{
-            background: 'var(--bg-raised)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h3 style={sectionTitleStyle}>Intro Text</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
-              Brief introduction for the email &mdash; supports markdown
-            </p>
-          </div>
-          <div style={{ padding: '16px 20px' }}>
-            <textarea
-              value={introText}
-              onChange={(e) => setIntroText(e.target.value)}
-              disabled={isSent}
-              placeholder="# Today's Digest&#10;&#10;Write a brief intro for today's digest..."
-              rows={5}
-              style={markdownTextareaStyle}
-            />
+            {/* Add block buttons */}
+            {!isSent && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button onClick={addTextBlock} style={addBtnStyle}>
+                  + Text
+                </button>
+                <TopicPicker
+                  topics={topics}
+                  usedTopicIds={usedTopicIds}
+                  onSelect={addTopicBlock}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -516,6 +728,13 @@ export function DigestComposer() {
           {selectedDraftId && (
             <>
               <button
+                onClick={() => setShowPreview(!showPreview)}
+                style={buttonStyle('transparent', true)}
+              >
+                {showPreview ? 'Hide Preview' : 'Show Preview'}
+              </button>
+
+              <button
                 onClick={handleSendTest}
                 disabled={isBusy || isSent}
                 style={buttonStyle('transparent', true)}
@@ -563,8 +782,8 @@ export function DigestComposer() {
           )}
         </div>
 
-        {/* Email Preview - always visible when draft exists */}
-        {selectedDraftId && (
+        {/* Email Preview */}
+        {showPreview && selectedDraftId && (
           <div
             style={{
               background: 'var(--bg-raised)',
@@ -621,53 +840,56 @@ export function DigestComposer() {
               <h3 style={sectionTitleStyle}>All Drafts</h3>
             </div>
             <div>
-              {drafts.map((d) => (
-                <div
-                  key={d.id}
-                  onClick={() => setSelectedDraftId(d.id)}
-                  style={{
-                    padding: '12px 20px',
-                    borderBottom: '1px solid var(--border)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: d.id === selectedDraftId ? 'var(--bg-elevated)' : 'transparent',
-                    transition: 'background 0.1s ease',
-                  }}
-                >
-                  <div>
-                    <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
-                      {d.date}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
-                      {d.topic_ids.length} topic{d.topic_ids.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <span
+              {drafts.map((d) => {
+                const draftTopicCount = (d.content_blocks || []).filter((b) => b.type === 'topic').length
+                return (
+                  <div
+                    key={d.id}
+                    onClick={() => setSelectedDraftId(d.id)}
                     style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '3px 8px',
-                      borderRadius: 'var(--radius-sm)',
-                      background:
-                        d.status === 'sent'
-                          ? 'rgba(74, 222, 128, 0.15)'
-                          : d.status === 'scheduled'
-                            ? 'rgba(139, 92, 246, 0.15)'
-                            : 'rgba(255, 255, 255, 0.06)',
-                      color:
-                        d.status === 'sent'
-                          ? '#4ade80'
-                          : d.status === 'scheduled'
-                            ? '#a78bfa'
-                            : 'var(--text-secondary)',
+                      padding: '12px 20px',
+                      borderBottom: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: d.id === selectedDraftId ? 'var(--bg-elevated)' : 'transparent',
+                      transition: 'background 0.1s ease',
                     }}
                   >
-                    {d.status}
-                  </span>
-                </div>
-              ))}
+                    <div>
+                      <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
+                        {d.date}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
+                        {draftTopicCount} topic{draftTopicCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        background:
+                          d.status === 'sent'
+                            ? 'rgba(74, 222, 128, 0.15)'
+                            : d.status === 'scheduled'
+                              ? 'rgba(139, 92, 246, 0.15)'
+                              : 'rgba(255, 255, 255, 0.06)',
+                        color:
+                          d.status === 'sent'
+                            ? '#4ade80'
+                            : d.status === 'scheduled'
+                              ? '#a78bfa'
+                              : 'var(--text-secondary)',
+                      }}
+                    >
+                      {d.status}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
@@ -716,6 +938,18 @@ const markdownTextareaStyle: React.CSSProperties = {
   outline: 'none',
   lineHeight: 1.7,
   letterSpacing: '-0.01em',
+}
+
+const addBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: '1px dashed var(--border)',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--text-secondary)',
+  padding: '6px 14px',
+  fontSize: 13,
+  cursor: 'pointer',
+  fontFamily: 'var(--font-body)',
+  transition: 'all 0.15s ease',
 }
 
 function buttonStyle(bg: string, outline = false): React.CSSProperties {

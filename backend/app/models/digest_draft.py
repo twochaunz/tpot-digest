@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,9 +12,7 @@ class DigestDraft(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     date: Mapped[date] = mapped_column(Date, index=True)
-    topic_ids: Mapped[list] = mapped_column(JSONB, default=list)
-    topic_notes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    intro_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_blocks: Mapped[list] = mapped_column(JSONB, default=list)
     status: Mapped[str] = mapped_column(String(32), default="draft", server_default="draft")
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
