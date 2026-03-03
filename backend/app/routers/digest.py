@@ -177,7 +177,6 @@ async def preview_draft(draft_id: int, db: AsyncSession = Depends(get_db)):
     count_result = await db.execute(
         select(Subscriber)
         .where(
-            Subscriber.confirmed_at.is_not(None),
             Subscriber.unsubscribed_at.is_(None),
         )
     )

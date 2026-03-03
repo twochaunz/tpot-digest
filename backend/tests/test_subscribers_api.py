@@ -1,5 +1,3 @@
-from unittest.mock import AsyncMock, patch
-
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -54,18 +52,7 @@ async def test_subscribe(client: AsyncClient):
     data = resp.json()
     assert data["message"] == "Subscribed"
     assert data["already_registered"] is False
-    # Cookie should be set
-    assert "digest_sub" in resp.cookies
 
-    # Should be confirmed immediately
-    async with async_session() as session:
-        from sqlalchemy import select
-        from app.models.subscriber import Subscriber
-        result = await session.execute(
-            select(Subscriber).where(Subscriber.email == "test@example.com")
-        )
-        sub = result.scalar_one()
-        assert sub.confirmed_at is not None
 
 
 @pytest.mark.asyncio
@@ -89,7 +76,6 @@ async def test_unsubscribe(client: AsyncClient):
     async with async_session() as session:
         sub = Subscriber(
             email="unsub@example.com",
-            cookie_token=secrets.token_hex(32),
             unsubscribe_token=unsub_token,
         )
         session.add(sub)
@@ -107,45 +93,6 @@ async def test_unsubscribe(client: AsyncClient):
         )
         sub = result.scalar_one()
         assert sub.unsubscribed_at is not None
-
-
-@pytest.mark.asyncio
-async def test_confirm(client: AsyncClient):
-    from app.models.subscriber import Subscriber
-    import secrets
-
-    confirm_token = secrets.token_hex(32)
-    async with async_session() as session:
-        sub = Subscriber(
-            email="confirm@example.com",
-            cookie_token=secrets.token_hex(32),
-            unsubscribe_token=secrets.token_hex(32),
-            confirmation_token=confirm_token,
-        )
-        session.add(sub)
-        await session.commit()
-
-    resp = await client.get(f"/api/subscribers/confirm?token={confirm_token}")
-    assert resp.status_code == 200
-    assert "Confirmed" in resp.text
-
-    # Verify confirmed_at is set and token cleared
-    async with async_session() as session:
-        from sqlalchemy import select
-        result = await session.execute(
-            select(Subscriber).where(Subscriber.email == "confirm@example.com")
-        )
-        sub = result.scalar_one()
-        assert sub.confirmed_at is not None
-        assert sub.confirmation_token is None
-
-
-@pytest.mark.asyncio
-async def test_check_subscription(client: AsyncClient):
-    # No cookie -> not subscribed
-    resp = await client.get("/api/subscribers/check")
-    assert resp.status_code == 200
-    assert resp.json()["subscribed"] is False
 
 
 @pytest.mark.asyncio
