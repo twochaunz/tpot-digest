@@ -61,7 +61,7 @@ export function DigestSignupPopup() {
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
             Top tech discourse, sent out daily.
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5, whiteSpace: 'normal' }}>
             Keep up with the news, inside jokes, drama of tech — w/o doomscrolling ads, viral bait, and infinite slop.
           </div>
 
