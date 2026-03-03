@@ -1,9 +1,48 @@
 import { useNavigate } from 'react-router-dom'
+import { useRef, useState, useCallback } from 'react'
+import { Tweet } from 'react-tweet'
+import { toPng } from 'html-to-image'
 import { useAuth } from '../contexts/AuthContext'
+
+const DEFAULT_TWEET_ID = '2028500984977330453'
 
 export function SettingsPage() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const tweetRef = useRef<HTMLDivElement>(null)
+  const [tweetId, setTweetId] = useState(DEFAULT_TWEET_ID)
+  const [inputVal, setInputVal] = useState(DEFAULT_TWEET_ID)
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDownload = useCallback(async () => {
+    if (!tweetRef.current) return
+    setDownloading(true)
+    try {
+      // Target the actual tweet article inside the container
+      const tweetEl = tweetRef.current.querySelector('[data-testid="tweet"]') as HTMLElement
+        || tweetRef.current.querySelector('.react-tweet-theme') as HTMLElement
+        || tweetRef.current
+      const dataUrl = await toPng(tweetEl, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#000000',
+      })
+      const link = document.createElement('a')
+      link.download = `tweet-${tweetId}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      console.error('Download failed:', err)
+    } finally {
+      setDownloading(false)
+    }
+  }, [tweetId])
+
+  const handleLoadTweet = () => {
+    // Extract tweet ID from URL or raw ID
+    const match = inputVal.match(/status\/(\d+)/)
+    setTweetId(match ? match[1] : inputVal.trim())
+  }
 
   if (!isAdmin) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Admin access required</div>
@@ -235,6 +274,121 @@ export function SettingsPage() {
                   them
                 </li>
               </ol>
+            </div>
+          </div>
+        </div>
+
+        {/* Tweet Screenshot Tool */}
+        <div
+          style={{
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div>
+              <h3
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  margin: 0,
+                }}
+              >
+                Tweet Screenshot
+              </h3>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text-tertiary)',
+                  margin: '4px 0 0',
+                }}
+              >
+                Edit text with dev tools, then download
+              </p>
+            </div>
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              style={{
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: downloading ? 'wait' : 'pointer',
+                opacity: downloading ? 0.6 : 1,
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              {downloading ? 'Capturing...' : 'Download PNG'}
+            </button>
+          </div>
+
+          <div style={{ padding: '16px 20px' }}>
+            {/* Tweet ID input */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              <input
+                value={inputVal}
+                onChange={(e) => setInputVal(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLoadTweet()}
+                placeholder="Tweet ID or URL"
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '8px 12px',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  fontFamily: 'var(--font-mono)',
+                }}
+              />
+              <button
+                onClick={handleLoadTweet}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-secondary)',
+                  padding: '8px 14px',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                Load
+              </button>
+            </div>
+
+            {/* Embedded tweet */}
+            <div
+              ref={tweetRef}
+              data-theme="light"
+              style={{
+                maxWidth: 550,
+                margin: '0 auto',
+              }}
+            >
+              <Tweet id={tweetId} />
             </div>
           </div>
         </div>
