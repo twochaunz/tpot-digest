@@ -440,6 +440,7 @@ export function DayFeedPanel({
                       onContextMenu={isAdmin ? handleContextMenu : undefined}
                       onTopicContextMenu={isAdmin ? handleTopicContextMenu : undefined}
                       isAdmin={isAdmin}
+                      isPreview={!isActive}
                     />
                   )
                 })}
