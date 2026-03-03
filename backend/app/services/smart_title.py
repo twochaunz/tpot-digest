@@ -1,4 +1,4 @@
-"""Smart title casing via OpenRouter (Qwen) with tweet context."""
+"""Smart title casing via OpenRouter with tweet context."""
 
 import logging
 
@@ -9,7 +9,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 _OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-_MODEL = "qwen/qwen3-8b"
+_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
 _SYSTEM_PROMPT = """You are a title formatter for a tech news digest. Given a topic title and some tweet context, return the title with correct casing.
 
@@ -40,7 +40,7 @@ async def smart_title_case(raw_title: str, tweet_texts: list[str]) -> str:
     user_msg = f"Title: {raw_title}\n\nTweet context:\n{context}"
 
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.post(
                 _OPENROUTER_URL,
                 headers={
