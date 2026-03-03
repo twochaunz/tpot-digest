@@ -29,6 +29,12 @@ app.include_router(scripts_router)
 from app.auth import router as auth_router
 app.include_router(auth_router)
 
+from app.routers.subscribers import router as subscribers_router
+app.include_router(subscribers_router)
+
+from app.routers.digest import router as digest_router
+app.include_router(digest_router)
+
 
 @app.get("/api/health")
 async def health():
