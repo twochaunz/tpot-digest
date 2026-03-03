@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle } from '../api/dayBundle'
+import { sortTopics } from '../utils/topics'
 import {
   useDigestDrafts,
   useDigestDraft,
@@ -32,13 +33,12 @@ export function DigestComposer() {
   const [topicNotes, setTopicNotes] = useState<Record<string, string>>({})
   const [introText, setIntroText] = useState('')
   const [scheduledFor, setScheduledFor] = useState('')
-  const [showPreview, setShowPreview] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   const { data: bundle } = useDayBundle(date)
   const { data: drafts } = useDigestDrafts()
   const { data: draft } = useDigestDraft(selectedDraftId)
-  const { data: preview } = useDigestPreview(showPreview ? selectedDraftId : null)
+  const { data: preview } = useDigestPreview(selectedDraftId)
   const { data: subCount } = useSubscriberCount()
 
   const createDraft = useCreateDigestDraft()
@@ -68,7 +68,7 @@ export function DigestComposer() {
     }
   }, [drafts, date, selectedDraftId])
 
-  const topics = bundle?.topics || []
+  const topics = sortTopics(bundle?.topics || [])
 
   const toggleTopic = (topicId: number) => {
     setSelectedTopicIds((prev) =>
@@ -321,7 +321,7 @@ export function DigestComposer() {
             </p>
           </div>
 
-          <div style={{ padding: '8px 0' }}>
+          <div style={{ padding: '4px 0' }}>
             {topics.length === 0 ? (
               <div style={{ padding: '16px 20px', fontSize: 13, color: 'var(--text-tertiary)' }}>
                 No topics for this date
@@ -329,53 +329,95 @@ export function DigestComposer() {
             ) : (
               topics.map((topic) => {
                 const isSelected = selectedTopicIds.includes(topic.id)
+                const accentColor = topic.color || 'var(--accent)'
                 return (
-                  <div key={topic.id} style={{ padding: '8px 20px' }}>
-                    <label
+                  <div
+                    key={topic.id}
+                    style={{
+                      padding: '10px 20px',
+                      transition: 'background 0.1s ease',
+                    }}
+                  >
+                    <div
+                      onClick={() => !isSent && toggleTopic(topic.id)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
-                        cursor: 'pointer',
-                        fontSize: 14,
-                        color: 'var(--text-primary)',
+                        gap: 12,
+                        cursor: isSent ? 'default' : 'pointer',
+                        userSelect: 'none',
                       }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleTopic(topic.id)}
-                        disabled={isSent}
-                        style={{ accentColor: 'var(--accent)' }}
-                      />
+                      {/* Toggle switch */}
+                      <div
+                        style={{
+                          width: 36,
+                          height: 20,
+                          borderRadius: 10,
+                          background: isSelected ? accentColor : 'var(--bg-elevated)',
+                          border: isSelected ? 'none' : '1px solid var(--border)',
+                          position: 'relative',
+                          transition: 'background 0.2s ease',
+                          flexShrink: 0,
+                          opacity: isSent ? 0.5 : 1,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            background: '#fff',
+                            position: 'absolute',
+                            top: isSelected ? 2 : 1,
+                            left: isSelected ? 18 : 2,
+                            transition: 'left 0.2s ease',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                          }}
+                        />
+                      </div>
+
+                      {/* Count badge (same as TopicSection header) */}
                       <span
                         style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: '50%',
-                          background: topic.color || 'var(--text-tertiary)',
+                          minWidth: 22,
+                          height: 22,
+                          borderRadius: 11,
+                          background: accentColor,
                           flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#fff',
+                          padding: '0 5px',
                         }}
-                      />
-                      <span style={{ fontWeight: 500 }}>{topic.title}</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                        ({topic.tweet_count} tweet{topic.tweet_count !== 1 ? 's' : ''})
+                      >
+                        {topic.tweet_count}
                       </span>
-                    </label>
 
+                      {/* Title */}
+                      <span style={{
+                        fontWeight: 500,
+                        fontSize: 14,
+                        color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        transition: 'color 0.15s ease',
+                      }}>
+                        {topic.title}
+                      </span>
+                    </div>
+
+                    {/* Topic note (markdown-style) */}
                     {isSelected && (
-                      <div style={{ marginTop: 8, marginLeft: 30 }}>
-                        <input
-                          type="text"
-                          placeholder="Add a note for this topic..."
+                      <div style={{ marginTop: 8, marginLeft: 48 }}>
+                        <textarea
+                          placeholder="Add a note for this topic (markdown supported)..."
                           value={topicNotes[String(topic.id)] || ''}
                           onChange={(e) => setTopicNote(topic.id, e.target.value)}
                           disabled={isSent}
-                          style={{
-                            ...inputStyle,
-                            width: '100%',
-                            boxSizing: 'border-box' as const,
-                          }}
+                          rows={2}
+                          style={markdownTextareaStyle}
                         />
                       </div>
                     )}
@@ -398,7 +440,7 @@ export function DigestComposer() {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
             <h3 style={sectionTitleStyle}>Intro Text</h3>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
-              Brief introduction for the email (optional)
+              Brief introduction for the email &mdash; supports markdown
             </p>
           </div>
           <div style={{ padding: '16px 20px' }}>
@@ -406,22 +448,9 @@ export function DigestComposer() {
               value={introText}
               onChange={(e) => setIntroText(e.target.value)}
               disabled={isSent}
-              placeholder="Write a brief intro for today's digest..."
-              rows={3}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                padding: '10px 12px',
-                color: 'var(--text-primary)',
-                fontSize: 14,
-                fontFamily: 'var(--font-body)',
-                resize: 'vertical',
-                outline: 'none',
-                lineHeight: 1.6,
-              }}
+              placeholder="# Today's Digest&#10;&#10;Write a brief intro for today's digest..."
+              rows={5}
+              style={markdownTextareaStyle}
             />
           </div>
         </div>
@@ -487,13 +516,6 @@ export function DigestComposer() {
           {selectedDraftId && (
             <>
               <button
-                onClick={() => setShowPreview((p) => !p)}
-                style={buttonStyle('transparent', true)}
-              >
-                {showPreview ? 'Hide Preview' : 'Preview'}
-              </button>
-
-              <button
                 onClick={handleSendTest}
                 disabled={isBusy || isSent}
                 style={buttonStyle('transparent', true)}
@@ -541,8 +563,8 @@ export function DigestComposer() {
           )}
         </div>
 
-        {/* Preview Panel */}
-        {showPreview && selectedDraftId && (
+        {/* Email Preview - always visible when draft exists */}
+        {selectedDraftId && (
           <div
             style={{
               background: 'var(--bg-raised)',
@@ -555,39 +577,29 @@ export function DigestComposer() {
               style={{
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
               }}
             >
-              <div>
-                <h3 style={sectionTitleStyle}>Email Preview</h3>
-                {preview && (
-                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
-                    Subject: {preview.subject} | {preview.recipient_count} recipient{preview.recipient_count !== 1 ? 's' : ''}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setShowPreview(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 18,
-                  cursor: 'pointer',
-                  padding: '0 4px',
-                  lineHeight: 1,
-                }}
-              >
-                &times;
-              </button>
+              <h3 style={sectionTitleStyle}>Email Preview</h3>
+              {preview && (
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
+                  Subject: {preview.subject} &middot; {preview.recipient_count} recipient{preview.recipient_count !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
-            <div style={{ padding: '20px', background: '#fff', minHeight: 200 }}>
+            <div style={{ padding: 0, minHeight: 200 }}>
               {preview ? (
-                <div dangerouslySetInnerHTML={{ __html: preview.html }} />
+                <iframe
+                  srcDoc={preview.html}
+                  title="Email preview"
+                  style={{
+                    width: '100%',
+                    minHeight: 600,
+                    border: 'none',
+                    display: 'block',
+                  }}
+                />
               ) : (
-                <div style={{ color: '#999', fontSize: 13, textAlign: 'center', padding: 40 }}>
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: 40 }}>
                   Loading preview...
                 </div>
               )}
@@ -688,6 +700,22 @@ const sectionTitleStyle: React.CSSProperties = {
   fontWeight: 600,
   color: 'var(--text-primary)',
   margin: 0,
+}
+
+const markdownTextareaStyle: React.CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  padding: '12px 14px',
+  color: 'var(--text-primary)',
+  fontSize: 13,
+  fontFamily: '"SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace',
+  resize: 'vertical',
+  outline: 'none',
+  lineHeight: 1.7,
+  letterSpacing: '-0.01em',
 }
 
 function buttonStyle(bg: string, outline = false): React.CSSProperties {
