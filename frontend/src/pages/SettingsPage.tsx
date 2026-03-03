@@ -18,14 +18,19 @@ export function SettingsPage() {
     if (!tweetRef.current) return
     setDownloading(true)
     try {
-      // Target the actual tweet article inside the container
-      const tweetEl = tweetRef.current.querySelector('[data-testid="tweet"]') as HTMLElement
-        || tweetRef.current.querySelector('.react-tweet-theme') as HTMLElement
-        || tweetRef.current
-      const dataUrl = await toPng(tweetEl, {
+      const el = tweetRef.current
+      const dataUrl = await toPng(el, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: '#000000',
+        skipFonts: true,
+        filter: (node: HTMLElement) => {
+          // Skip video/iframe elements that cause CORS issues
+          const tag = node.tagName
+          if (tag === 'IFRAME' || tag === 'VIDEO') return false
+          return true
+        },
+        fetchRequestInit: { cache: 'no-cache' },
       })
       const link = document.createElement('a')
       link.download = `tweet-${tweetId}.png`
