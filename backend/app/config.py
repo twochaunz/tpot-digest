@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     digest_from_email: str = "today's tech discourse <today@abridged.tech>"
     admin_email: str = ""
+    openrouter_api_key: str = ""
 
     model_config = {"env_file": ".env"}
 
