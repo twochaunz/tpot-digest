@@ -31,8 +31,8 @@ def upgrade() -> None:
         conn.execute(sa.text("""
             INSERT INTO subscribers (email, cookie_token, unsubscribe_token, subscribed_at)
             SELECT email,
-                   encode(gen_random_bytes(32), 'hex'),
-                   encode(gen_random_bytes(32), 'hex'),
+                   md5(random()::text || clock_timestamp()::text),
+                   md5(random()::text || clock_timestamp()::text || 'unsub'),
                    created_at
             FROM waitlist
             ON CONFLICT (email) DO NOTHING
