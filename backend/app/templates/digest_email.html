@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>abridged - {{ date_str }}</title>
+  <style>
+    body { margin:0; padding:0; background:#000; color:#e7e9ea; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+    a { color:#00a67d; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+  </style>
+</head>
+<body style="background:#000;color:#e7e9ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin:0;padding:0;">
+  <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
+
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:700;margin:0 0 4px 0;color:#e7e9ea;">abridged</h1>
+      <p style="font-size:15px;color:#71767b;margin:0;">{{ date_str }}</p>
+    </div>
+
+    {% if intro_text %}
+    <!-- Intro -->
+    <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0;font-size:15px;line-height:1.5;color:#e7e9ea;">{{ intro_text }}</p>
+    </div>
+    {% endif %}
+
+    {% for topic in topics %}
+    <!-- Topic: {{ topic.title }} -->
+    <div style="margin-bottom:28px;">
+      <h2 style="font-size:18px;font-weight:700;color:#e7e9ea;margin:0 0 4px 0;padding-bottom:8px;border-bottom:1px solid #2f3336;">{{ topic.title }}</h2>
+      {% if topic.note %}
+      <p style="font-size:14px;color:#71767b;margin:4px 0 12px 0;line-height:1.4;">{{ topic.note }}</p>
+      {% endif %}
+
+      {% for tweet in topic.tweets %}
+      <!-- Tweet card -->
+      <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px;margin-bottom:8px;">
+        <!-- Author row -->
+        <div style="margin-bottom:8px;">
+          {% if tweet.author_avatar_url %}
+          <img src="{{ tweet.author_avatar_url }}" alt="" width="36" height="36" style="border-radius:50%;vertical-align:middle;margin-right:8px;">
+          {% endif %}
+          <span style="font-weight:700;font-size:15px;color:#e7e9ea;">{{ tweet.author_display_name or tweet.author_handle }}</span>
+          <span style="color:#71767b;font-size:14px;margin-left:4px;">@{{ tweet.author_handle }}</span>
+        </div>
+        <!-- Text -->
+        <p style="margin:0 0 10px 0;font-size:15px;line-height:1.5;color:#e7e9ea;white-space:pre-wrap;">{{ tweet.text }}</p>
+        <!-- Engagement -->
+        {% if tweet.engagement %}
+        <div style="font-size:13px;color:#71767b;margin-bottom:8px;">
+          {% if tweet.engagement.replies is not none %}
+          <span style="margin-right:16px;">{{ tweet.engagement.replies }} replies</span>
+          {% endif %}
+          {% if tweet.engagement.retweets is not none %}
+          <span style="margin-right:16px;">{{ tweet.engagement.retweets }} retweets</span>
+          {% endif %}
+          {% if tweet.engagement.likes is not none %}
+          <span style="margin-right:16px;">{{ tweet.engagement.likes }} likes</span>
+          {% endif %}
+          {% if tweet.engagement.views is not none %}
+          <span>{{ tweet.engagement.views }} views</span>
+          {% endif %}
+        </div>
+        {% endif %}
+        <!-- View link -->
+        {% if tweet.url %}
+        <a href="{{ tweet.url }}" style="font-size:13px;color:#00a67d;">View on X &rarr;</a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- Footer -->
+    <div style="text-align:center;padding-top:24px;border-top:1px solid #2f3336;">
+      <p style="font-size:13px;color:#71767b;margin:0;">
+        <a href="{{ unsubscribe_url }}" style="color:#71767b;text-decoration:underline;">Unsubscribe</a>
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
