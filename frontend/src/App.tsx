@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './contexts/AuthContext'
 import { DailyView } from './pages/DailyView'
 import { SettingsPage } from './pages/SettingsPage'
+import { DigestComposer } from './pages/DigestComposer'
+import { DigestSignupPopup } from './components/DigestSignupPopup'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +28,9 @@ export function App() {
             <Route path="/app/:dateStr" element={<DailyView />} />
             <Route path="/app/:dateStr/:topicNum" element={<DailyView />} />
             <Route path="/app/settings" element={<SettingsPage />} />
+            <Route path="/app/digest" element={<DigestComposer />} />
           </Routes>
+          <DigestSignupPopup />
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

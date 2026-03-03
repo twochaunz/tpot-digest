@@ -332,6 +332,28 @@ export function DailyView() {
             )}
 
             {!isMobile && isAdmin && <button
+              onClick={() => navigate('/app/digest')}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                width: 34,
+                height: 34,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                fontSize: 18,
+                transition: 'all 0.15s ease',
+              }}
+              aria-label="Digest composer"
+              title="Digest composer"
+            >
+              &#9993;
+            </button>}
+
+            {!isMobile && isAdmin && <button
               onClick={() => navigate('/app/settings')}
               style={{
                 background: 'none',
