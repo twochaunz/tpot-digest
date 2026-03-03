@@ -393,7 +393,7 @@ export function SettingsPage() {
                 margin: '0 auto',
               }}
             >
-              <Tweet id={tweetId} />
+              <Tweet id={tweetId} apiUrl={`/api/tweet-embed/${tweetId}`} />
             </div>
           </div>
         </div>
