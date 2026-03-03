@@ -27,7 +27,12 @@ def render_digest_email(
     )
 
 
-def send_digest_email(to_email: str, subject: str, html_content: str) -> dict | None:
+def send_digest_email(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    unsubscribe_url: str | None = None,
+) -> dict | None:
     """Send a digest email via Resend. Returns Resend response or None if not configured."""
     if not settings.resend_api_key:
         logger.warning("RESEND_API_KEY not set -- skipping digest email to %s", to_email)
@@ -36,11 +41,17 @@ def send_digest_email(to_email: str, subject: str, html_content: str) -> dict | 
     import resend
 
     resend.api_key = settings.resend_api_key
+    headers: dict[str, str] = {}
+    if unsubscribe_url:
+        headers["List-Unsubscribe"] = f"<{unsubscribe_url}>"
+        headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+
     params = {
         "from": settings.digest_from_email,
         "to": [to_email],
         "subject": subject,
         "html": html_content,
+        "headers": headers,
     }
     try:
         result = resend.Emails.send(params)
