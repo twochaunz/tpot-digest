@@ -149,7 +149,7 @@
     topicDropdown.style.display = topicDropdown.children.length > 0 ? "" : "none";
   }
 
-  async function showActionCard(tweetDbId, authorHandle, article) {
+  function showActionCard(tweetDbId, authorHandle, article, topics) {
     const existing = document.querySelector(".tpot-action-card");
     if (existing) existing.remove();
     const existingToast = document.querySelector(".tpot-toast");
@@ -168,9 +168,6 @@
       { key: 'kek', label: 'Kek' },
       { key: 'pushback', label: 'Pushback' },
     ];
-
-    const topicsResp = await sendMessage({ type: "GET_TOPICS", date: activeDate });
-    let topics = (topicsResp && topicsResp.topics) || [];
 
     const card = document.createElement("div");
     card.className = "tpot-action-card";
@@ -249,16 +246,26 @@
     topicLabel.textContent = "Topic";
     card.appendChild(topicLabel);
 
-    const topicState = { topics: topics, selectedId: null, selectedName: "" };
+    const topicState = { topics: topics || [], selectedId: null, selectedName: "" };
 
     const topicContainer = document.createElement("div");
     topicContainer.style.position = "relative";
 
     const topicInput = document.createElement("input");
     topicInput.type = "text";
-    topicInput.placeholder = topics.length > 0 ? "Search or create topic\u2026" : "Type a topic name\u2026";
+    topicInput.placeholder = topicState.topics.length > 0 ? "Search or create topic\u2026" : "Type a topic name\u2026";
     topicInput.autocomplete = "off";
     topicContainer.appendChild(topicInput);
+
+    // If no topics were passed, fetch them in the background
+    if (!topics || topics.length === 0) {
+      sendMessage({ type: "GET_TOPICS", date: activeDate }).then((resp) => {
+        if (resp && resp.topics) {
+          topicState.topics = resp.topics;
+          topicInput.placeholder = resp.topics.length > 0 ? "Search or create topic\u2026" : "Type a topic name\u2026";
+        }
+      }).catch(() => {});
+    }
 
     const topicDropdown = document.createElement("div");
     topicDropdown.className = "tpot-topic-dropdown";
@@ -452,6 +459,8 @@
     card.appendChild(actions);
 
     document.body.appendChild(card);
+
+    return { header };
   }
 
   // ── Saved Tweet Tracking ───────────────────────────────────────────
@@ -514,43 +523,47 @@
   async function handleSave(button, article) {
     if (button.classList.contains("saving")) return;
 
-    // If already saved, unsave directly
+    // If already saved, show action card immediately (already have db id)
     if (button.classList.contains("saved") && button.dataset.tpotDbId) {
       const dbId = Number(button.dataset.tpotDbId);
-      button.classList.add("saving");
-      button.classList.remove("saved");
-      try {
-        await sendMessage({ type: "DELETE_TWEET", tweetDbId: dbId });
-        for (const [tid, id] of savedTweets) {
-          if (id === dbId) { savedTweets.delete(tid); break; }
-        }
-        delete button.dataset.tpotDbId;
-        delete button.dataset.tpotChecked;
-        button.classList.remove("saving");
-      } catch (err) {
-        button.classList.remove("saving");
-        button.classList.add("saved");
-        showToast("Unsave failed: " + err.message, true);
-      }
+      const tweetData = extractTweetData(article);
+      const postedDate = extractPostedDate(article);
+      const today = toLocalDateStr(new Date());
+      const activeDate = (postedDate && postedDate !== today) ? postedDate : today;
+
+      // Show card immediately with empty topics, populate when ready
+      showActionCard(dbId, tweetData._author_handle, article, []);
       return;
     }
 
     button.classList.add("saving");
 
-    try {
-      const tweetData = extractTweetData(article);
-      if (!tweetData.tweet_id) throw new Error("Could not extract tweet ID");
+    const tweetData = extractTweetData(article);
+    if (!tweetData.tweet_id) {
+      button.classList.remove("saving");
+      showToast("Could not extract tweet ID", true);
+      return;
+    }
 
-      // Build payload with only backend-relevant fields
-      const tweetPayload = {
-        tweet_id: tweetData.tweet_id,
-        thread_id: tweetData.thread_id,
-        feed_source: tweetData.feed_source,
-      };
-      // Default saved_at to the tweet's posted date if available
-      const postedDate = extractPostedDate(article);
-      if (postedDate) tweetPayload.saved_at = postedDate + "T12:00:00";
-      const saveResp = await sendMessage({ type: "SAVE_TWEET", tweet: tweetPayload });
+    // Build payload
+    const tweetPayload = {
+      tweet_id: tweetData.tweet_id,
+      thread_id: tweetData.thread_id,
+      feed_source: tweetData.feed_source,
+    };
+    const postedDate = extractPostedDate(article);
+    if (postedDate) tweetPayload.saved_at = postedDate + "T12:00:00";
+
+    // Determine date for topics fetch
+    const today = toLocalDateStr(new Date());
+    const activeDate = (postedDate && postedDate !== today) ? postedDate : today;
+
+    // Fire save + topics fetch in parallel
+    const savePromise = sendMessage({ type: "SAVE_TWEET", tweet: tweetPayload });
+    const topicsPromise = sendMessage({ type: "GET_TOPICS", date: activeDate }).catch(() => ({ topics: [] }));
+
+    try {
+      const [saveResp, topicsResp] = await Promise.all([savePromise, topicsPromise]);
 
       if (saveResp && saveResp.error) throw new Error(saveResp.error);
 
@@ -560,9 +573,10 @@
       savedTweets.set(tweetData.tweet_id, saveResp.id);
 
       if (saveResp && saveResp.status === "duplicate") {
-        showToast("Tweet already saved — @" + tweetData._author_handle, false);
+        showToast("Tweet already saved \u2014 @" + tweetData._author_handle, false);
       } else {
-        showActionCard(saveResp.id, tweetData._author_handle, article);
+        const topics = (topicsResp && topicsResp.topics) || [];
+        showActionCard(saveResp.id, tweetData._author_handle, article, topics);
       }
     } catch (err) {
       button.classList.remove("saving");
@@ -617,25 +631,6 @@
       const isDetailPage = /^\/[^/]+\/status\/\d+/.test(window.location.pathname);
       const insertBefore = isDetailPage ? actionBar.lastElementChild : container;
       actionBar.insertBefore(wrapper, insertBefore);
-
-      // Diagnostic: log layout info
-      requestAnimationFrame(() => {
-        const abCS = window.getComputedStyle(actionBar);
-        const wCS = window.getComputedStyle(wrapper);
-        const btnRect = btn.getBoundingClientRect();
-        const cRect = container.getBoundingClientRect();
-        const abRect = actionBar.getBoundingClientRect();
-        console.log("[tpot-debug] URL:", window.location.pathname);
-        console.log("[tpot-debug] actionBar - width:", abCS.width, "| gap:", abCS.columnGap, "| children:", actionBar.children.length);
-        Array.from(actionBar.children).forEach((child, i) => {
-          const s = window.getComputedStyle(child);
-          console.log("[tpot-debug] child", i, "flex:", s.flex, "| width:", s.width, "| margin:", s.margin);
-        });
-        console.log("[tpot-debug] wrapper - flex:", wCS.flex, "| width:", wCS.width, "| justifyContent:", wCS.justifyContent);
-        console.log("[tpot-debug] RECTS btn:", JSON.stringify({l: btnRect.left.toFixed(1), r: btnRect.right.toFixed(1)}));
-        console.log("[tpot-debug] RECTS bookmark:", JSON.stringify({l: cRect.left.toFixed(1), r: cRect.right.toFixed(1)}));
-        console.log("[tpot-debug] RECTS actionBar:", JSON.stringify({l: abRect.left.toFixed(1), r: abRect.right.toFixed(1)}));
-      });
     } else {
       actionBar.appendChild(wrapper);
     }
@@ -651,7 +646,7 @@
   let scanTimer = null;
   new MutationObserver(() => {
     clearTimeout(scanTimer);
-    scanTimer = setTimeout(scan, 500);
+    scanTimer = setTimeout(scan, 150);
   }).observe(document.body, { childList: true, subtree: true });
   scan();
 })();
