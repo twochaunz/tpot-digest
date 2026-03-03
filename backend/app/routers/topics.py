@@ -150,6 +150,44 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
     return topic
 
 
+@router.post("/{topic_id}/recategorize", status_code=200)
+async def recategorize_topic(topic_id: int, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
+    """Re-categorize all uncategorized tweets in a topic using Claude."""
+    topic = await db.get(Topic, topic_id)
+    if not topic:
+        raise HTTPException(404, "Topic not found")
+    if not topic.og_tweet_id:
+        raise HTTPException(400, "Topic has no OG tweet set")
+    from starlette.responses import JSONResponse
+    from starlette.background import BackgroundTask
+    from app.services.classifier import recategorize_topic_tweets
+    return JSONResponse(
+        content={"status": "recategorizing", "topic_id": topic_id},
+        background=BackgroundTask(recategorize_topic_tweets, topic_id),
+    )
+
+
+@router.post("/recategorize-date", status_code=200)
+async def recategorize_date(date: date = Query(...), db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
+    """Re-categorize all tweets in all topics for a given date."""
+    result = await db.execute(select(Topic).where(Topic.date == date, Topic.og_tweet_id.isnot(None)))
+    topics = result.scalars().all()
+    if not topics:
+        return {"status": "no topics with OG tweets", "count": 0}
+    from starlette.responses import JSONResponse
+    from starlette.background import BackgroundTask
+    from app.services.classifier import recategorize_topic_tweets
+
+    async def _recategorize_all():
+        for t in topics:
+            await recategorize_topic_tweets(t.id)
+
+    return JSONResponse(
+        content={"status": "recategorizing", "count": len(topics)},
+        background=BackgroundTask(_recategorize_all),
+    )
+
+
 @router.post("/fix-title-case", status_code=200)
 async def fix_all_title_case(db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
     """One-time: apply title case to all existing topics."""
