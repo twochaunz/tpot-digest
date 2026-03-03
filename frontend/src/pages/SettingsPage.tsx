@@ -47,7 +47,7 @@ export function SettingsPage() {
 
       const dataUrl = await toPng(clone, {
         pixelRatio: 2,
-        backgroundColor: 'rgb(21, 32, 43)',
+        backgroundColor: '#000',
         width: 600,
         height: 315,
       })
@@ -429,7 +429,7 @@ export function SettingsPage() {
             `}</style>
             <div
               style={{
-                background: '#000',
+                background: '#111',
                 borderRadius: 12,
                 padding: '24px 0',
               }}
@@ -442,7 +442,7 @@ export function SettingsPage() {
                   width: 600,
                   height: 315,
                   margin: '0 auto',
-                  background: 'rgb(21, 32, 43)',
+                  background: '#000',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
