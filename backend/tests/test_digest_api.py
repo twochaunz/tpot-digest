@@ -87,14 +87,14 @@ async def test_update_digest_draft(client: AsyncClient):
     resp = await client.patch(f"/api/digest/drafts/{draft_id}", json={
         "content_blocks": [
             {"id": "b0", "type": "text", "content": "Updated intro"},
-            {"id": "b1", "type": "topic", "topic_id": 1, "note": "Note about topic 1"},
+            {"id": "b1", "type": "topic", "topic_id": 1},
         ],
     })
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["content_blocks"]) == 2
     assert data["content_blocks"][0]["content"] == "Updated intro"
-    assert data["content_blocks"][1]["note"] == "Note about topic 1"
+    assert data["content_blocks"][1]["topic_id"] == 1
 
 
 @pytest.mark.asyncio
@@ -142,6 +142,39 @@ async def test_preview_digest(client: AsyncClient):
     assert "testuser" in data["html"]
     assert "Preview tweet text" in data["html"]
     assert data["subject"].startswith("abridged")
+
+
+@pytest.mark.asyncio
+async def test_preview_standalone_tweet_block(client: AsyncClient):
+    """A tweet block should render the tweet in the email preview."""
+    today = date.today()
+    async with async_session() as session:
+        tweet = Tweet(
+            tweet_id="standalone_1",
+            author_handle="solo",
+            author_display_name="Solo Author",
+            text="Standalone tweet text",
+            engagement={"likes": 42},
+            url="https://x.com/solo/status/99",
+        )
+        session.add(tweet)
+        await session.commit()
+        await session.refresh(tweet)
+        tweet_db_id = tweet.id
+
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": today.isoformat(),
+        "content_blocks": [
+            {"id": "b1", "type": "tweet", "tweet_id": tweet_db_id},
+        ],
+    })
+    draft_id = create_resp.json()["id"]
+
+    resp = await client.get(f"/api/digest/drafts/{draft_id}/preview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "solo" in data["html"]
+    assert "Standalone tweet text" in data["html"]
 
 
 @pytest.mark.asyncio

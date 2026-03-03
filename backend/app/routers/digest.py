@@ -79,8 +79,26 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             result_blocks.append({
                 "type": "topic",
                 "title": topic.title,
-                "note": block.get("note"),
                 "tweets": tweet_dicts,
+            })
+
+        elif block_type == "tweet":
+            tweet_id = block.get("tweet_id")
+            if not tweet_id:
+                continue
+
+            tw = await db.get(Tweet, tweet_id)
+            if not tw:
+                continue
+
+            result_blocks.append({
+                "type": "tweet",
+                "author_handle": tw.author_handle,
+                "author_display_name": tw.author_display_name,
+                "author_avatar_url": tw.author_avatar_url,
+                "text": tw.text,
+                "engagement": tw.engagement,
+                "url": tw.url,
             })
 
     return result_blocks

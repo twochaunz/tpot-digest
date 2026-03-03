@@ -107,7 +107,6 @@ async def test_email_service_renders_template():
         {
             "type": "topic",
             "title": "AI News",
-            "note": "Big day for AI",
             "tweets": [
                 {
                     "author_handle": "karpathy",

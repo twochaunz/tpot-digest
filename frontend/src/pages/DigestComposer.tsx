@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useDayBundle } from '../api/dayBundle'
+import { useDayBundle, type TopicBundle } from '../api/dayBundle'
+import type { Tweet } from '../api/tweets'
 import { sortTopics } from '../utils/topics'
 import {
   type DigestBlock,
@@ -44,16 +45,43 @@ function nextBlockId(): string {
   return `block-${Date.now()}-${_blockCounter++}`
 }
 
+/* ---- Compact tweet preview (used inside topic blocks and tweet blocks) ---- */
+function CompactTweet({ tweet }: { tweet: Tweet }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 8,
+      padding: '6px 0',
+    }}>
+      {tweet.author_avatar_url && (
+        <img
+          src={tweet.author_avatar_url}
+          alt=""
+          style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 1 }}
+        />
+      )}
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          @{tweet.author_handle}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>
+          {tweet.text.length > 120 ? tweet.text.slice(0, 120) + '...' : tweet.text}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 /* ---- Sortable block row ---- */
 function SortableBlock({
   block,
   topics,
   isSent,
-  onUpdateBlock,
   onDeleteBlock,
 }: {
   block: DigestBlock
-  topics: { id: number; title: string; color: string | null; tweet_count: number }[]
+  topics: TopicBundle[]
   isSent: boolean
   onUpdateBlock: (id: string, patch: Partial<DigestBlock>) => void
   onDeleteBlock: (id: string) => void
@@ -79,6 +107,17 @@ function SortableBlock({
 
   const topic = block.type === 'topic' && block.topic_id
     ? topics.find((t) => t.id === block.topic_id)
+    : null
+
+  // For tweet blocks, find the tweet across all topics + unsorted
+  const tweetData = block.type === 'tweet' && block.tweet_id
+    ? (() => {
+        for (const t of topics) {
+          const found = t.tweets.find((tw) => tw.id === block.tweet_id)
+          if (found) return { tweet: found, topicTitle: t.title, topicColor: t.color }
+        }
+        return null
+      })()
     : null
 
   return (
@@ -144,14 +183,7 @@ function SortableBlock({
       {/* Block content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {block.type === 'text' && (
-          <textarea
-            value={block.content || ''}
-            onChange={(e) => onUpdateBlock(block.id, { content: e.target.value })}
-            disabled={isSent}
-            placeholder="Write text content..."
-            rows={3}
-            style={markdownTextareaStyle}
-          />
+          <TextBlockEditor block={block} isSent={isSent} />
         )}
 
         {block.type === 'topic' && topic && (
@@ -161,7 +193,7 @@ function SortableBlock({
             borderRadius: 'var(--radius-md)',
             padding: '12px 14px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <span style={{
                 minWidth: 22,
                 height: 22,
@@ -182,18 +214,17 @@ function SortableBlock({
                 {topic.title}
               </span>
             </div>
-            <textarea
-              value={block.note || ''}
-              onChange={(e) => onUpdateBlock(block.id, { note: e.target.value })}
-              disabled={isSent}
-              placeholder="Add a note for this topic..."
-              rows={2}
-              style={{ ...markdownTextareaStyle, background: 'var(--bg-base)' }}
-            />
+            {/* Show tweets inline */}
+            {topic.tweets.length > 0 && (
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 4 }}>
+                {topic.tweets.map((tw) => (
+                  <CompactTweet key={tw.id} tweet={tw} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Topic block with missing topic */}
         {block.type === 'topic' && !topic && (
           <div style={{
             background: 'var(--bg-elevated)',
@@ -206,8 +237,77 @@ function SortableBlock({
             Topic #{block.topic_id} (not found for this date)
           </div>
         )}
+
+        {block.type === 'tweet' && tweetData && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+          }}>
+            {/* Topic color dot */}
+            <span style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: tweetData.topicColor || 'var(--accent)',
+              flexShrink: 0,
+              marginTop: 5,
+            }} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <CompactTweet tweet={tweetData.tweet} />
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                from {tweetData.topicTitle}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {block.type === 'tweet' && !tweetData && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 14px',
+            color: 'var(--text-tertiary)',
+            fontSize: 13,
+          }}>
+            Tweet #{block.tweet_id} (not found)
+          </div>
+        )}
       </div>
     </div>
+  )
+}
+
+/* ---- Text block with local editing (avoids parent re-renders on every keystroke) ---- */
+function TextBlockEditor({ block, isSent }: { block: DigestBlock; isSent: boolean }) {
+  const [value, setValue] = useState(block.content || '')
+
+  // Sync if block content changes externally (e.g. draft load)
+  useEffect(() => {
+    setValue(block.content || '')
+  }, [block.content])
+
+  // We write directly to the block object on change to keep state in sync
+  // without causing parent re-renders (the blocks array reference stays stable)
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value)
+    block.content = e.target.value
+  }
+
+  return (
+    <textarea
+      value={value}
+      onChange={handleChange}
+      disabled={isSent}
+      placeholder="Write text content..."
+      rows={3}
+      style={markdownTextareaStyle}
+    />
   )
 }
 
@@ -217,7 +317,7 @@ function TopicPicker({
   usedTopicIds,
   onSelect,
 }: {
-  topics: { id: number; title: string; color: string | null; tweet_count: number }[]
+  topics: TopicBundle[]
   usedTopicIds: Set<number>
   onSelect: (topicId: number) => void
 }) {
@@ -250,35 +350,12 @@ function TopicPicker({
       </button>
 
       {open && available.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          marginTop: 4,
-          background: 'var(--bg-raised)',
-          border: '1px solid var(--border)',
-          borderRadius: 8,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-          zIndex: 100,
-          padding: 4,
-          minWidth: 220,
-          maxHeight: 300,
-          overflowY: 'auto',
-        }}>
+        <div style={dropdownStyle}>
           {available.map((t) => (
             <div
               key={t.id}
               onClick={() => { onSelect(t.id); setOpen(false) }}
-              style={{
-                padding: '8px 12px',
-                cursor: 'pointer',
-                borderRadius: 6,
-                fontSize: 13,
-                color: 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
+              style={dropdownItemStyle}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
@@ -301,6 +378,141 @@ function TopicPicker({
   )
 }
 
+/* ---- Tweet picker dropdown (grouped by topic) ---- */
+function TweetPicker({
+  topics,
+  usedTweetIds,
+  onSelect,
+}: {
+  topics: TopicBundle[]
+  usedTweetIds: Set<number>
+  onSelect: (tweetId: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [expandedTopics, setExpandedTopics] = useState<Set<number>>(new Set())
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setExpandedTopics(new Set())
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  // Topics that have at least one available (non-used) tweet
+  const topicsWithAvailable = topics.filter((t) =>
+    t.tweets.some((tw) => !usedTweetIds.has(tw.id))
+  )
+  const hasAny = topicsWithAvailable.length > 0
+
+  const toggleTopicExpand = (topicId: number) => {
+    setExpandedTopics((prev) => {
+      const next = new Set(prev)
+      if (next.has(topicId)) next.delete(topicId)
+      else next.add(topicId)
+      return next
+    })
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => {
+          setOpen(!open)
+          if (!open) setExpandedTopics(new Set())
+        }}
+        disabled={!hasAny}
+        style={{
+          ...addBtnStyle,
+          opacity: hasAny ? 1 : 0.4,
+          cursor: hasAny ? 'pointer' : 'default',
+        }}
+      >
+        + Tweet
+      </button>
+
+      {open && hasAny && (
+        <div style={{ ...dropdownStyle, minWidth: 340, maxHeight: 400 }}>
+          {topicsWithAvailable.map((topic) => {
+            const isExpanded = expandedTopics.has(topic.id)
+            const availableTweets = topic.tweets.filter((tw) => !usedTweetIds.has(tw.id))
+
+            return (
+              <div key={topic.id}>
+                {/* Topic header */}
+                <div
+                  onClick={() => toggleTopicExpand(topic.id)}
+                  style={{
+                    ...dropdownItemStyle,
+                    fontWeight: 600,
+                    fontSize: 12,
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <span style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: topic.color || 'var(--accent)',
+                    flexShrink: 0,
+                  }} />
+                  <span style={{ flex: 1 }}>{topic.title}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    {availableTweets.length}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 4 }}>
+                    {isExpanded ? '\u25B2' : '\u25BC'}
+                  </span>
+                </div>
+
+                {/* Tweet list (expanded) */}
+                {isExpanded && availableTweets.map((tw) => (
+                  <div
+                    key={tw.id}
+                    onClick={() => { onSelect(tw.id); setOpen(false); setExpandedTopics(new Set()) }}
+                    style={{
+                      padding: '6px 12px 6px 28px',
+                      cursor: 'pointer',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.4,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 6,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {tw.author_avatar_url && (
+                      <img src={tw.author_avatar_url} alt="" style={{ width: 16, height: 16, borderRadius: '50%', marginTop: 1 }} />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        @{tw.author_handle}
+                      </span>
+                      {' '}
+                      {tw.text.length > 80 ? tw.text.slice(0, 80) + '...' : tw.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ---- Main DigestComposer ---- */
 export function DigestComposer() {
   const navigate = useNavigate()
@@ -311,12 +523,11 @@ export function DigestComposer() {
   const [blocks, setBlocks] = useState<DigestBlock[]>([])
   const [scheduledFor, setScheduledFor] = useState('')
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
-  const [showPreview, setShowPreview] = useState(false)
 
   const { data: bundle } = useDayBundle(date)
   const { data: drafts } = useDigestDrafts()
   const { data: draft } = useDigestDraft(selectedDraftId)
-  const { data: preview } = useDigestPreview(showPreview ? selectedDraftId : null)
+  const { data: preview } = useDigestPreview(selectedDraftId)
   const { data: subCount } = useSubscriberCount()
 
   const createDraft = useCreateDigestDraft()
@@ -351,6 +562,11 @@ export function DigestComposer() {
     blocks.filter((b) => b.type === 'topic' && b.topic_id).map((b) => b.topic_id!)
   )
 
+  // Set of tweet IDs already used in standalone tweet blocks
+  const usedTweetIds = new Set(
+    blocks.filter((b) => b.type === 'tweet' && b.tweet_id).map((b) => b.tweet_id!)
+  )
+
   const updateBlock = useCallback((id: string, patch: Partial<DigestBlock>) => {
     setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)))
   }, [])
@@ -364,7 +580,11 @@ export function DigestComposer() {
   }, [])
 
   const addTopicBlock = useCallback((topicId: number) => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic', topic_id: topicId, note: '' }])
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic', topic_id: topicId }])
+  }, [])
+
+  const addTweetBlock = useCallback((tweetId: number) => {
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'tweet', tweet_id: tweetId }])
   }, [])
 
   // DnD
@@ -389,19 +609,25 @@ export function DigestComposer() {
     setTimeout(() => setStatusMessage(null), 4000)
   }
 
+  // Read text content directly from block objects (mutated by TextBlockEditor)
+  const getCurrentBlocks = useCallback((): DigestBlock[] => {
+    return blocks.map((b) => ({ ...b }))
+  }, [blocks])
+
   const handleSaveDraft = async () => {
+    const currentBlocks = getCurrentBlocks()
     try {
       if (selectedDraftId) {
         await updateDraft.mutateAsync({
           id: selectedDraftId,
-          content_blocks: blocks,
+          content_blocks: currentBlocks,
           scheduled_for: scheduledFor || undefined,
         })
         showStatus('Draft saved', 'success')
       } else {
         const created = await createDraft.mutateAsync({
           date,
-          content_blocks: blocks,
+          content_blocks: currentBlocks,
         })
         setSelectedDraftId(created.id)
         showStatus('Draft created', 'success')
@@ -440,7 +666,6 @@ export function DigestComposer() {
       setSelectedDraftId(null)
       setBlocks([])
       setScheduledFor('')
-      setShowPreview(false)
       showStatus('Draft deleted', 'success')
     } catch {
       showStatus('Failed to delete draft', 'error')
@@ -520,13 +745,7 @@ export function DigestComposer() {
 
       {/* Status message */}
       {statusMessage && (
-        <div
-          style={{
-            maxWidth: 800,
-            margin: '0 auto',
-            padding: '0 24px',
-          }}
-        >
+        <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 24px' }}>
           <div
             style={{
               marginTop: 12,
@@ -576,7 +795,6 @@ export function DigestComposer() {
                 setDate(e.target.value)
                 setSelectedDraftId(null)
                 setBlocks([])
-                setShowPreview(false)
               }}
               style={inputStyle}
             />
@@ -589,10 +807,7 @@ export function DigestComposer() {
                 value={selectedDraftId ?? ''}
                 onChange={(e) => {
                   setSelectedDraftId(e.target.value ? Number(e.target.value) : null)
-                  if (!e.target.value) {
-                    setBlocks([])
-                    setShowPreview(false)
-                  }
+                  if (!e.target.value) setBlocks([])
                 }}
                 style={inputStyle}
               >
@@ -613,13 +828,12 @@ export function DigestComposer() {
           )}
         </div>
 
-        {/* Block List */}
+        {/* Block List — no overflow:hidden so dropdowns can escape */}
         <div
           style={{
             background: 'var(--bg-raised)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-lg)',
-            overflow: 'hidden',
           }}
         >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -632,7 +846,7 @@ export function DigestComposer() {
           <div style={{ padding: '16px 20px' }}>
             {blocks.length === 0 ? (
               <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                No blocks yet. Add a text or topic block below.
+                No blocks yet. Add a text, topic, or tweet block below.
               </div>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -661,6 +875,11 @@ export function DigestComposer() {
                   topics={topics}
                   usedTopicIds={usedTopicIds}
                   onSelect={addTopicBlock}
+                />
+                <TweetPicker
+                  topics={topics}
+                  usedTweetIds={usedTweetIds}
+                  onSelect={addTweetBlock}
                 />
               </div>
             )}
@@ -710,13 +929,7 @@ export function DigestComposer() {
         </div>
 
         {/* Action Buttons */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
-          }}
-        >
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
             onClick={handleSaveDraft}
             disabled={isBusy || isSent}
@@ -727,13 +940,6 @@ export function DigestComposer() {
 
           {selectedDraftId && (
             <>
-              <button
-                onClick={() => setShowPreview(!showPreview)}
-                style={buttonStyle('transparent', true)}
-              >
-                {showPreview ? 'Hide Preview' : 'Show Preview'}
-              </button>
-
               <button
                 onClick={handleSendTest}
                 disabled={isBusy || isSent}
@@ -782,8 +988,8 @@ export function DigestComposer() {
           )}
         </div>
 
-        {/* Email Preview */}
-        {showPreview && selectedDraftId && (
+        {/* Email Preview — always visible when a draft exists */}
+        {selectedDraftId && (
           <div
             style={{
               background: 'var(--bg-raised)',
@@ -792,12 +998,7 @@ export function DigestComposer() {
               overflow: 'hidden',
             }}
           >
-            <div
-              style={{
-                padding: '16px 20px',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <h3 style={sectionTitleStyle}>Email Preview</h3>
               {preview && (
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
@@ -950,6 +1151,33 @@ const addBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontFamily: 'var(--font-body)',
   transition: 'all 0.15s ease',
+}
+
+const dropdownStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: '100%',
+  left: 0,
+  marginBottom: 4,
+  background: 'var(--bg-raised)',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+  zIndex: 100,
+  padding: 4,
+  minWidth: 220,
+  maxHeight: 300,
+  overflowY: 'auto',
+}
+
+const dropdownItemStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  cursor: 'pointer',
+  borderRadius: 6,
+  fontSize: 13,
+  color: 'var(--text-primary)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
 }
 
 function buttonStyle(bg: string, outline = false): React.CSSProperties {
