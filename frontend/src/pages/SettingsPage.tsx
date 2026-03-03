@@ -429,9 +429,9 @@ export function SettingsPage() {
             `}</style>
             <div
               style={{
-                background: 'rgb(10, 16, 23)',
+                background: '#000',
                 borderRadius: 12,
-                padding: '20px 0',
+                padding: '24px 0',
               }}
             >
               <div
