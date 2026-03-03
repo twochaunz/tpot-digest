@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     admin_secret: str = ""
     resend_api_key: str = ""
-    from_email: str = "tpot digest <digest@tpot.wonchan.com>"
+    digest_from_email: str = "abridged <digest@abridged.tech>"
     admin_email: str = ""
 
     model_config = {"env_file": ".env"}

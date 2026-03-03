@@ -37,7 +37,7 @@ def send_digest_email(to_email: str, subject: str, html_content: str) -> dict | 
 
     resend.api_key = settings.resend_api_key
     params = {
-        "from": settings.from_email,
+        "from": settings.digest_from_email,
         "to": [to_email],
         "subject": subject,
         "html": html_content,
