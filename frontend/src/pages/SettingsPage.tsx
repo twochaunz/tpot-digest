@@ -18,20 +18,40 @@ export function SettingsPage() {
     if (!tweetRef.current) return
     setDownloading(true)
     try {
-      const el = tweetRef.current
-      const dataUrl = await toPng(el, {
+      // Clone the DOM so we can swap cross-origin images to proxied URLs
+      const clone = tweetRef.current.cloneNode(true) as HTMLElement
+      clone.style.position = 'fixed'
+      clone.style.left = '-9999px'
+      document.body.appendChild(clone)
+
+      // Proxy all images through our backend to avoid CORS
+      const imgs = clone.querySelectorAll('img')
+      await Promise.all(
+        Array.from(imgs).map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              const src = img.src
+              if (!src || src.startsWith('data:') || src.startsWith(window.location.origin)) {
+                resolve()
+                return
+              }
+              img.crossOrigin = 'anonymous'
+              img.src = `/api/image-proxy?url=${encodeURIComponent(src)}`
+              img.onload = () => resolve()
+              img.onerror = () => resolve()
+            })
+        )
+      )
+
+      const dataUrl = await toPng(clone, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: '#000000',
         skipFonts: true,
-        filter: (node: HTMLElement) => {
-          // Skip video/iframe elements that cause CORS issues
-          const tag = node.tagName
-          if (tag === 'IFRAME' || tag === 'VIDEO') return false
-          return true
-        },
-        fetchRequestInit: { cache: 'no-cache' },
       })
+
+      document.body.removeChild(clone)
+
       const link = document.createElement('a')
       link.download = `tweet-${tweetId}.png`
       link.href = dataUrl
