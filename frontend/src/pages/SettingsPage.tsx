@@ -18,14 +18,11 @@ export function SettingsPage() {
     if (!tweetRef.current) return
     setDownloading(true)
     try {
-      // Clone the DOM so we can swap cross-origin images to proxied URLs
-      const clone = tweetRef.current.cloneNode(true) as HTMLElement
-      clone.style.position = 'fixed'
-      clone.style.left = '-9999px'
-      document.body.appendChild(clone)
+      const el = tweetRef.current
 
-      // Proxy all images through our backend to avoid CORS
-      const imgs = clone.querySelectorAll('img')
+      // Swap cross-origin images to proxied URLs in-place, remember originals
+      const imgs = el.querySelectorAll('img')
+      const originals: { img: HTMLImageElement; src: string }[] = []
       await Promise.all(
         Array.from(imgs).map(
           (img) =>
@@ -35,6 +32,7 @@ export function SettingsPage() {
                 resolve()
                 return
               }
+              originals.push({ img, src })
               img.crossOrigin = 'anonymous'
               img.src = `/api/image-proxy?url=${encodeURIComponent(src)}`
               img.onload = () => resolve()
@@ -43,14 +41,15 @@ export function SettingsPage() {
         )
       )
 
-      const dataUrl = await toPng(clone, {
-        cacheBust: true,
+      const dataUrl = await toPng(el, {
         pixelRatio: 2,
-        backgroundColor: '#000000',
-        skipFonts: true,
+        backgroundColor: '#ffffff',
       })
 
-      document.body.removeChild(clone)
+      // Restore original image sources
+      for (const { img, src } of originals) {
+        img.src = src
+      }
 
       const link = document.createElement('a')
       link.download = `tweet-${tweetId}.png`
