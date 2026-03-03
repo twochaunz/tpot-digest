@@ -1,0 +1,118 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api } from './client'
+
+export interface DigestDraft {
+  id: number
+  date: string
+  intro_text: string | null
+  topic_ids: number[]
+  topic_notes: Record<string, string>
+  scheduled_for: string | null
+  sent_at: string | null
+  recipient_count: number | null
+  status: 'draft' | 'scheduled' | 'sent'
+  created_at: string
+  updated_at: string
+}
+
+export interface DigestPreview {
+  subject: string
+  html: string
+  recipient_count: number
+}
+
+export function useDigestDrafts(status?: string) {
+  return useQuery<DigestDraft[]>({
+    queryKey: ['digest-drafts', status],
+    queryFn: async () => {
+      const params = status ? { status } : {}
+      const { data } = await api.get('/digest/drafts', { params })
+      return data
+    },
+  })
+}
+
+export function useDigestDraft(draftId: number | null) {
+  return useQuery<DigestDraft>({
+    queryKey: ['digest-draft', draftId],
+    queryFn: async () => {
+      const { data } = await api.get(`/digest/drafts/${draftId}`)
+      return data
+    },
+    enabled: draftId !== null,
+  })
+}
+
+export function useCreateDigestDraft() {
+  const qc = useQueryClient()
+  return useMutation<DigestDraft, Error, { date: string; topic_ids: number[]; intro_text?: string }>({
+    mutationFn: async (body) => {
+      const { data } = await api.post('/digest/drafts', body)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),
+  })
+}
+
+export function useUpdateDigestDraft() {
+  const qc = useQueryClient()
+  return useMutation<DigestDraft, Error, { id: number; intro_text?: string; topic_ids?: number[]; topic_notes?: Record<string, string>; scheduled_for?: string }>({
+    mutationFn: async ({ id, ...body }) => {
+      const { data } = await api.patch(`/digest/drafts/${id}`, body)
+      return data
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['digest-drafts'] })
+      qc.setQueryData(['digest-draft', data.id], data)
+    },
+  })
+}
+
+export function useDeleteDigestDraft() {
+  const qc = useQueryClient()
+  return useMutation<void, Error, number>({
+    mutationFn: async (id) => { await api.delete(`/digest/drafts/${id}`) },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),
+  })
+}
+
+export function useDigestPreview(draftId: number | null) {
+  return useQuery<DigestPreview>({
+    queryKey: ['digest-preview', draftId],
+    queryFn: async () => {
+      const { data } = await api.get(`/digest/drafts/${draftId}/preview`)
+      return data
+    },
+    enabled: draftId !== null,
+  })
+}
+
+export function useSendTestDigest() {
+  return useMutation<{ sent: boolean; to: string }, Error, number>({
+    mutationFn: async (draftId) => {
+      const { data } = await api.post(`/digest/drafts/${draftId}/send-test`)
+      return data
+    },
+  })
+}
+
+export function useSendDigest() {
+  const qc = useQueryClient()
+  return useMutation<{ sent_count: number; total_subscribers: number }, Error, number>({
+    mutationFn: async (draftId) => {
+      const { data } = await api.post(`/digest/drafts/${draftId}/send`)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),
+  })
+}
+
+export function useSubscriberCount() {
+  return useQuery<{ count: number }>({
+    queryKey: ['subscriber-count'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscribers/count')
+      return data
+    },
+  })
+}
