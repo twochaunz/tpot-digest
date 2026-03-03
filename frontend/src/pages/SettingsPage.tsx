@@ -47,7 +47,7 @@ export function SettingsPage() {
 
       const dataUrl = await toPng(clone, {
         pixelRatio: 2,
-        backgroundColor: '#ffffff',
+        backgroundColor: 'rgb(21, 32, 43)',
         width: 600,
         height: 315,
       })
@@ -310,7 +310,6 @@ export function SettingsPage() {
             background: 'var(--bg-raised)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-lg)',
-            overflow: 'hidden',
           }}
         >
           <div
@@ -331,7 +330,7 @@ export function SettingsPage() {
                   margin: 0,
                 }}
               >
-                Tweet Screenshot
+                OG Embed Image
               </h3>
               <p
                 style={{
@@ -405,53 +404,59 @@ export function SettingsPage() {
               </button>
             </div>
 
-            {/* Embedded tweet — force light theme, OG image dimensions */}
+            {/* Embedded tweet — dark theme, OG image dimensions */}
             <style>{`
               .tweet-screenshot-area .react-tweet-theme {
                 /* Override global .react-tweet-theme { background: none; border: none } */
-                background-color: #fff !important;
-                border: 1px solid rgb(207, 217, 222) !important;
+                background-color: rgb(21, 32, 43) !important;
+                border: 1px solid rgb(66, 83, 100) !important;
                 border-radius: 12px !important;
-                /* Force light theme variables (override dark mode / prefers-color-scheme) */
-                --tweet-border: 1px solid rgb(207, 217, 222) !important;
-                --tweet-font-color: rgb(15, 20, 25) !important;
-                --tweet-font-color-secondary: rgb(83, 100, 113) !important;
-                --tweet-bg-color: #fff !important;
-                --tweet-bg-color-hover: rgb(247, 249, 249) !important;
-                --tweet-quoted-bg-color-hover: rgba(0, 0, 0, 0.03) !important;
+                /* Force dark theme variables */
+                --tweet-border: 1px solid rgb(66, 83, 100) !important;
+                --tweet-font-color: rgb(247, 249, 249) !important;
+                --tweet-font-color-secondary: rgb(139, 152, 165) !important;
+                --tweet-bg-color: rgb(21, 32, 43) !important;
+                --tweet-bg-color-hover: rgb(30, 39, 50) !important;
+                --tweet-quoted-bg-color-hover: rgba(255, 255, 255, 0.03) !important;
                 --tweet-color-blue-primary: rgb(29, 155, 240) !important;
-                --tweet-color-blue-secondary: rgb(0, 111, 214) !important;
-                --tweet-twitter-icon-color: rgb(15, 20, 25) !important;
+                --tweet-color-blue-secondary: rgb(107, 201, 251) !important;
+                --tweet-twitter-icon-color: rgb(247, 249, 249) !important;
                 --tweet-verified-old-color: rgb(130, 154, 171) !important;
-                --tweet-verified-blue-color: rgb(29, 155, 240) !important;
-                --tweet-skeleton-gradient: linear-gradient(270deg, #fafafa, #eaeaea, #eaeaea, #fafafa) !important;
-                color-scheme: light !important;
+                --tweet-verified-blue-color: #fff !important;
+                --tweet-skeleton-gradient: linear-gradient(270deg, #15202b, rgb(30, 39, 50), rgb(30, 39, 50), rgb(21, 32, 43)) !important;
+                color-scheme: dark !important;
               }
             `}</style>
             <div
-              ref={tweetRef}
-              data-theme="light"
-              className="tweet-screenshot-area"
               style={{
-                width: 600,
-                height: 315,
-                margin: '0 auto',
-                background: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                background: 'rgb(10, 16, 23)',
                 borderRadius: 12,
-                overflow: 'hidden',
-                border: '1px solid #e1e8ed',
+                padding: '20px 0',
               }}
             >
-              <div style={{ width: 500 }}>
-                <Tweet id={tweetId} apiUrl={`/api/tweet-embed/${tweetId}`} />
+              <div
+                ref={tweetRef}
+                data-theme="dark"
+                className="tweet-screenshot-area"
+                style={{
+                  width: 600,
+                  height: 315,
+                  margin: '0 auto',
+                  background: 'rgb(21, 32, 43)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ width: 500 }}>
+                  <Tweet id={tweetId} apiUrl={`/api/tweet-embed/${tweetId}`} />
+                </div>
               </div>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 12 }}>
+                600 x 315 @ 2x = 1200 x 630 OG image
+              </p>
             </div>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8 }}>
-              600 x 315 @ 2x = 1200 x 630 OG image
-            </p>
           </div>
         </div>
       </main>
