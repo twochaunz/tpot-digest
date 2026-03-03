@@ -64,6 +64,19 @@ def _tweet_token(tweet_id: str) -> str:
     return re.sub(r"(0+|\.)", "", result)
 
 
+@app.get("/api/image-proxy")
+async def image_proxy(url: str):
+    """Proxy external images to avoid CORS issues in html-to-image captures."""
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        resp = await client.get(url, timeout=10)
+    from fastapi.responses import Response
+    return Response(
+        content=resp.content,
+        media_type=resp.headers.get("content-type", "image/jpeg"),
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
 @app.get("/api/tweet-embed/{tweet_id}")
 async def tweet_embed_proxy(tweet_id: str):
     """Proxy Twitter syndication API for react-tweet (their Vercel proxy returns stale data)."""
