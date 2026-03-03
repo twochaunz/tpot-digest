@@ -27,6 +27,9 @@ services:
       XAI_API_KEY: ${XAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       ADMIN_SECRET: ${ADMIN_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      DIGEST_FROM_EMAIL: ${DIGEST_FROM_EMAIL:-digest@abridged.tech}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
     volumes:
       - app_data:/app/data
     depends_on:
