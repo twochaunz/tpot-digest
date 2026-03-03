@@ -122,6 +122,7 @@ interface TopicSectionWithDataProps {
   onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
   tweets?: Tweet[]
   isAdmin?: boolean
+  isPreview?: boolean
 }
 
 export function TopicSectionWithData({
@@ -136,6 +137,7 @@ export function TopicSectionWithData({
   onTopicContextMenu,
   tweets: propTweets,
   isAdmin,
+  isPreview,
 }: TopicSectionWithDataProps) {
   const tweetsQuery = useTweets({ date, topic_id: topicId, q: search || undefined }, { enabled: !propTweets })
   const tweets = propTweets ?? tweetsQuery.data ?? []
@@ -179,6 +181,7 @@ export function TopicSectionWithData({
       onContextMenu={(e, tweet) => onContextMenu?.(e, tweet, topicId, ogTweetId)}
       onTopicContextMenu={onTopicContextMenu}
       isAdmin={isAdmin}
+      isPreview={isPreview}
     />
   )
 }
@@ -652,6 +655,7 @@ interface TopicSectionProps {
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   onTopicContextMenu?: (e: React.MouseEvent, topicId: number, title: string) => void
   isAdmin?: boolean
+  isPreview?: boolean
 }
 
 function TopicSection({
@@ -664,6 +668,7 @@ function TopicSection({
   onContextMenu,
   onTopicContextMenu,
   isAdmin = true,
+  isPreview = false,
 }: TopicSectionProps) {
   const isMobile = useIsMobile()
   const isWide = useMinWidth(900)
@@ -780,7 +785,8 @@ function TopicSection({
   const labelStillClipped = labelFontSize < BASE_FONT && maxLabelWidthAtScaled > maxAvailableForLabel
 
   // Use margin labels when wide enough AND font stays readable AND label actually fits
-  const useMarginLabels = isWide && labelFontSize >= MIN_FONT && maxAvailableForLabel >= 50 && !labelStillClipped
+  // Preview panels (adjacent carousel slivers) always use inline dividers for consistency
+  const useMarginLabels = !isPreview && isWide && labelFontSize >= MIN_FONT && maxAvailableForLabel >= 50 && !labelStillClipped
 
   const { setNodeRef, isOver } = useDroppable({
     id: `droppable-topic-${topicId}`,
@@ -939,8 +945,8 @@ function TopicSection({
 
       </div>
 
-      {/* Narrow-screen category nav row */}
-      {!collapsed && !useMarginLabels && allCategoryList.length > 1 && (
+      {/* Narrow-screen category nav row (hidden in preview panels) */}
+      {!collapsed && !isPreview && !useMarginLabels && allCategoryList.length > 1 && (
         <NarrowCategoryNavRow
           allCategories={allCategoryList}
           topicId={topicId}
