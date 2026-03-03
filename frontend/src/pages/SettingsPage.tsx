@@ -17,12 +17,17 @@ export function SettingsPage() {
   const handleDownload = useCallback(async () => {
     if (!tweetRef.current) return
     setDownloading(true)
-    const originals: { img: HTMLImageElement; src: string; crossOrigin: string | null }[] = []
+    let clone: HTMLDivElement | null = null
     try {
-      const el = tweetRef.current
+      // Clone the DOM so dev-tools edits on the live element are never touched
+      clone = tweetRef.current.cloneNode(true) as HTMLDivElement
+      clone.style.position = 'fixed'
+      clone.style.left = '-9999px'
+      clone.style.top = '0'
+      document.body.appendChild(clone)
 
-      // Swap cross-origin images to proxied URLs in-place, remember originals
-      const imgs = el.querySelectorAll('img')
+      // Swap cross-origin images to proxied URLs on the clone only
+      const imgs = clone.querySelectorAll('img')
       await Promise.all(
         Array.from(imgs).map(
           (img) =>
@@ -32,7 +37,6 @@ export function SettingsPage() {
                 resolve()
                 return
               }
-              originals.push({ img, src, crossOrigin: img.getAttribute('crossorigin') })
               img.crossOrigin = 'anonymous'
               img.src = `/api/image-proxy?url=${encodeURIComponent(src)}`
               img.onload = () => resolve()
@@ -41,7 +45,7 @@ export function SettingsPage() {
         )
       )
 
-      const dataUrl = await toPng(el, {
+      const dataUrl = await toPng(clone, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
         width: 600,
@@ -55,15 +59,7 @@ export function SettingsPage() {
     } catch (err) {
       console.error('Download failed:', err)
     } finally {
-      // Always restore original image sources, even if toPng throws
-      for (const { img, src, crossOrigin } of originals) {
-        if (crossOrigin === null) {
-          img.removeAttribute('crossorigin')
-        } else {
-          img.crossOrigin = crossOrigin
-        }
-        img.src = src
-      }
+      if (clone?.parentNode) clone.parentNode.removeChild(clone)
       setDownloading(false)
     }
   }, [tweetId])
