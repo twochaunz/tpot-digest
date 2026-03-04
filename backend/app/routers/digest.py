@@ -128,7 +128,7 @@ Example: {{"pushback": "some pushback on the pricing model:", "kek": "and of cou
         return {}
 
 
-def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | None = None) -> dict:
+def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | dict | None = None) -> dict:
     """Build a tweet dict for template rendering."""
     text = tw.text
     # Strip trailing t.co quote tweet link (matches frontend TweetCard behavior)
@@ -145,13 +145,16 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | No
     if show_engagement:
         tweet_dict["engagement"] = tw.engagement
     if quoted_tweet:
-        tweet_dict["quoted_tweet"] = {
-            "author_handle": quoted_tweet.author_handle,
-            "author_display_name": quoted_tweet.author_display_name,
-            "author_avatar_url": quoted_tweet.author_avatar_url,
-            "text": quoted_tweet.text,
-            "url": quoted_tweet.url,
-        }
+        if isinstance(quoted_tweet, dict):
+            tweet_dict["quoted_tweet"] = quoted_tweet
+        else:
+            tweet_dict["quoted_tweet"] = {
+                "author_handle": quoted_tweet.author_handle,
+                "author_display_name": quoted_tweet.author_display_name,
+                "author_avatar_url": quoted_tweet.author_avatar_url,
+                "text": quoted_tweet.text,
+                "url": quoted_tweet.url,
+            }
     return tweet_dict
 
 
@@ -270,11 +273,25 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
                 continue
 
             show_engagement = block.get("show_engagement", False)
-            quoted = None
+            quoted: Tweet | dict | None = None
             if tw.quoted_tweet_id:
                 qt_stmt = select(Tweet).where(Tweet.tweet_id == tw.quoted_tweet_id)
                 qt_result = await db.execute(qt_stmt)
                 quoted = qt_result.scalars().first()
+                # Quoted tweet not in DB — fetch from X API
+                if not quoted:
+                    try:
+                        from app.services.x_api import fetch_tweet, XAPIError
+                        api_data = await fetch_tweet(tw.quoted_tweet_id)
+                        quoted = {
+                            "author_handle": api_data.get("author_handle", ""),
+                            "author_display_name": api_data.get("author_display_name", ""),
+                            "author_avatar_url": api_data.get("author_avatar_url", ""),
+                            "text": api_data.get("text", ""),
+                            "url": api_data.get("url", f"https://x.com/i/status/{tw.quoted_tweet_id}"),
+                        }
+                    except Exception:
+                        logger.warning("Could not fetch quoted tweet %s", tw.quoted_tweet_id)
 
             tweet_block = _build_tweet_dict(tw, show_engagement, quoted)
             tweet_block["type"] = "tweet"
@@ -303,7 +320,25 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             for tw in tweet_rows:
                 tw_override = tweet_overrides.get(str(tw.id), {})
                 show_eng = tw_override.get("show_engagement", False)
-                tweet_dicts.append(_build_tweet_dict(tw, show_eng))
+                quoted: Tweet | dict | None = None
+                if tw.quoted_tweet_id:
+                    qt_stmt = select(Tweet).where(Tweet.tweet_id == tw.quoted_tweet_id)
+                    qt_result = await db.execute(qt_stmt)
+                    quoted = qt_result.scalars().first()
+                    if not quoted:
+                        try:
+                            from app.services.x_api import fetch_tweet, XAPIError
+                            api_data = await fetch_tweet(tw.quoted_tweet_id)
+                            quoted = {
+                                "author_handle": api_data.get("author_handle", ""),
+                                "author_display_name": api_data.get("author_display_name", ""),
+                                "author_avatar_url": api_data.get("author_avatar_url", ""),
+                                "text": api_data.get("text", ""),
+                                "url": api_data.get("url", f"https://x.com/i/status/{tw.quoted_tweet_id}"),
+                            }
+                        except Exception:
+                            logger.warning("Could not fetch quoted tweet %s", tw.quoted_tweet_id)
+                tweet_dicts.append(_build_tweet_dict(tw, show_eng, quoted))
 
             result_blocks.append({
                 "type": "topic",
