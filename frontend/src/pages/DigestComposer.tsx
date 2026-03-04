@@ -1043,9 +1043,8 @@ export function DigestComposer() {
     const featured = sorted.filter(t => selectedIds.has(t.id))
     const rest = sorted.filter(t => !selectedIds.has(t.id))
 
-    const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
-      month: 'long', day: 'numeric', year: 'numeric',
-    })
+    const d = new Date(date + 'T00:00:00')
+    const formattedDate = `${d.getMonth() + 1}/${d.getDate()}`
 
     // Call backend for AI content
     const templateData = await generateTemplate.mutateAsync({
