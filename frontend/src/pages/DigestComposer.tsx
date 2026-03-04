@@ -79,6 +79,7 @@ function SortableBlock({
   block,
   topics,
   isSent,
+  onUpdateBlock,
   onDeleteBlock,
   onAutoSave,
 }: {
@@ -221,7 +222,29 @@ function SortableBlock({
             {topic.tweets.length > 0 && (
               <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 4 }}>
                 {topic.tweets.map((tw) => (
-                  <CompactTweet key={tw.id} tweet={tw} />
+                  <div key={tw.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <CompactTweet tweet={tw} />
+                    </div>
+                    {!isSent && (
+                      <input
+                        type="checkbox"
+                        checked={!!(block.tweet_overrides?.[String(tw.id)]?.show_engagement)}
+                        onChange={(e) => {
+                          const overrides = { ...(block.tweet_overrides || {}) }
+                          if (e.target.checked) {
+                            overrides[String(tw.id)] = { show_engagement: true }
+                          } else {
+                            delete overrides[String(tw.id)]
+                          }
+                          onUpdateBlock(block.id, { tweet_overrides: overrides })
+                          onAutoSave()
+                        }}
+                        title="Show engagement"
+                        style={{ margin: 0, marginTop: 8, cursor: 'pointer', flexShrink: 0 }}
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -265,6 +288,20 @@ function SortableBlock({
               <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                 from {tweetData.topicTitle}
               </span>
+              {!isSent && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={block.show_engagement || false}
+                    onChange={(e) => {
+                      onUpdateBlock(block.id, { show_engagement: e.target.checked })
+                      onAutoSave()
+                    }}
+                    style={{ margin: 0 }}
+                  />
+                  Show engagement
+                </label>
+              )}
             </div>
           </div>
         )}
