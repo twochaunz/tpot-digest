@@ -79,27 +79,33 @@ export function DayFeedPanel({
     const targetTopic = sorted[initialTopicNum - 1]
     if (!targetTopic) return
     didScrollToTopic.current = true
-    // Use setTimeout to let layout fully stabilize after initial render
-    setTimeout(() => {
-      const el = document.getElementById(`toc-topic-${targetTopic.id}`)
-      if (!el) return
-      // Expand the topic if collapsed (same as TOC navigation)
-      el.dispatchEvent(new Event('toc-expand'))
-      // Scroll within the feed panel to match TOC behavior
-      requestAnimationFrame(() => {
-        const feedPanel = el.closest<HTMLElement>('[data-active-feed]')
-          ?? document.querySelector<HTMLElement>('[data-active-feed="true"]')
-        if (feedPanel) {
-          const panelTop = feedPanel.getBoundingClientRect().top
-          feedPanel.scrollTo({
-            top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelTop,
-            behavior: 'smooth',
-          })
-        } else {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
+
+    const targetId = `toc-topic-${targetTopic.id}`
+
+    // Expand the topic if collapsed
+    const el = document.getElementById(targetId)
+    if (el) el.dispatchEvent(new Event('toc-expand'))
+
+    // Scroll to the topic element within the feed panel.
+    // Images/tweets loading above the target shift layout, so we re-scroll
+    // multiple times as content stabilizes. Using 'instant' makes corrections invisible.
+    const scrollToTarget = () => {
+      const target = document.getElementById(targetId)
+      if (!target) return
+      const feedPanel = target.closest<HTMLElement>('[data-active-feed]')
+        ?? document.querySelector<HTMLElement>('[data-active-feed="true"]')
+      if (!feedPanel) return
+      const panelTop = feedPanel.getBoundingClientRect().top
+      feedPanel.scrollTo({
+        top: feedPanel.scrollTop + target.getBoundingClientRect().top - panelTop,
+        behavior: 'instant',
       })
-    }, 150)
+    }
+
+    requestAnimationFrame(scrollToTarget)
+    const t1 = setTimeout(scrollToTarget, 300)
+    const t2 = setTimeout(scrollToTarget, 800)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [initialTopicNum, bundle?.topics])
 
   // Mutations
