@@ -281,6 +281,14 @@ function SortableBlock({
             Tweet #{block.tweet_id} (not found)
           </div>
         )}
+
+        {block.type === 'divider' && (
+          <hr style={{
+            border: 'none',
+            borderTop: '1px solid var(--border)',
+            margin: '8px 0',
+          }} />
+        )}
       </div>
     </div>
   )
@@ -779,6 +787,11 @@ export function DigestComposer() {
     triggerAutoSave()
   }, [triggerAutoSave])
 
+  const addDividerBlock = useCallback(() => {
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'divider' as const }])
+    triggerAutoSave()
+  }, [triggerAutoSave])
+
   // DnD
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -1085,6 +1098,9 @@ export function DigestComposer() {
                   usedTweetIds={usedTweetIds}
                   onSelect={addTweetBlock}
                 />
+                <button onClick={addDividerBlock} style={addBtnStyle}>
+                  + Divider
+                </button>
               </div>
             )}
           </div>
