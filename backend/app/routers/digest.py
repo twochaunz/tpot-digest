@@ -36,6 +36,8 @@ def _format_date(d) -> str:
 
 async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[dict]:
     """Build list of block dicts for rendering from content_blocks."""
+    import markdown as md
+
     result_blocks = []
 
     for block in (draft.content_blocks or []):
@@ -44,7 +46,11 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
         if block_type == "text":
             content = block.get("content")
             if content:
-                result_blocks.append({"type": "text", "content": content})
+                html_content = md.markdown(content, extensions=["extra"])
+                result_blocks.append({"type": "text", "content": content, "html": html_content})
+
+        elif block_type == "divider":
+            result_blocks.append({"type": "divider"})
 
         elif block_type == "topic":
             topic_id = block.get("topic_id")
@@ -55,7 +61,6 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             if not topic:
                 continue
 
-            # Fetch assigned tweets for this topic
             stmt = (
                 select(Tweet)
                 .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
@@ -65,16 +70,24 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             rows = await db.execute(stmt)
             tweet_rows = rows.scalars().all()
 
+            tweet_overrides = block.get("tweet_overrides") or {}
+
             tweet_dicts = []
             for tw in tweet_rows:
-                tweet_dicts.append({
+                tw_override = tweet_overrides.get(str(tw.id), {})
+                show_engagement = tw_override.get("show_engagement", False)
+
+                tweet_dict = {
                     "author_handle": tw.author_handle,
                     "author_display_name": tw.author_display_name,
                     "author_avatar_url": tw.author_avatar_url,
                     "text": tw.text,
-                    "engagement": tw.engagement,
                     "url": tw.url,
-                })
+                    "show_engagement": show_engagement,
+                }
+                if show_engagement:
+                    tweet_dict["engagement"] = tw.engagement
+                tweet_dicts.append(tweet_dict)
 
             result_blocks.append({
                 "type": "topic",
@@ -91,15 +104,20 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             if not tw:
                 continue
 
-            result_blocks.append({
+            show_engagement = block.get("show_engagement", False)
+            tweet_block = {
                 "type": "tweet",
                 "author_handle": tw.author_handle,
                 "author_display_name": tw.author_display_name,
                 "author_avatar_url": tw.author_avatar_url,
                 "text": tw.text,
-                "engagement": tw.engagement,
                 "url": tw.url,
-            })
+                "show_engagement": show_engagement,
+            }
+            if show_engagement:
+                tweet_block["engagement"] = tw.engagement
+
+            result_blocks.append(tweet_block)
 
     return result_blocks
 
