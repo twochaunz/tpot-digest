@@ -723,6 +723,111 @@ function DraftsModal({
   )
 }
 
+/* ---- Topic selector for new draft template ---- */
+function TopicSelectorModal({
+  topics,
+  date,
+  onConfirm,
+  onClose,
+}: {
+  topics: TopicBundle[]
+  date: string
+  onConfirm: (selectedIds: Set<number>) => void
+  onClose: () => void
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+
+  const toggle = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectTop3 = () => {
+    setSelected(new Set(topics.slice(0, 3).map(t => t.id)))
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10000,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)', width: 420, maxHeight: '70vh',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+            Select featured topics
+          </h3>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            Selected topics become full blocks. Others go to &ldquo;more on the timeline&rdquo; links.
+          </p>
+        </div>
+
+        <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+          <button onClick={selectTop3} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+            Top 3
+          </button>
+          <button onClick={() => setSelected(new Set(topics.map(t => t.id)))} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+            All
+          </button>
+          <button onClick={() => setSelected(new Set())} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+            None
+          </button>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 12px' }}>
+          {topics.map(t => (
+            <label
+              key={t.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px',
+                cursor: 'pointer', borderRadius: 'var(--radius-sm)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.color || 'var(--accent)', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{t.title}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                {t.tweet_count} tweet{t.tweet_count !== 1 ? 's' : ''}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} style={addBtnStyle}>Cancel</button>
+          <button
+            onClick={() => onConfirm(selected)}
+            style={{
+              background: 'var(--accent)', color: '#fff', border: 'none',
+              borderRadius: 'var(--radius-md)', padding: '8px 16px', fontSize: 13,
+              fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}
+          >
+            Create Draft
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---- Main DigestComposer ---- */
 export function DigestComposer() {
   const navigate = useNavigate()
@@ -743,6 +848,7 @@ export function DigestComposer() {
   const [subSearch, setSubSearch] = useState('')
   const { data: subscribers } = useSubscribers(showSubs)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
+  const [showTopicSelector, setShowTopicSelector] = useState(false)
 
   const createDraft = useCreateDigestDraft()
   const updateDraft = useUpdateDigestDraft()
@@ -872,6 +978,65 @@ export function DigestComposer() {
     })
     triggerAutoSave()
   }, [triggerAutoSave])
+
+  const generateTemplateBlocks = useCallback((selectedIds: Set<number>): DigestBlock[] => {
+    const sorted = sortTopics(topics)
+    const featured = sorted.filter(t => selectedIds.has(t.id))
+    const rest = sorted.filter(t => !selectedIds.has(t.id))
+
+    const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    })
+
+    const newBlocks: DigestBlock[] = []
+
+    // Intro
+    newBlocks.push({
+      id: nextBlockId(),
+      type: 'text',
+      content: `${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
+    })
+
+    // Divider
+    newBlocks.push({ id: nextBlockId(), type: 'divider' })
+
+    // Featured topic blocks
+    for (const t of featured) {
+      newBlocks.push({ id: nextBlockId(), type: 'topic', topic_id: t.id })
+    }
+
+    // More on the timeline (if there are non-featured topics)
+    if (rest.length > 0) {
+      newBlocks.push({ id: nextBlockId(), type: 'divider' })
+      const sorted2 = sortTopics(topics)
+      const links = rest.map(t => {
+        const topicNum = sorted2.indexOf(t) + 1
+        return `- [${t.title}](https://abridged.tech/app/${date}/${topicNum})`
+      }).join('\n')
+      newBlocks.push({
+        id: nextBlockId(),
+        type: 'text',
+        content: `**More on the timeline**\n\n${links}`,
+      })
+    }
+
+    // Divider + outro
+    newBlocks.push({ id: nextBlockId(), type: 'divider' })
+    newBlocks.push({
+      id: nextBlockId(),
+      type: 'text',
+      content: 'Until next time.',
+    })
+
+    return newBlocks
+  }, [topics, date])
+
+  const handleCreateFromTemplate = useCallback((selectedIds: Set<number>) => {
+    const newBlocks = generateTemplateBlocks(selectedIds)
+    setBlocks(newBlocks)
+    setShowTopicSelector(false)
+    triggerAutoSave()
+  }, [generateTemplateBlocks, triggerAutoSave])
 
   const showStatus = (text: string, type: 'success' | 'error') => {
     setStatusMessage({ text, type })
@@ -1107,6 +1272,22 @@ export function DigestComposer() {
           )}
         </div>
 
+        {/* New Draft from Topics button */}
+        {blocks.length === 0 && !selectedDraftId && topics.length > 0 && (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <button
+              onClick={() => setShowTopicSelector(true)}
+              style={{
+                background: 'var(--accent)', color: '#fff', border: 'none',
+                borderRadius: 'var(--radius-md)', padding: '10px 20px', fontSize: 14,
+                fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)',
+              }}
+            >
+              New Draft from Topics
+            </button>
+          </div>
+        )}
+
         {/* Block List — no overflow:hidden so dropdowns can escape */}
         <div
           style={{
@@ -1292,6 +1473,16 @@ export function DigestComposer() {
 
       </main>
 
+      {/* Topic selector modal */}
+      {showTopicSelector && (
+        <TopicSelectorModal
+          topics={topics}
+          date={date}
+          onConfirm={handleCreateFromTemplate}
+          onClose={() => setShowTopicSelector(false)}
+        />
+      )}
+
       {/* Drafts modal */}
       {showDraftsModal && drafts && (
         <DraftsModal
@@ -1303,6 +1494,7 @@ export function DigestComposer() {
             setDate(newDate)
             setSelectedDraftId(null)
             setBlocks([])
+            setShowTopicSelector(true)
           }}
         />
       )}
