@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from collections import OrderedDict
 from datetime import datetime, timezone
 
@@ -129,11 +130,15 @@ Example: {{"pushback": "some pushback on the pricing model:", "kek": "and of cou
 
 def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | None = None) -> dict:
     """Build a tweet dict for template rendering."""
+    text = tw.text
+    # Strip trailing t.co quote tweet link (matches frontend TweetCard behavior)
+    if quoted_tweet or tw.quoted_tweet_id:
+        text = re.sub(r'\s*https://t\.co/\w+\s*$', '', text)
     tweet_dict = {
         "author_handle": tw.author_handle,
         "author_display_name": tw.author_display_name,
         "author_avatar_url": tw.author_avatar_url,
-        "text": tw.text,
+        "text": text,
         "url": tw.url,
         "show_engagement": show_engagement,
     }
