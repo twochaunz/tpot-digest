@@ -136,12 +136,54 @@ def _proxy_avatar_url(avatar_url: str | None) -> str | None:
     return f"https://abridged.tech/api/image-proxy?url={quote(avatar_url, safe='')}"
 
 
-def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | dict | None = None) -> dict:
+def _strip_tco_links(text: str) -> str:
+    """Strip trailing t.co links from tweet text."""
+    return re.sub(r'\s*https://t\.co/\w+\s*$', '', text)
+
+
+def _build_quoted_tweet_dict(quoted_tweet: "Tweet | dict", nested_qt: "Tweet | dict | None" = None) -> dict:
+    """Build a quoted tweet dict, optionally with its own nested quoted tweet."""
+    if isinstance(quoted_tweet, dict):
+        qt = dict(quoted_tweet)
+        qt["author_avatar_url"] = _proxy_avatar_url(qt.get("author_avatar_url"))
+        text = qt.get("text", "")
+        # Strip t.co links if this quoted tweet has its own quoted tweet
+        if nested_qt or qt.get("quoted_tweet_id"):
+            text = _strip_tco_links(text)
+        qt["text"] = text
+    else:
+        text = quoted_tweet.text
+        if nested_qt or quoted_tweet.quoted_tweet_id:
+            text = _strip_tco_links(text)
+        qt = {
+            "author_handle": quoted_tweet.author_handle,
+            "author_display_name": quoted_tweet.author_display_name,
+            "author_avatar_url": _proxy_avatar_url(quoted_tweet.author_avatar_url),
+            "text": text,
+            "url": quoted_tweet.url,
+        }
+    if nested_qt:
+        if isinstance(nested_qt, dict):
+            nqt = dict(nested_qt)
+            nqt["author_avatar_url"] = _proxy_avatar_url(nqt.get("author_avatar_url"))
+            qt["quoted_tweet"] = nqt
+        else:
+            qt["quoted_tweet"] = {
+                "author_handle": nested_qt.author_handle,
+                "author_display_name": nested_qt.author_display_name,
+                "author_avatar_url": _proxy_avatar_url(nested_qt.author_avatar_url),
+                "text": nested_qt.text,
+                "url": nested_qt.url,
+            }
+    return qt
+
+
+def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | dict | None" = None, nested_qt: "Tweet | dict | None" = None) -> dict:
     """Build a tweet dict for template rendering."""
     text = tw.text
     # Strip trailing t.co quote tweet link (matches frontend TweetCard behavior)
     if quoted_tweet or tw.quoted_tweet_id:
-        text = re.sub(r'\s*https://t\.co/\w+\s*$', '', text)
+        text = _strip_tco_links(text)
     tweet_dict = {
         "author_handle": tw.author_handle,
         "author_display_name": tw.author_display_name,
@@ -153,18 +195,7 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | di
     if show_engagement:
         tweet_dict["engagement"] = tw.engagement
     if quoted_tweet:
-        if isinstance(quoted_tweet, dict):
-            qt = dict(quoted_tweet)
-            qt["author_avatar_url"] = _proxy_avatar_url(qt.get("author_avatar_url"))
-            tweet_dict["quoted_tweet"] = qt
-        else:
-            tweet_dict["quoted_tweet"] = {
-                "author_handle": quoted_tweet.author_handle,
-                "author_display_name": quoted_tweet.author_display_name,
-                "author_avatar_url": _proxy_avatar_url(quoted_tweet.author_avatar_url),
-                "text": quoted_tweet.text,
-                "url": quoted_tweet.url,
-            }
+        tweet_dict["quoted_tweet"] = _build_quoted_tweet_dict(quoted_tweet, nested_qt)
     return tweet_dict
 
 
@@ -236,6 +267,44 @@ async def generate_template(body: GenerateTemplateRequest, db: AsyncSession = De
     return {"topics": result_topics}
 
 
+async def _fetch_quoted_tweet(tweet_id: str, db: "AsyncSession") -> "Tweet | dict | None":
+    """Fetch a quoted tweet from DB, falling back to X API."""
+    qt_stmt = select(Tweet).where(Tweet.tweet_id == tweet_id)
+    qt_result = await db.execute(qt_stmt)
+    quoted = qt_result.scalars().first()
+    if not quoted:
+        try:
+            from app.services.x_api import fetch_tweet
+            api_data = await fetch_tweet(tweet_id)
+            quoted = {
+                "author_handle": api_data.get("author_handle", ""),
+                "author_display_name": api_data.get("author_display_name", ""),
+                "author_avatar_url": api_data.get("author_avatar_url", ""),
+                "text": api_data.get("text", ""),
+                "url": api_data.get("url", f"https://x.com/i/status/{tweet_id}"),
+                "quoted_tweet_id": api_data.get("quoted_tweet_id"),
+            }
+        except Exception:
+            logger.warning("Could not fetch quoted tweet %s", tweet_id)
+    return quoted
+
+
+async def _fetch_quoted_chain(tw: "Tweet | dict", db: "AsyncSession") -> tuple["Tweet | dict | None", "Tweet | dict | None"]:
+    """Fetch quoted tweet and its nested quoted tweet (one level deep)."""
+    qt_id = tw.quoted_tweet_id if isinstance(tw, Tweet) else tw.get("quoted_tweet_id")
+    if not qt_id:
+        return None, None
+    quoted = await _fetch_quoted_tweet(qt_id, db)
+    if not quoted:
+        return None, None
+    # Fetch nested quoted tweet (one more level)
+    nested_qt_id = quoted.quoted_tweet_id if isinstance(quoted, Tweet) else quoted.get("quoted_tweet_id")
+    nested = None
+    if nested_qt_id:
+        nested = await _fetch_quoted_tweet(nested_qt_id, db)
+    return quoted, nested
+
+
 async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[dict]:
     """Build list of block dicts for rendering from content_blocks.
 
@@ -283,27 +352,9 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
                 continue
 
             show_engagement = block.get("show_engagement", False)
-            quoted: Tweet | dict | None = None
-            if tw.quoted_tweet_id:
-                qt_stmt = select(Tweet).where(Tweet.tweet_id == tw.quoted_tweet_id)
-                qt_result = await db.execute(qt_stmt)
-                quoted = qt_result.scalars().first()
-                # Quoted tweet not in DB — fetch from X API
-                if not quoted:
-                    try:
-                        from app.services.x_api import fetch_tweet, XAPIError
-                        api_data = await fetch_tweet(tw.quoted_tweet_id)
-                        quoted = {
-                            "author_handle": api_data.get("author_handle", ""),
-                            "author_display_name": api_data.get("author_display_name", ""),
-                            "author_avatar_url": api_data.get("author_avatar_url", ""),
-                            "text": api_data.get("text", ""),
-                            "url": api_data.get("url", f"https://x.com/i/status/{tw.quoted_tweet_id}"),
-                        }
-                    except Exception:
-                        logger.warning("Could not fetch quoted tweet %s", tw.quoted_tweet_id)
+            quoted, nested_qt = await _fetch_quoted_chain(tw, db)
 
-            tweet_block = _build_tweet_dict(tw, show_engagement, quoted)
+            tweet_block = _build_tweet_dict(tw, show_engagement, quoted, nested_qt)
             tweet_block["type"] = "tweet"
             result_blocks.append(tweet_block)
 
@@ -330,25 +381,8 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             for tw in tweet_rows:
                 tw_override = tweet_overrides.get(str(tw.id), {})
                 show_eng = tw_override.get("show_engagement", False)
-                quoted: Tweet | dict | None = None
-                if tw.quoted_tweet_id:
-                    qt_stmt = select(Tweet).where(Tweet.tweet_id == tw.quoted_tweet_id)
-                    qt_result = await db.execute(qt_stmt)
-                    quoted = qt_result.scalars().first()
-                    if not quoted:
-                        try:
-                            from app.services.x_api import fetch_tweet, XAPIError
-                            api_data = await fetch_tweet(tw.quoted_tweet_id)
-                            quoted = {
-                                "author_handle": api_data.get("author_handle", ""),
-                                "author_display_name": api_data.get("author_display_name", ""),
-                                "author_avatar_url": api_data.get("author_avatar_url", ""),
-                                "text": api_data.get("text", ""),
-                                "url": api_data.get("url", f"https://x.com/i/status/{tw.quoted_tweet_id}"),
-                            }
-                        except Exception:
-                            logger.warning("Could not fetch quoted tweet %s", tw.quoted_tweet_id)
-                tweet_dicts.append(_build_tweet_dict(tw, show_eng, quoted))
+                quoted, nested_qt = await _fetch_quoted_chain(tw, db)
+                tweet_dicts.append(_build_tweet_dict(tw, show_eng, quoted, nested_qt))
 
             result_blocks.append({
                 "type": "topic",
