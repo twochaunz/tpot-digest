@@ -3,12 +3,24 @@ import { api } from './client'
 
 export interface DigestBlock {
   id: string
-  type: 'text' | 'topic' | 'tweet' | 'divider'
-  content?: string | null    // text blocks (supports markdown)
-  topic_id?: number | null   // topic blocks
-  tweet_id?: number | null   // tweet blocks (DB integer id)
-  show_engagement?: boolean  // tweet blocks: show engagement metrics (default false)
-  tweet_overrides?: Record<string, { show_engagement: boolean }>  // topic blocks: per-tweet overrides
+  type: 'text' | 'topic-header' | 'tweet' | 'divider'
+  content?: string | null       // text blocks (supports markdown)
+  topic_id?: number | null      // topic-header blocks
+  tweet_id?: number | null      // tweet blocks (DB integer id)
+  show_engagement?: boolean     // tweet blocks
+}
+
+export interface GenerateTemplateResult {
+  topics: Array<{
+    topic_id: number
+    title: string
+    summary: string | null
+    category_groups: Array<{
+      category: string
+      tweet_ids: number[]
+      transition: string | null
+    }>
+  }>
 }
 
 export interface DigestDraft {
@@ -117,6 +129,15 @@ export function useSendDigest() {
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),
+  })
+}
+
+export function useGenerateTemplate() {
+  return useMutation<GenerateTemplateResult, Error, { date: string; topic_ids: number[] }>({
+    mutationFn: async (body) => {
+      const { data } = await api.post('/digest/generate-template', body)
+      return data
+    },
   })
 }
 
