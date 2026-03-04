@@ -79,7 +79,8 @@ export function DayFeedPanel({
     const targetTopic = sorted[initialTopicNum - 1]
     if (!targetTopic) return
     didScrollToTopic.current = true
-    requestAnimationFrame(() => {
+    // Use setTimeout to let layout fully stabilize after initial render
+    setTimeout(() => {
       const el = document.getElementById(`toc-topic-${targetTopic.id}`)
       if (!el) return
       // Expand the topic if collapsed (same as TOC navigation)
@@ -98,7 +99,7 @@ export function DayFeedPanel({
           el.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
       })
-    })
+    }, 150)
   }, [initialTopicNum, bundle?.topics])
 
   // Mutations

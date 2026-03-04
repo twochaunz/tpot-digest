@@ -28,11 +28,17 @@ function defaultDateStr(): string {
 }
 
 function parseDateParam(dateStr?: string): string | null {
-  if (!dateStr || dateStr.length !== 8) return null
-  const yyyy = dateStr.slice(0, 4)
-  const mm = dateStr.slice(4, 6)
-  const dd = dateStr.slice(6, 8)
-  const parsed = `${yyyy}-${mm}-${dd}`
+  if (!dateStr) return null
+  let parsed: string
+  if (dateStr.length === 8) {
+    // YYYYMMDD format
+    parsed = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`
+  } else if (dateStr.length === 10 && dateStr[4] === '-' && dateStr[7] === '-') {
+    // YYYY-MM-DD format
+    parsed = dateStr
+  } else {
+    return null
+  }
   // Validate it's a real date
   const d = new Date(parsed)
   if (isNaN(d.getTime())) return null
@@ -54,7 +60,9 @@ export function DailyView() {
   const today = todayDateStr()
   const maxDate = isAdmin ? today : (latestDate || today)
 
-  const initialDate = parseDateParam(urlDateStr) || defaultDateStr()
+  const parsedDate = parseDateParam(urlDateStr)
+  // Clamp: never go beyond today; for non-admin, effect below further clamps to latestDate
+  const initialDate = parsedDate ? (parsedDate > today ? today : parsedDate) : defaultDateStr()
   const [date, setDateRaw] = useState(initialDate)
   const pendingTopicNum = useRef<number | null>(urlTopicNum ? parseInt(urlTopicNum, 10) : null)
 
