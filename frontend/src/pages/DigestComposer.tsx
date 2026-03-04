@@ -765,7 +765,7 @@ function DraftsModal({
                       </div>
                       {d.sent_at && (
                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                          {d.recipient_count} sent
+                          {d.recipient_count} recipients
                         </span>
                       )}
                     </div>
@@ -1503,7 +1503,7 @@ export function DigestComposer() {
                 <option value="">New draft</option>
                 {drafts.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.date} ({d.status}){d.sent_at ? ' - Sent' : ''}
+                    {d.date} ({d.status}){d.sent_at ? ' - Last used' : ''}
                   </option>
                 ))}
               </select>
@@ -1512,7 +1512,7 @@ export function DigestComposer() {
 
           {isSent && (
             <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 500 }}>
-              Already sent ({draft!.recipient_count} recipients)
+              Last sent {draft!.sent_at ? new Date(draft!.sent_at).toLocaleString() : ''} ({draft!.recipient_count} recipients)
             </span>
           )}
         </div>
@@ -1672,7 +1672,7 @@ export function DigestComposer() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
               onClick={handleSendTest}
-              disabled={isBusy || isSent}
+              disabled={isBusy}
               style={buttonStyle('transparent', true)}
             >
               {sendTest.isPending ? 'Sending...' : 'Send Test'}
@@ -1680,7 +1680,7 @@ export function DigestComposer() {
 
             <button
               onClick={handleSendNow}
-              disabled={isBusy || isSent}
+              disabled={isBusy}
               style={buttonStyle('#ef4444')}
             >
               {sendDigest.isPending ? 'Sending...' : 'Send Now'}

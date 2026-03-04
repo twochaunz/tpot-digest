@@ -526,9 +526,6 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
     draft = await db.get(DigestDraft, draft_id)
     if not draft:
         raise HTTPException(404, "Draft not found")
-    if draft.status == "sent":
-        raise HTTPException(400, "Draft already sent")
-
     # Fetch active subscribers, optionally filtered by IDs
     query = select(Subscriber).where(Subscriber.unsubscribed_at.is_(None))
     if body and body.subscriber_ids is not None:
@@ -554,7 +551,7 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
 
     draft.status = "sent"
     draft.sent_at = datetime.now(timezone.utc)
-    draft.recipient_count = sent_count
+    draft.recipient_count = (draft.recipient_count or 0) + sent_count
     await db.commit()
 
     return {"sent_count": sent_count, "total_subscribers": len(subscribers)}
