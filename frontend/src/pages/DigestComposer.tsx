@@ -743,7 +743,7 @@ function DraftsModal({
                   {statusLabel[status]} ({items.length})
                 </div>
                 {items.map(d => {
-                  const topicCount = (d.content_blocks || []).filter(b => b.type === 'topic-header' || b.type === 'topic').length
+                  const topicCount = (d.content_blocks || []).filter(b => b.type === 'topic-header' || (b.type as string) === 'topic').length
                   return (
                     <div
                       key={d.id}
