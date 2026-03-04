@@ -81,7 +81,23 @@ export function DayFeedPanel({
     didScrollToTopic.current = true
     requestAnimationFrame(() => {
       const el = document.getElementById(`toc-topic-${targetTopic.id}`)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (!el) return
+      // Expand the topic if collapsed (same as TOC navigation)
+      el.dispatchEvent(new Event('toc-expand'))
+      // Scroll within the feed panel to match TOC behavior
+      requestAnimationFrame(() => {
+        const feedPanel = el.closest<HTMLElement>('[data-active-feed]')
+          ?? document.querySelector<HTMLElement>('[data-active-feed="true"]')
+        if (feedPanel) {
+          const panelTop = feedPanel.getBoundingClientRect().top
+          feedPanel.scrollTo({
+            top: feedPanel.scrollTop + el.getBoundingClientRect().top - panelTop,
+            behavior: 'smooth',
+          })
+        } else {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      })
     })
   }, [initialTopicNum, bundle?.topics])
 
