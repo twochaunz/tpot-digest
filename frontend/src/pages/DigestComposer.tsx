@@ -80,12 +80,14 @@ function SortableBlock({
   topics,
   isSent,
   onDeleteBlock,
+  onAutoSave,
 }: {
   block: DigestBlock
   topics: TopicBundle[]
   isSent: boolean
   onUpdateBlock: (id: string, patch: Partial<DigestBlock>) => void
   onDeleteBlock: (id: string) => void
+  onAutoSave: () => void
 }) {
   const {
     attributes,
@@ -184,7 +186,7 @@ function SortableBlock({
       {/* Block content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {block.type === 'text' && (
-          <TextBlockEditor block={block} isSent={isSent} />
+          <TextBlockEditor block={block} isSent={isSent} onContentChange={onAutoSave} />
         )}
 
         {block.type === 'topic' && topic && (
@@ -285,8 +287,9 @@ function SortableBlock({
 }
 
 /* ---- Text block with local editing (avoids parent re-renders on every keystroke) ---- */
-function TextBlockEditor({ block, isSent }: { block: DigestBlock; isSent: boolean }) {
+function TextBlockEditor({ block, isSent, onContentChange }: { block: DigestBlock; isSent: boolean; onContentChange: () => void }) {
   const [value, setValue] = useState(block.content || '')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Sync if block content changes externally (e.g. draft load)
   useEffect(() => {
@@ -298,16 +301,27 @@ function TextBlockEditor({ block, isSent }: { block: DigestBlock; isSent: boolea
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value)
     block.content = e.target.value
+    onContentChange()
   }
+
+  // Auto-resize
+  useEffect(() => {
+    const el = textareaRef.current
+    if (el) {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    }
+  }, [value])
 
   return (
     <textarea
+      ref={textareaRef}
       value={value}
       onChange={handleChange}
       disabled={isSent}
-      placeholder="Write text content..."
+      placeholder="Write markdown content..."
       rows={3}
-      style={markdownTextareaStyle}
+      style={{ ...markdownTextareaStyle, overflow: 'hidden', resize: 'none' }}
     />
   )
 }
@@ -665,6 +679,52 @@ export function DigestComposer() {
   const sendTest = useSendTestDigest()
   const sendDigest = useSendDigest()
 
+  // --- Auto-save ---
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const blocksRef = useRef(blocks)
+  blocksRef.current = blocks
+  const scheduledForRef = useRef(scheduledFor)
+  scheduledForRef.current = scheduledFor
+  const selectedDraftIdRef = useRef(selectedDraftId)
+  selectedDraftIdRef.current = selectedDraftId
+  const dateRef = useRef(date)
+  dateRef.current = date
+
+  const triggerAutoSave = useCallback(() => {
+    setSaveStatus('idle')
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+    saveTimeoutRef.current = setTimeout(async () => {
+      const currentBlocks = blocksRef.current.map(b => ({ ...b }))
+      const currentDraftId = selectedDraftIdRef.current
+      if (currentDraftId) {
+        setSaveStatus('saving')
+        try {
+          await updateDraft.mutateAsync({
+            id: currentDraftId,
+            content_blocks: currentBlocks,
+            scheduled_for: scheduledForRef.current || undefined,
+          })
+          setSaveStatus('saved')
+        } catch {
+          setSaveStatus('idle')
+        }
+      } else if (currentBlocks.length > 0) {
+        setSaveStatus('saving')
+        try {
+          const created = await createDraft.mutateAsync({
+            date: dateRef.current,
+            content_blocks: currentBlocks,
+          })
+          setSelectedDraftId(created.id)
+          setSaveStatus('saved')
+        } catch {
+          setSaveStatus('idle')
+        }
+      }
+    }, 2000)
+  }, [updateDraft, createDraft])
+
   // Load draft data when a draft is selected
   useEffect(() => {
     if (draft) {
@@ -701,19 +761,23 @@ export function DigestComposer() {
 
   const deleteBlock = useCallback((id: string) => {
     setBlocks((prev) => prev.filter((b) => b.id !== id))
-  }, [])
+    triggerAutoSave()
+  }, [triggerAutoSave])
 
   const addTextBlock = useCallback(() => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'text', content: '' }])
-  }, [])
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'text' as const, content: '' }])
+    triggerAutoSave()
+  }, [triggerAutoSave])
 
   const addTopicBlock = useCallback((topicId: number) => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic', topic_id: topicId }])
-  }, [])
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic' as const, topic_id: topicId }])
+    triggerAutoSave()
+  }, [triggerAutoSave])
 
   const addTweetBlock = useCallback((tweetId: number) => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'tweet', tweet_id: tweetId }])
-  }, [])
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'tweet' as const, tweet_id: tweetId }])
+    triggerAutoSave()
+  }, [triggerAutoSave])
 
   // DnD
   const sensors = useSensors(
@@ -730,39 +794,12 @@ export function DigestComposer() {
       if (oldIndex === -1 || newIndex === -1) return prev
       return arrayMove(prev, oldIndex, newIndex)
     })
-  }, [])
+    triggerAutoSave()
+  }, [triggerAutoSave])
 
   const showStatus = (text: string, type: 'success' | 'error') => {
     setStatusMessage({ text, type })
     setTimeout(() => setStatusMessage(null), 4000)
-  }
-
-  // Read text content directly from block objects (mutated by TextBlockEditor)
-  const getCurrentBlocks = useCallback((): DigestBlock[] => {
-    return blocks.map((b) => ({ ...b }))
-  }, [blocks])
-
-  const handleSaveDraft = async () => {
-    const currentBlocks = getCurrentBlocks()
-    try {
-      if (selectedDraftId) {
-        await updateDraft.mutateAsync({
-          id: selectedDraftId,
-          content_blocks: currentBlocks,
-          scheduled_for: scheduledFor || undefined,
-        })
-        showStatus('Draft saved', 'success')
-      } else {
-        const created = await createDraft.mutateAsync({
-          date,
-          content_blocks: currentBlocks,
-        })
-        setSelectedDraftId(created.id)
-        showStatus('Draft created', 'success')
-      }
-    } catch {
-      showStatus('Failed to save draft', 'error')
-    }
   }
 
   const handleSendTest = async () => {
@@ -876,6 +913,13 @@ export function DigestComposer() {
           >
             Drafts{drafts ? ` (${drafts.length})` : ''}
           </button>
+
+          {saveStatus === 'saving' && (
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Saving...</span>
+          )}
+          {saveStatus === 'saved' && (
+            <span style={{ fontSize: 12, color: '#4ade80' }}>Saved</span>
+          )}
 
           <div style={{ flex: 1 }} />
 
@@ -1018,6 +1062,7 @@ export function DigestComposer() {
                       isSent={!!isSent}
                       onUpdateBlock={updateBlock}
                       onDeleteBlock={deleteBlock}
+                      onAutoSave={triggerAutoSave}
                     />
                   ))}
                 </SortableContext>
@@ -1088,64 +1133,44 @@ export function DigestComposer() {
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            onClick={handleSaveDraft}
-            disabled={isBusy || isSent}
-            style={buttonStyle('var(--accent)')}
-          >
-            {selectedDraftId ? 'Save Draft' : 'Create Draft'}
-          </button>
+        {selectedDraftId && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              onClick={handleSendTest}
+              disabled={isBusy || isSent}
+              style={buttonStyle('transparent', true)}
+            >
+              {sendTest.isPending ? 'Sending...' : 'Send Test'}
+            </button>
 
-          {selectedDraftId && (
-            <>
-              <button
-                onClick={handleSendTest}
-                disabled={isBusy || isSent}
-                style={buttonStyle('transparent', true)}
-              >
-                {sendTest.isPending ? 'Sending...' : 'Send Test'}
-              </button>
+            <button
+              onClick={handleSendNow}
+              disabled={isBusy || isSent}
+              style={buttonStyle('#ef4444')}
+            >
+              {sendDigest.isPending ? 'Sending...' : 'Send Now'}
+            </button>
 
-              {scheduledFor && !isSent && (
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={isBusy}
-                  style={buttonStyle('#8b5cf6')}
-                >
-                  Schedule
-                </button>
-              )}
+            <div style={{ flex: 1 }} />
 
-              <button
-                onClick={handleSendNow}
-                disabled={isBusy || isSent}
-                style={buttonStyle('#ef4444')}
-              >
-                {sendDigest.isPending ? 'Sending...' : 'Send Now'}
-              </button>
-
-              <div style={{ flex: 1 }} />
-
-              <button
-                onClick={handleDelete}
-                disabled={isBusy}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  fontFamily: 'var(--font-body)',
-                  padding: '8px 4px',
-                }}
-              >
-                Delete draft
-              </button>
-            </>
-          )}
-        </div>
+            <button
+              onClick={handleDelete}
+              disabled={isBusy}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-tertiary)',
+                fontSize: 12,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontFamily: 'var(--font-body)',
+                padding: '8px 4px',
+              }}
+            >
+              Delete draft
+            </button>
+          </div>
+        )}
 
         {/* Email Preview — always visible when a draft exists */}
         {selectedDraftId && (
