@@ -997,9 +997,6 @@ export function DigestComposer() {
       content: `${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
-    // Divider
-    newBlocks.push({ id: nextBlockId(), type: 'divider' })
-
     // Featured topic blocks
     for (const t of featured) {
       newBlocks.push({ id: nextBlockId(), type: 'topic', topic_id: t.id })

@@ -3,16 +3,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>abridged - {{ date_str }}</title>
+  <title>abridged tech - {{ date_str }}</title>
 </head>
 <body style="margin:0;padding:0;background:#ffffff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.6;">
   <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
 
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:24px;font-weight:700;margin:0 0 4px 0;color:#1a1a1a;letter-spacing:-0.02em;">abridged</h1>
+      <h1 style="font-size:24px;font-weight:700;margin:0 0 4px 0;color:#1a1a1a;letter-spacing:-0.02em;">abridged tech</h1>
       <p style="font-size:14px;color:#6b7280;margin:0;">{{ date_str }}</p>
     </div>
+
+    {# ---- Tweet card macro ---- #}
+    {% macro tweet_card(tweet) %}
+    <div style="background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:10px;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
+        <tr>
+          {% if tweet.author_avatar_url %}
+          <td style="vertical-align:top;padding-right:10px;width:48px;">
+            <img src="{{ tweet.author_avatar_url }}" alt="" width="48" height="48" style="border-radius:50%;display:block;">
+          </td>
+          {% endif %}
+          <td style="vertical-align:center;">
+            <div style="font-weight:700;font-size:15px;color:#0f1419;line-height:1.3;">{{ tweet.author_display_name or tweet.author_handle }}</div>
+            <div style="font-size:13px;color:#536471;">@{{ tweet.author_handle }}</div>
+          </td>
+          {% if tweet.url %}
+          <td style="vertical-align:top;text-align:right;width:40px;">
+            <a href="{{ tweet.url }}" style="font-size:13px;color:#536471;text-decoration:none;font-weight:600;">X &#x2197;</a>
+          </td>
+          {% endif %}
+        </tr>
+      </table>
+      <p style="margin:0 0 12px 0;font-size:15px;line-height:1.5;color:#0f1419;white-space:pre-wrap;">{{ tweet.text }}</p>
+      {% if tweet.quoted_tweet %}
+      <div style="border:1px solid #e1e8ed;border-radius:12px;padding:12px;margin-bottom:10px;background:#f7f9fa;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
+          <tr>
+            {% if tweet.quoted_tweet.author_avatar_url %}
+            <td style="vertical-align:top;padding-right:8px;width:24px;">
+              <img src="{{ tweet.quoted_tweet.author_avatar_url }}" alt="" width="24" height="24" style="border-radius:50%;display:block;">
+            </td>
+            {% endif %}
+            <td style="vertical-align:center;">
+              <span style="font-weight:700;font-size:13px;color:#0f1419;">{{ tweet.quoted_tweet.author_display_name or tweet.quoted_tweet.author_handle }}</span>
+              <span style="font-size:12px;color:#536471;"> @{{ tweet.quoted_tweet.author_handle }}</span>
+            </td>
+            {% if tweet.quoted_tweet.url %}
+            <td style="vertical-align:top;text-align:right;width:32px;">
+              <a href="{{ tweet.quoted_tweet.url }}" style="font-size:11px;color:#536471;text-decoration:none;">X &#x2197;</a>
+            </td>
+            {% endif %}
+          </tr>
+        </table>
+        <p style="margin:0;font-size:14px;line-height:1.4;color:#0f1419;white-space:pre-wrap;">{{ tweet.quoted_tweet.text }}</p>
+      </div>
+      {% endif %}
+      {% if tweet.show_engagement and tweet.engagement %}
+      <div style="font-size:13px;color:#536471;margin-bottom:10px;padding-top:8px;border-top:1px solid #e1e8ed;">
+        {% if tweet.engagement.replies is not none %}<span style="margin-right:16px;">{{ tweet.engagement.replies }} replies</span>{% endif %}
+        {% if tweet.engagement.retweets is not none %}<span style="margin-right:16px;">{{ tweet.engagement.retweets }} reposts</span>{% endif %}
+        {% if tweet.engagement.likes is not none %}<span style="margin-right:16px;">{{ tweet.engagement.likes }} likes</span>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endmacro %}
 
     {% for block in blocks %}
     {% if block.type == 'text' %}
@@ -26,69 +81,26 @@
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">
 
     {% elif block.type == 'topic' %}
-    <!-- Topic: {{ block.title }} -->
+    <!-- Topic {{ block.topic_number }}: {{ block.title }} -->
     <div style="margin-bottom:28px;">
-      <h2 style="font-size:17px;font-weight:700;color:#1a1a1a;margin:0 0 12px 0;padding-bottom:8px;border-bottom:1px solid #e5e7eb;">{{ block.title }}</h2>
+      <h2 style="font-size:17px;font-weight:700;color:#1a1a1a;margin:0 0 4px 0;padding-bottom:8px;border-bottom:1px solid #e5e7eb;">{{ block.topic_number }}. {{ block.title }}</h2>
+      {% if block.summary %}
+      <p style="font-size:14px;line-height:1.5;color:#6b7280;margin:4px 0 14px 0;font-style:italic;">{{ block.summary }}</p>
+      {% endif %}
 
-      {% for tweet in block.tweets %}
-      <!-- Tweet card -->
-      <div style="background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:10px;">
-        <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
-          <tr>
-            {% if tweet.author_avatar_url %}
-            <td style="vertical-align:top;padding-right:10px;">
-              <img src="{{ tweet.author_avatar_url }}" alt="" width="48" height="48" style="border-radius:50%;display:block;">
-            </td>
-            {% endif %}
-            <td style="vertical-align:center;">
-              <div style="font-weight:700;font-size:15px;color:#0f1419;line-height:1.3;">{{ tweet.author_display_name or tweet.author_handle }}</div>
-              <div style="font-size:13px;color:#536471;">@{{ tweet.author_handle }}</div>
-            </td>
-          </tr>
-        </table>
-        <p style="margin:0 0 12px 0;font-size:15px;line-height:1.5;color:#0f1419;white-space:pre-wrap;">{{ tweet.text }}</p>
-        {% if tweet.show_engagement and tweet.engagement %}
-        <div style="font-size:13px;color:#536471;margin-bottom:10px;padding-top:8px;border-top:1px solid #e1e8ed;">
-          {% if tweet.engagement.replies is not none %}<span style="margin-right:16px;">{{ tweet.engagement.replies }} replies</span>{% endif %}
-          {% if tweet.engagement.retweets is not none %}<span style="margin-right:16px;">{{ tweet.engagement.retweets }} reposts</span>{% endif %}
-          {% if tweet.engagement.likes is not none %}<span style="margin-right:16px;">{{ tweet.engagement.likes }} likes</span>{% endif %}
-        </div>
-        {% endif %}
-        {% if tweet.url %}
-        <a href="{{ tweet.url }}" style="font-size:13px;color:#1d9bf0;text-decoration:none;">View on X &rarr;</a>
-        {% endif %}
-      </div>
+      {% for group in block.category_groups %}
+      {% if group.transition %}
+      <p style="font-size:14px;color:#6b7280;margin:16px 0 8px 0;font-style:italic;">{{ group.transition }}</p>
+      {% endif %}
+      {% for tweet in group.tweets %}
+      {{ tweet_card(tweet) }}
+      {% endfor %}
       {% endfor %}
     </div>
 
     {% elif block.type == 'tweet' %}
     <!-- Standalone tweet -->
-    <div style="background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:20px;">
-      <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
-        <tr>
-          {% if block.author_avatar_url %}
-          <td style="vertical-align:top;padding-right:10px;">
-            <img src="{{ block.author_avatar_url }}" alt="" width="48" height="48" style="border-radius:50%;display:block;">
-          </td>
-          {% endif %}
-          <td style="vertical-align:center;">
-            <div style="font-weight:700;font-size:15px;color:#0f1419;line-height:1.3;">{{ block.author_display_name or block.author_handle }}</div>
-            <div style="font-size:13px;color:#536471;">@{{ block.author_handle }}</div>
-          </td>
-        </tr>
-      </table>
-      <p style="margin:0 0 12px 0;font-size:15px;line-height:1.5;color:#0f1419;white-space:pre-wrap;">{{ block.text }}</p>
-      {% if block.show_engagement and block.engagement %}
-      <div style="font-size:13px;color:#536471;margin-bottom:10px;padding-top:8px;border-top:1px solid #e1e8ed;">
-        {% if block.engagement.replies is not none %}<span style="margin-right:16px;">{{ block.engagement.replies }} replies</span>{% endif %}
-        {% if block.engagement.retweets is not none %}<span style="margin-right:16px;">{{ block.engagement.retweets }} reposts</span>{% endif %}
-        {% if block.engagement.likes is not none %}<span style="margin-right:16px;">{{ block.engagement.likes }} likes</span>{% endif %}
-      </div>
-      {% endif %}
-      {% if block.url %}
-      <a href="{{ block.url }}" style="font-size:13px;color:#1d9bf0;text-decoration:none;">View on X &rarr;</a>
-      {% endif %}
-    </div>
+    {{ tweet_card(block) }}
     {% endif %}
     {% endfor %}
 

@@ -1,8 +1,11 @@
 """Digest draft endpoints: CRUD, preview, send-test, send, process-scheduled."""
 
+import json
 import logging
+from collections import OrderedDict
 from datetime import datetime, timezone
 
+import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,10 +31,122 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/digest", tags=["digest"], dependencies=[Depends(require_admin)])
 
+# Category display order for grouping tweets within topics
+CATEGORY_ORDER = ["og post", "echo", "context", "commentary", "pushback", "hot-take", "callout", "kek"]
+
 
 def _format_date(d) -> str:
     """Format a date as 'March 1, 2026'."""
     return d.strftime("%B %-d, %Y")
+
+
+async def _generate_topic_summary(topic_title: str, grok_contexts: list[str]) -> str | None:
+    """Generate a 1-2 sentence topic summary from all tweets' grok_context."""
+    if not settings.anthropic_api_key or not grok_contexts:
+        return None
+
+    contexts_text = "\n---\n".join(c for c in grok_contexts if c)
+    if not contexts_text.strip():
+        return None
+
+    prompt = f"""You are writing a brief summary for a daily tech digest email.
+
+Topic: "{topic_title}"
+
+Context from tweets in this topic (each separated by ---):
+{contexts_text}
+
+Write a 1-2 sentence summary that captures the FULL discourse around this topic — not just the original post, but the reactions, pushback, and key points of debate. Be concise and informative. Write in a neutral, journalistic tone. No hype. No emojis.
+
+Return ONLY the summary text, nothing else."""
+
+    try:
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=150,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.content[0].text.strip()
+    except Exception:
+        logger.exception("Failed to generate topic summary for '%s'", topic_title)
+        return None
+
+
+async def _generate_category_transitions(
+    topic_title: str,
+    category_groups: list[dict],
+) -> dict[str, str]:
+    """Generate contextual one-liner transitions for each category group.
+
+    Returns a dict mapping category name -> transition text.
+    """
+    if not settings.anthropic_api_key or len(category_groups) <= 1:
+        return {}
+
+    groups_desc = []
+    for g in category_groups:
+        cat = g["category"]
+        tweet_snippets = [t["text"][:120] for t in g["tweets"][:3]]
+        groups_desc.append(f"Category: {cat}\nSample tweets:\n" + "\n".join(f"  - {s}" for s in tweet_snippets))
+
+    groups_text = "\n\n".join(groups_desc)
+
+    prompt = f"""You are writing category transition text for a daily tech digest email.
+
+Topic: "{topic_title}"
+
+The tweets are grouped by category. For each category EXCEPT the first one (which needs no transition), write a brief, contextual one-liner that introduces the group. These should intrigue readers — not just name the category, but add a touch of color about what the tweets discuss.
+
+Examples of good transitions:
+- "some pushback on the pricing model:"
+- "others are drawing parallels:"
+- "a few sharp takes:"
+- "the community had thoughts:"
+
+Category groups:
+{groups_text}
+
+Return ONLY valid JSON mapping category name to transition text. Skip the first category (it needs no transition).
+Example: {{"pushback": "some pushback on the pricing model:", "kek": "and of course, the memes:"}}"""
+
+    try:
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.content[0].text.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        return json.loads(text)
+    except Exception:
+        logger.exception("Failed to generate category transitions for '%s'", topic_title)
+        return {}
+
+
+def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | None = None) -> dict:
+    """Build a tweet dict for template rendering."""
+    tweet_dict = {
+        "author_handle": tw.author_handle,
+        "author_display_name": tw.author_display_name,
+        "author_avatar_url": tw.author_avatar_url,
+        "text": tw.text,
+        "url": tw.url,
+        "show_engagement": show_engagement,
+    }
+    if show_engagement:
+        tweet_dict["engagement"] = tw.engagement
+    if quoted_tweet:
+        tweet_dict["quoted_tweet"] = {
+            "author_handle": quoted_tweet.author_handle,
+            "author_display_name": quoted_tweet.author_display_name,
+            "author_avatar_url": quoted_tweet.author_avatar_url,
+            "text": quoted_tweet.text,
+            "url": quoted_tweet.url,
+        }
+    return tweet_dict
 
 
 async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[dict]:
@@ -39,6 +154,7 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
     import markdown as md
 
     result_blocks = []
+    topic_number = 0
 
     for block in (draft.content_blocks or []):
         block_type = block.get("type")
@@ -61,38 +177,82 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             if not topic:
                 continue
 
+            topic_number += 1
+
+            # Fetch tweets WITH their assignments (for category)
             stmt = (
-                select(Tweet)
+                select(Tweet, TweetAssignment.category)
                 .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
                 .where(TweetAssignment.topic_id == topic_id)
                 .order_by(Tweet.saved_at)
             )
             rows = await db.execute(stmt)
-            tweet_rows = rows.scalars().all()
+            tweet_rows = rows.all()  # list of (Tweet, category)
 
             tweet_overrides = block.get("tweet_overrides") or {}
 
-            tweet_dicts = []
-            for tw in tweet_rows:
+            # Collect grok_contexts for summary generation
+            grok_contexts = []
+
+            # Collect quoted tweet IDs to batch-fetch
+            quoted_ids = set()
+            for tw, _ in tweet_rows:
+                if tw.grok_context:
+                    grok_contexts.append(tw.grok_context)
+                if tw.quoted_tweet_id:
+                    quoted_ids.add(tw.quoted_tweet_id)
+
+            # Batch-fetch quoted tweets
+            quoted_tweets_map: dict[str, Tweet] = {}
+            if quoted_ids:
+                qt_stmt = select(Tweet).where(Tweet.tweet_id.in_(quoted_ids))
+                qt_result = await db.execute(qt_stmt)
+                for qt in qt_result.scalars().all():
+                    quoted_tweets_map[qt.tweet_id] = qt
+
+            # Group tweets by category, maintaining order
+            category_tweets: OrderedDict[str, list[dict]] = OrderedDict()
+            for tw, category in tweet_rows:
+                cat = category or "og post"
                 tw_override = tweet_overrides.get(str(tw.id), {})
                 show_engagement = tw_override.get("show_engagement", False)
+                quoted = quoted_tweets_map.get(tw.quoted_tweet_id) if tw.quoted_tweet_id else None
+                tweet_dict = _build_tweet_dict(tw, show_engagement, quoted)
 
-                tweet_dict = {
-                    "author_handle": tw.author_handle,
-                    "author_display_name": tw.author_display_name,
-                    "author_avatar_url": tw.author_avatar_url,
-                    "text": tw.text,
-                    "url": tw.url,
-                    "show_engagement": show_engagement,
-                }
-                if show_engagement:
-                    tweet_dict["engagement"] = tw.engagement
-                tweet_dicts.append(tweet_dict)
+                if cat not in category_tweets:
+                    category_tweets[cat] = []
+                category_tweets[cat].append(tweet_dict)
+
+            # Sort categories by defined order
+            sorted_categories = sorted(
+                category_tweets.keys(),
+                key=lambda c: CATEGORY_ORDER.index(c) if c in CATEGORY_ORDER else len(CATEGORY_ORDER),
+            )
+
+            # Build category groups for template
+            category_groups = []
+            for cat in sorted_categories:
+                category_groups.append({
+                    "category": cat,
+                    "tweets": category_tweets[cat],
+                })
+
+            # Generate AI topic summary
+            summary = await _generate_topic_summary(topic.title, grok_contexts)
+
+            # Generate AI category transitions
+            transitions = await _generate_category_transitions(topic.title, category_groups)
+
+            # Attach transitions to groups
+            for group in category_groups:
+                group["transition"] = transitions.get(group["category"])
 
             result_blocks.append({
                 "type": "topic",
                 "title": topic.title,
-                "tweets": tweet_dicts,
+                "topic_number": topic_number,
+                "summary": summary,
+                "category_groups": category_groups,
             })
 
         elif block_type == "tweet":
@@ -105,18 +265,14 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
                 continue
 
             show_engagement = block.get("show_engagement", False)
-            tweet_block = {
-                "type": "tweet",
-                "author_handle": tw.author_handle,
-                "author_display_name": tw.author_display_name,
-                "author_avatar_url": tw.author_avatar_url,
-                "text": tw.text,
-                "url": tw.url,
-                "show_engagement": show_engagement,
-            }
-            if show_engagement:
-                tweet_block["engagement"] = tw.engagement
+            quoted = None
+            if tw.quoted_tweet_id:
+                qt_stmt = select(Tweet).where(Tweet.tweet_id == tw.quoted_tweet_id)
+                qt_result = await db.execute(qt_stmt)
+                quoted = qt_result.scalars().first()
 
+            tweet_block = _build_tweet_dict(tw, show_engagement, quoted)
+            tweet_block["type"] = "tweet"
             result_blocks.append(tweet_block)
 
     return result_blocks
@@ -201,7 +357,7 @@ async def preview_draft(draft_id: int, db: AsyncSession = Depends(get_db)):
 
     blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
-    subject = f"abridged -- {date_str}"
+    subject = f"abridged tech -- {date_str}"
 
     html = render_digest_email(
         date_str=date_str,
@@ -234,7 +390,7 @@ async def send_test(draft_id: int, body: DigestSendTestRequest | None = None, db
 
     blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
-    subject = f"[TEST] abridged -- {date_str}"
+    subject = f"[TEST] abridged tech -- {date_str}"
 
     html = render_digest_email(
         date_str=date_str,
@@ -265,7 +421,7 @@ async def send_digest(draft_id: int, db: AsyncSession = Depends(get_db)):
 
     blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
-    subject = f"abridged -- {date_str}"
+    subject = f"abridged tech -- {date_str}"
 
     sent_count = 0
     for sub in subscribers:
@@ -311,7 +467,7 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
 
         blocks = await _build_digest_content(draft, db)
         date_str = _format_date(draft.date)
-        subject = f"abridged -- {date_str}"
+        subject = f"abridged tech -- {date_str}"
 
         sent_count = 0
         for sub in subscribers:

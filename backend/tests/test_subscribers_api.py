@@ -107,14 +107,22 @@ async def test_email_service_renders_template():
         {
             "type": "topic",
             "title": "AI News",
-            "tweets": [
+            "topic_number": 1,
+            "summary": None,
+            "category_groups": [
                 {
-                    "author_handle": "karpathy",
-                    "author_display_name": "Andrej Karpathy",
-                    "author_avatar_url": "https://example.com/avatar.jpg",
-                    "text": "Claude 4 is amazing",
-                    "engagement": {"likes": 5000, "retweets": 1200},
-                    "url": "https://x.com/karpathy/status/123",
+                    "category": "og post",
+                    "transition": None,
+                    "tweets": [
+                        {
+                            "author_handle": "karpathy",
+                            "author_display_name": "Andrej Karpathy",
+                            "author_avatar_url": "https://example.com/avatar.jpg",
+                            "text": "Claude 4 is amazing",
+                            "engagement": {"likes": 5000, "retweets": 1200},
+                            "url": "https://x.com/karpathy/status/123",
+                        }
+                    ],
                 }
             ],
         }
