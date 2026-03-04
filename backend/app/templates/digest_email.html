@@ -4,89 +4,98 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abridged - {{ date_str }}</title>
-  <style>
-    body { margin:0; padding:0; background:#000; color:#e7e9ea; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
-    a { color:#00a67d; text-decoration:none; }
-    a:hover { text-decoration:underline; }
-  </style>
 </head>
-<body style="background:#000;color:#e7e9ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin:0;padding:0;">
+<body style="margin:0;padding:0;background:#ffffff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.6;">
   <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
 
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:700;margin:0 0 4px 0;color:#e7e9ea;">abridged</h1>
-      <p style="font-size:15px;color:#71767b;margin:0;">{{ date_str }}</p>
+      <h1 style="font-size:24px;font-weight:700;margin:0 0 4px 0;color:#1a1a1a;letter-spacing:-0.02em;">abridged</h1>
+      <p style="font-size:14px;color:#6b7280;margin:0;">{{ date_str }}</p>
     </div>
 
     {% for block in blocks %}
     {% if block.type == 'text' %}
-    <!-- Text block -->
-    <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
-      <div style="margin:0;font-size:15px;line-height:1.5;color:#e7e9ea;">{% if block.html %}{{ block.html | safe }}{% else %}{{ block.content }}{% endif %}</div>
+    <!-- Text block (rendered markdown) -->
+    <div style="margin-bottom:24px;font-size:15px;line-height:1.7;color:#374151;">
+      {% if block.html %}{{ block.html }}{% else %}<p>{{ block.content }}</p>{% endif %}
     </div>
 
     {% elif block.type == 'divider' %}
     <!-- Divider -->
-    <hr style="border:none;border-top:1px solid #2f3336;margin:24px 0;">
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">
 
     {% elif block.type == 'topic' %}
     <!-- Topic: {{ block.title }} -->
     <div style="margin-bottom:28px;">
-      <h2 style="font-size:18px;font-weight:700;color:#e7e9ea;margin:0 0 4px 0;padding-bottom:8px;border-bottom:1px solid #2f3336;">{{ block.title }}</h2>
+      <h2 style="font-size:17px;font-weight:700;color:#1a1a1a;margin:0 0 12px 0;padding-bottom:8px;border-bottom:1px solid #e5e7eb;">{{ block.title }}</h2>
 
       {% for tweet in block.tweets %}
       <!-- Tweet card -->
-      <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px;margin-bottom:8px;">
-        <div style="margin-bottom:8px;">
-          {% if tweet.author_avatar_url %}
-          <img src="{{ tweet.author_avatar_url }}" alt="" width="36" height="36" style="border-radius:50%;vertical-align:middle;margin-right:8px;">
-          {% endif %}
-          <span style="font-weight:700;font-size:15px;color:#e7e9ea;">{{ tweet.author_display_name or tweet.author_handle }}</span>
-          <span style="color:#71767b;font-size:14px;margin-left:4px;">@{{ tweet.author_handle }}</span>
-        </div>
-        <p style="margin:0 0 10px 0;font-size:15px;line-height:1.5;color:#e7e9ea;white-space:pre-wrap;">{{ tweet.text }}</p>
-        {% if tweet.engagement %}
-        <div style="font-size:13px;color:#71767b;margin-bottom:8px;">
+      <div style="background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:10px;">
+        <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+          <tr>
+            {% if tweet.author_avatar_url %}
+            <td style="vertical-align:top;padding-right:10px;">
+              <img src="{{ tweet.author_avatar_url }}" alt="" width="48" height="48" style="border-radius:50%;display:block;">
+            </td>
+            {% endif %}
+            <td style="vertical-align:center;">
+              <div style="font-weight:700;font-size:15px;color:#0f1419;line-height:1.3;">{{ tweet.author_display_name or tweet.author_handle }}</div>
+              <div style="font-size:13px;color:#536471;">@{{ tweet.author_handle }}</div>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0 0 12px 0;font-size:15px;line-height:1.5;color:#0f1419;white-space:pre-wrap;">{{ tweet.text }}</p>
+        {% if tweet.show_engagement and tweet.engagement %}
+        <div style="font-size:13px;color:#536471;margin-bottom:10px;padding-top:8px;border-top:1px solid #e1e8ed;">
           {% if tweet.engagement.replies is not none %}<span style="margin-right:16px;">{{ tweet.engagement.replies }} replies</span>{% endif %}
-          {% if tweet.engagement.retweets is not none %}<span style="margin-right:16px;">{{ tweet.engagement.retweets }} retweets</span>{% endif %}
+          {% if tweet.engagement.retweets is not none %}<span style="margin-right:16px;">{{ tweet.engagement.retweets }} reposts</span>{% endif %}
           {% if tweet.engagement.likes is not none %}<span style="margin-right:16px;">{{ tweet.engagement.likes }} likes</span>{% endif %}
-          {% if tweet.engagement.views is not none %}<span>{{ tweet.engagement.views }} views</span>{% endif %}
         </div>
         {% endif %}
-        {% if tweet.url %}<a href="{{ tweet.url }}" style="font-size:13px;color:#00a67d;">View on X &rarr;</a>{% endif %}
+        {% if tweet.url %}
+        <a href="{{ tweet.url }}" style="font-size:13px;color:#1d9bf0;text-decoration:none;">View on X &rarr;</a>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
 
     {% elif block.type == 'tweet' %}
     <!-- Standalone tweet -->
-    <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px;margin-bottom:16px;">
-      <div style="margin-bottom:8px;">
-        {% if block.author_avatar_url %}
-        <img src="{{ block.author_avatar_url }}" alt="" width="36" height="36" style="border-radius:50%;vertical-align:middle;margin-right:8px;">
-        {% endif %}
-        <span style="font-weight:700;font-size:15px;color:#e7e9ea;">{{ block.author_display_name or block.author_handle }}</span>
-        <span style="color:#71767b;font-size:14px;margin-left:4px;">@{{ block.author_handle }}</span>
-      </div>
-      <p style="margin:0 0 10px 0;font-size:15px;line-height:1.5;color:#e7e9ea;white-space:pre-wrap;">{{ block.text }}</p>
-      {% if block.engagement %}
-      <div style="font-size:13px;color:#71767b;margin-bottom:8px;">
+    <div style="background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:20px;">
+      <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+        <tr>
+          {% if block.author_avatar_url %}
+          <td style="vertical-align:top;padding-right:10px;">
+            <img src="{{ block.author_avatar_url }}" alt="" width="48" height="48" style="border-radius:50%;display:block;">
+          </td>
+          {% endif %}
+          <td style="vertical-align:center;">
+            <div style="font-weight:700;font-size:15px;color:#0f1419;line-height:1.3;">{{ block.author_display_name or block.author_handle }}</div>
+            <div style="font-size:13px;color:#536471;">@{{ block.author_handle }}</div>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 12px 0;font-size:15px;line-height:1.5;color:#0f1419;white-space:pre-wrap;">{{ block.text }}</p>
+      {% if block.show_engagement and block.engagement %}
+      <div style="font-size:13px;color:#536471;margin-bottom:10px;padding-top:8px;border-top:1px solid #e1e8ed;">
         {% if block.engagement.replies is not none %}<span style="margin-right:16px;">{{ block.engagement.replies }} replies</span>{% endif %}
-        {% if block.engagement.retweets is not none %}<span style="margin-right:16px;">{{ block.engagement.retweets }} retweets</span>{% endif %}
+        {% if block.engagement.retweets is not none %}<span style="margin-right:16px;">{{ block.engagement.retweets }} reposts</span>{% endif %}
         {% if block.engagement.likes is not none %}<span style="margin-right:16px;">{{ block.engagement.likes }} likes</span>{% endif %}
-        {% if block.engagement.views is not none %}<span>{{ block.engagement.views }} views</span>{% endif %}
       </div>
       {% endif %}
-      {% if block.url %}<a href="{{ block.url }}" style="font-size:13px;color:#00a67d;">View on X &rarr;</a>{% endif %}
+      {% if block.url %}
+      <a href="{{ block.url }}" style="font-size:13px;color:#1d9bf0;text-decoration:none;">View on X &rarr;</a>
+      {% endif %}
     </div>
     {% endif %}
     {% endfor %}
 
     <!-- Footer -->
-    <div style="text-align:center;padding-top:24px;border-top:1px solid #2f3336;">
-      <p style="font-size:13px;color:#71767b;margin:0;">
-        <a href="{{ unsubscribe_url }}" style="color:#71767b;text-decoration:underline;">Unsubscribe</a>
+    <div style="text-align:center;padding-top:24px;border-top:1px solid #e5e7eb;">
+      <p style="font-size:12px;color:#9ca3af;margin:0;">
+        <a href="{{ unsubscribe_url }}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
       </p>
     </div>
 
