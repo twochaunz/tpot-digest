@@ -514,6 +514,130 @@ function TweetPicker({
   )
 }
 
+/* ---- Drafts browser modal ---- */
+function DraftsModal({
+  drafts,
+  selectedDraftId,
+  onSelect,
+  onClose,
+  onCreate,
+}: {
+  drafts: import('../api/digest').DigestDraft[]
+  selectedDraftId: number | null
+  onSelect: (id: number) => void
+  onClose: () => void
+  onCreate: (date: string) => void
+}) {
+  const [newDate, setNewDate] = useState('')
+
+  const grouped = {
+    draft: drafts.filter(d => d.status === 'draft'),
+    scheduled: drafts.filter(d => d.status === 'scheduled'),
+    sent: drafts.filter(d => d.status === 'sent'),
+  }
+
+  const statusLabel: Record<string, string> = { draft: 'Drafts', scheduled: 'Scheduled', sent: 'Sent' }
+  const statusColor: Record<string, string> = {
+    draft: 'var(--text-secondary)',
+    scheduled: '#a78bfa',
+    sent: '#4ade80',
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10000,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)', width: 480, maxHeight: '70vh',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Drafts</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: 18, cursor: 'pointer' }}>&times;</button>
+        </div>
+
+        {/* New draft */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="date"
+            value={newDate}
+            onChange={e => setNewDate(e.target.value)}
+            style={{
+              flex: 1, background: 'var(--bg-base)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)', padding: '6px 10px', color: 'var(--text-primary)',
+              fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none',
+            }}
+          />
+          <button
+            onClick={() => { if (newDate) { onCreate(newDate); onClose() } }}
+            disabled={!newDate}
+            style={{
+              background: 'var(--accent)', color: '#fff', border: 'none',
+              borderRadius: 'var(--radius-md)', padding: '6px 14px', fontSize: 13,
+              fontWeight: 500, cursor: newDate ? 'pointer' : 'default',
+              opacity: newDate ? 1 : 0.4, fontFamily: 'var(--font-body)',
+            }}
+          >
+            New Draft
+          </button>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {(['draft', 'scheduled', 'sent'] as const).map(status => {
+            const items = grouped[status]
+            if (items.length === 0) return null
+            return (
+              <div key={status}>
+                <div style={{ padding: '8px 20px', fontSize: 11, fontWeight: 600, color: statusColor[status], textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+                  {statusLabel[status]} ({items.length})
+                </div>
+                {items.map(d => {
+                  const topicCount = (d.content_blocks || []).filter(b => b.type === 'topic').length
+                  return (
+                    <div
+                      key={d.id}
+                      onClick={() => { onSelect(d.id); onClose() }}
+                      style={{
+                        padding: '10px 20px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: d.id === selectedDraftId ? 'var(--bg-hover)' : 'transparent',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = d.id === selectedDraftId ? 'var(--bg-hover)' : 'transparent' }}
+                    >
+                      <div>
+                        <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{d.date}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
+                          {topicCount} topic{topicCount !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      {d.sent_at && (
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                          {d.recipient_count} sent
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---- Main DigestComposer ---- */
 export function DigestComposer() {
   const navigate = useNavigate()
@@ -533,6 +657,7 @@ export function DigestComposer() {
   const [showSubs, setShowSubs] = useState(false)
   const [subSearch, setSubSearch] = useState('')
   const { data: subscribers } = useSubscribers(showSubs)
+  const [showDraftsModal, setShowDraftsModal] = useState(false)
 
   const createDraft = useCreateDigestDraft()
   const updateDraft = useUpdateDigestDraft()
@@ -551,13 +676,12 @@ export function DigestComposer() {
 
   // Auto-select existing draft for this date
   useEffect(() => {
-    if (drafts && !selectedDraftId) {
-      const existing = drafts.find((d) => d.date === date && d.status === 'draft')
-      if (existing) {
-        setSelectedDraftId(existing.id)
-      }
+    if (!drafts) return
+    const existing = drafts.find((d) => d.date === date && d.status === 'draft')
+    if (existing) {
+      setSelectedDraftId(existing.id)
     }
-  }, [drafts, date, selectedDraftId])
+  }, [drafts, date])
 
   const topics = sortTopics(bundle?.topics || [])
 
@@ -736,6 +860,22 @@ export function DigestComposer() {
           <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
             Digest Composer
           </h1>
+
+          <button
+            onClick={() => setShowDraftsModal(true)}
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-secondary)',
+              padding: '6px 12px',
+              fontSize: 13,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Drafts{drafts ? ` (${drafts.length})` : ''}
+          </button>
 
           <div style={{ flex: 1 }} />
 
@@ -1046,74 +1186,22 @@ export function DigestComposer() {
           </div>
         )}
 
-        {/* Existing Drafts List */}
-        {drafts && drafts.length > 0 && (
-          <div
-            style={{
-              background: 'var(--bg-raised)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-lg)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={sectionTitleStyle}>All Drafts</h3>
-            </div>
-            <div>
-              {drafts.map((d) => {
-                const draftTopicCount = (d.content_blocks || []).filter((b) => b.type === 'topic').length
-                return (
-                  <div
-                    key={d.id}
-                    onClick={() => setSelectedDraftId(d.id)}
-                    style={{
-                      padding: '12px 20px',
-                      borderBottom: '1px solid var(--border)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: d.id === selectedDraftId ? 'var(--bg-elevated)' : 'transparent',
-                      transition: 'background 0.1s ease',
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
-                        {d.date}
-                      </span>
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
-                        {draftTopicCount} topic{draftTopicCount !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        padding: '3px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        background:
-                          d.status === 'sent'
-                            ? 'rgba(74, 222, 128, 0.15)'
-                            : d.status === 'scheduled'
-                              ? 'rgba(139, 92, 246, 0.15)'
-                              : 'rgba(255, 255, 255, 0.06)',
-                        color:
-                          d.status === 'sent'
-                            ? '#4ade80'
-                            : d.status === 'scheduled'
-                              ? '#a78bfa'
-                              : 'var(--text-secondary)',
-                      }}
-                    >
-                      {d.status}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
       </main>
+
+      {/* Drafts modal */}
+      {showDraftsModal && drafts && (
+        <DraftsModal
+          drafts={drafts}
+          selectedDraftId={selectedDraftId}
+          onSelect={(id) => setSelectedDraftId(id)}
+          onClose={() => setShowDraftsModal(false)}
+          onCreate={(newDate) => {
+            setDate(newDate)
+            setSelectedDraftId(null)
+            setBlocks([])
+          }}
+        />
+      )}
 
       {/* Subscribers modal */}
       {showSubs && (
