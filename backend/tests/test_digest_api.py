@@ -59,7 +59,7 @@ async def test_create_digest_draft(client: AsyncClient):
         "date": "2026-03-01",
         "content_blocks": [
             {"id": "b1", "type": "text", "content": "Hello readers"},
-            {"id": "b2", "type": "topic", "topic_id": 1},
+            {"id": "b2", "type": "topic-header", "topic_id": 1},
         ],
     })
     assert resp.status_code == 201
@@ -68,7 +68,7 @@ async def test_create_digest_draft(client: AsyncClient):
     assert len(data["content_blocks"]) == 2
     assert data["content_blocks"][0]["type"] == "text"
     assert data["content_blocks"][0]["content"] == "Hello readers"
-    assert data["content_blocks"][1]["type"] == "topic"
+    assert data["content_blocks"][1]["type"] == "topic-header"
     assert data["content_blocks"][1]["topic_id"] == 1
 
 
@@ -78,7 +78,7 @@ async def test_update_digest_draft(client: AsyncClient):
     create_resp = await client.post("/api/digest/drafts", json={
         "date": "2026-03-01",
         "content_blocks": [
-            {"id": "b1", "type": "topic", "topic_id": 1},
+            {"id": "b1", "type": "topic-header", "topic_id": 1},
         ],
     })
     draft_id = create_resp.json()["id"]
@@ -87,7 +87,7 @@ async def test_update_digest_draft(client: AsyncClient):
     resp = await client.patch(f"/api/digest/drafts/{draft_id}", json={
         "content_blocks": [
             {"id": "b0", "type": "text", "content": "Updated intro"},
-            {"id": "b1", "type": "topic", "topic_id": 1},
+            {"id": "b1", "type": "topic-header", "topic_id": 1},
         ],
     })
     assert resp.status_code == 200
@@ -125,11 +125,12 @@ async def test_preview_digest(client: AsyncClient):
 
         topic_id = topic.id
 
-    # Create draft with that topic as a block
+    # Create draft with topic-header + tweet blocks
     create_resp = await client.post("/api/digest/drafts", json={
         "date": today.isoformat(),
         "content_blocks": [
-            {"id": "b1", "type": "topic", "topic_id": topic_id},
+            {"id": "b1", "type": "topic-header", "topic_id": topic_id},
+            {"id": "b2", "type": "tweet", "tweet_id": tweet.id},
         ],
     })
     draft_id = create_resp.json()["id"]

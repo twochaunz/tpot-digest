@@ -30,7 +30,10 @@
           </td>
           {% if tweet.url %}
           <td style="vertical-align:top;text-align:right;width:40px;">
-            <a href="{{ tweet.url }}" style="font-size:13px;color:#536471;text-decoration:none;font-weight:600;">X &#x2197;</a>
+            <a href="{{ tweet.url }}" style="text-decoration:none;display:inline-flex;align-items:center;gap:2px;">
+              <img src="https://abridged.tech/x-logo.svg" alt="X" width="12" height="12" style="display:inline-block;vertical-align:middle;">
+              <span style="font-size:12px;color:#536471;">&#x2197;</span>
+            </a>
           </td>
           {% endif %}
         </tr>
@@ -51,7 +54,10 @@
             </td>
             {% if tweet.quoted_tweet.url %}
             <td style="vertical-align:top;text-align:right;width:32px;">
-              <a href="{{ tweet.quoted_tweet.url }}" style="font-size:11px;color:#536471;text-decoration:none;">X &#x2197;</a>
+              <a href="{{ tweet.quoted_tweet.url }}" style="text-decoration:none;">
+                <img src="https://abridged.tech/x-logo.svg" alt="X" width="10" height="10" style="display:inline-block;vertical-align:middle;">
+                <span style="font-size:11px;color:#536471;">&#x2197;</span>
+              </a>
             </td>
             {% endif %}
           </tr>
@@ -71,23 +77,25 @@
 
     {% for block in blocks %}
     {% if block.type == 'text' %}
-    <!-- Text block (rendered markdown) -->
     <div style="margin-bottom:24px;font-size:15px;line-height:1.7;color:#374151;">
       {% if block.html %}{{ block.html }}{% else %}<p>{{ block.content }}</p>{% endif %}
     </div>
 
     {% elif block.type == 'divider' %}
-    <!-- Divider -->
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">
 
+    {% elif block.type == 'topic-header' %}
+    <div style="margin-bottom:8px;">
+      <h2 style="font-size:17px;font-weight:700;color:#1a1a1a;margin:0;padding-bottom:4px;">{{ block.topic_number }}. {{ block.title }}</h2>
+    </div>
+
     {% elif block.type == 'topic' %}
-    <!-- Topic {{ block.topic_number }}: {{ block.title }} -->
+    <!-- Legacy topic block -->
     <div style="margin-bottom:28px;">
       <h2 style="font-size:17px;font-weight:700;color:#1a1a1a;margin:0 0 4px 0;padding-bottom:8px;border-bottom:1px solid #e5e7eb;">{{ block.topic_number }}. {{ block.title }}</h2>
       {% if block.summary %}
       <p style="font-size:14px;line-height:1.5;color:#6b7280;margin:4px 0 14px 0;font-style:italic;">{{ block.summary }}</p>
       {% endif %}
-
       {% for group in block.category_groups %}
       {% if group.transition %}
       <p style="font-size:14px;color:#6b7280;margin:16px 0 8px 0;font-style:italic;">{{ group.transition }}</p>
@@ -99,7 +107,6 @@
     </div>
 
     {% elif block.type == 'tweet' %}
-    <!-- Standalone tweet -->
     {{ tweet_card(block) }}
     {% endif %}
     {% endfor %}

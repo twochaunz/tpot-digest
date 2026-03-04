@@ -16,6 +16,7 @@ import {
   useSendDigest,
   useSubscriberCount,
   useSubscribers,
+  useGenerateTemplate,
 } from '../api/digest'
 import {
   DndContext,
@@ -90,6 +91,91 @@ function CompactTweet({
   )
 }
 
+/* ---- Tweet selector side panel (opened from topic-header click) ---- */
+function TweetSelectorPanel({
+  topic,
+  includedTweetIds,
+  onToggleTweet,
+  onClose,
+}: {
+  topic: TopicBundle
+  includedTweetIds: Set<number>
+  onToggleTweet: (tweetId: number, include: boolean) => void
+  onClose: () => void
+}) {
+  const CATEGORY_ORDER = ['og post', 'echo', 'context', 'commentary', 'pushback', 'hot-take', 'callout', 'kek']
+
+  const categoryGroups: Record<string, Tweet[]> = {}
+  for (const tw of topic.tweets) {
+    const cat = tw.category || 'og post'
+    if (!categoryGroups[cat]) categoryGroups[cat] = []
+    categoryGroups[cat].push(tw)
+  }
+
+  const sortedCategories = Object.keys(categoryGroups).sort(
+    (a, b) => {
+      const ai = CATEGORY_ORDER.indexOf(a)
+      const bi = CATEGORY_ORDER.indexOf(b)
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+    }
+  )
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 10000,
+          background: 'rgba(0,0,0,0.3)',
+        }}
+      />
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, zIndex: 10001,
+        background: 'var(--bg-elevated)', borderLeft: '1px solid var(--border)',
+        boxShadow: '-8px 0 24px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+              {topic.title}
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {includedTweetIds.size} of {topic.tweets.length} tweets selected
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: 18, cursor: 'pointer' }}>&times;</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+          {sortedCategories.map(cat => (
+            <div key={cat} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                {cat}
+              </div>
+              {categoryGroups[cat].map(tw => {
+                const included = includedTweetIds.has(tw.id)
+                return (
+                  <label key={tw.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 0', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={included}
+                      onChange={(e) => onToggleTweet(tw.id, e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <CompactTweet tweet={tw} />
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 /* ---- Sortable block row ---- */
 function SortableBlock({
   block,
@@ -98,6 +184,7 @@ function SortableBlock({
   onUpdateBlock,
   onDeleteBlock,
   onAutoSave,
+  onOpenTweetSelector,
 }: {
   block: DigestBlock
   topics: TopicBundle[]
@@ -105,6 +192,7 @@ function SortableBlock({
   onUpdateBlock: (id: string, patch: Partial<DigestBlock>) => void
   onDeleteBlock: (id: string) => void
   onAutoSave: () => void
+  onOpenTweetSelector?: (topicId: number) => void
 }) {
   const {
     attributes,
@@ -135,7 +223,7 @@ function SortableBlock({
     marginBottom: 8,
   }
 
-  const topic = block.type === 'topic' && block.topic_id
+  const topic = block.type === 'topic-header' && block.topic_id
     ? topics.find((t) => t.id === block.topic_id)
     : null
 
@@ -216,68 +304,36 @@ function SortableBlock({
           <TextBlockEditor block={block} isSent={isSent} onContentChange={onAutoSave} />
         )}
 
-        {block.type === 'topic' && topic && (
-          <div style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            padding: '12px 14px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <span style={{
-                minWidth: 22,
-                height: 22,
-                borderRadius: 11,
-                background: topic.color || 'var(--accent)',
+        {block.type === 'topic-header' && topic && (
+          <div
+            onClick={() => !isSent && onOpenTweetSelector?.(block.topic_id!)}
+            style={{
+              cursor: isSent ? 'default' : 'pointer',
+              padding: '8px 14px',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: topic.color || 'var(--text-tertiary)',
                 flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#fff',
-                padding: '0 5px',
-              }}>
-                {topic.tweet_count}
-              </span>
-              <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
+              }} />
+              <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
                 {topic.title}
               </span>
+              {!isSent && (
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+                  click to select tweets
+                </span>
+              )}
             </div>
-            {/* Show tweets inline */}
-            {topic.tweets.length > 0 && (
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 4 }}>
-                {topic.tweets.map((tw) => (
-                  <div key={tw.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <CompactTweet tweet={tw} expanded={expandedTweets.has(tw.id)} onToggleExpand={() => toggleExpand(tw.id)} />
-                    </div>
-                    {!isSent && (
-                      <input
-                        type="checkbox"
-                        checked={!!(block.tweet_overrides?.[String(tw.id)]?.show_engagement)}
-                        onChange={(e) => {
-                          const overrides = { ...(block.tweet_overrides || {}) }
-                          if (e.target.checked) {
-                            overrides[String(tw.id)] = { show_engagement: true }
-                          } else {
-                            delete overrides[String(tw.id)]
-                          }
-                          onUpdateBlock(block.id, { tweet_overrides: overrides })
-                          onAutoSave()
-                        }}
-                        title="Show engagement"
-                        style={{ margin: 0, marginTop: 8, cursor: 'pointer', flexShrink: 0 }}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
-        {block.type === 'topic' && !topic && (
+        {block.type === 'topic-header' && !topic && (
           <div style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border)',
@@ -286,7 +342,7 @@ function SortableBlock({
             color: 'var(--text-tertiary)',
             fontSize: 13,
           }}>
-            Topic #{block.topic_id} (not found for this date)
+            Topic #{block.topic_id} (not found)
           </div>
         )}
 
@@ -687,7 +743,7 @@ function DraftsModal({
                   {statusLabel[status]} ({items.length})
                 </div>
                 {items.map(d => {
-                  const topicCount = (d.content_blocks || []).filter(b => b.type === 'topic').length
+                  const topicCount = (d.content_blocks || []).filter(b => b.type === 'topic-header' || b.type === 'topic').length
                   return (
                     <div
                       key={d.id}
@@ -849,6 +905,7 @@ export function DigestComposer() {
   const { data: subscribers } = useSubscribers(showSubs)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
   const [showTopicSelector, setShowTopicSelector] = useState(false)
+  const [tweetSelectorTopicId, setTweetSelectorTopicId] = useState<number | null>(null)
 
   const createDraft = useCreateDigestDraft()
   const updateDraft = useUpdateDigestDraft()
@@ -924,7 +981,7 @@ export function DigestComposer() {
 
   // Set of topic IDs already used in blocks
   const usedTopicIds = new Set(
-    blocks.filter((b) => b.type === 'topic' && b.topic_id).map((b) => b.topic_id!)
+    blocks.filter((b) => b.type === 'topic-header' && b.topic_id).map((b) => b.topic_id!)
   )
 
   // Set of tweet IDs already used in standalone tweet blocks
@@ -946,8 +1003,8 @@ export function DigestComposer() {
     triggerAutoSave()
   }, [triggerAutoSave])
 
-  const addTopicBlock = useCallback((topicId: number) => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic' as const, topic_id: topicId }])
+  const addTopicHeaderBlock = useCallback((topicId: number) => {
+    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic-header' as const, topic_id: topicId }])
     triggerAutoSave()
   }, [triggerAutoSave])
 
@@ -979,13 +1036,21 @@ export function DigestComposer() {
     triggerAutoSave()
   }, [triggerAutoSave])
 
-  const generateTemplateBlocks = useCallback((selectedIds: Set<number>): DigestBlock[] => {
+  const generateTemplate = useGenerateTemplate()
+
+  const generateTemplateBlocks = useCallback(async (selectedIds: Set<number>): Promise<DigestBlock[]> => {
     const sorted = sortTopics(topics)
     const featured = sorted.filter(t => selectedIds.has(t.id))
     const rest = sorted.filter(t => !selectedIds.has(t.id))
 
     const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', year: 'numeric',
+    })
+
+    // Call backend for AI content
+    const templateData = await generateTemplate.mutateAsync({
+      date,
+      topic_ids: featured.map(t => t.id),
     })
 
     const newBlocks: DigestBlock[] = []
@@ -997,12 +1062,52 @@ export function DigestComposer() {
       content: `${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
-    // Featured topic blocks
-    for (const t of featured) {
-      newBlocks.push({ id: nextBlockId(), type: 'topic', topic_id: t.id })
+    // Collect kek tweets across all topics
+    const kekTweets: number[] = []
+
+    let isFirstTopic = true
+    for (const topicData of templateData.topics) {
+      // Separate kek tweets
+      const nonKekGroups = topicData.category_groups.filter(g => g.category !== 'kek')
+      const kekGroup = topicData.category_groups.find(g => g.category === 'kek')
+      if (kekGroup) {
+        kekTweets.push(...kekGroup.tweet_ids)
+      }
+
+      // Skip topics that only have kek tweets
+      if (nonKekGroups.length === 0) continue
+
+      // Divider before topic (except first)
+      if (!isFirstTopic) {
+        newBlocks.push({ id: nextBlockId(), type: 'divider' })
+      }
+      isFirstTopic = false
+
+      // Topic header
+      newBlocks.push({ id: nextBlockId(), type: 'topic-header', topic_id: topicData.topic_id })
+
+      // Summary text block
+      if (topicData.summary) {
+        newBlocks.push({ id: nextBlockId(), type: 'text', content: `*${topicData.summary}*` })
+      }
+
+      // Tweet blocks grouped by category
+      let isFirstGroup = true
+      for (const group of nonKekGroups) {
+        // Category transition text
+        if (!isFirstGroup && group.transition) {
+          newBlocks.push({ id: nextBlockId(), type: 'text', content: `*${group.transition}*` })
+        }
+        isFirstGroup = false
+
+        // Individual tweet blocks
+        for (const tweetId of group.tweet_ids) {
+          newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tweetId })
+        }
+      }
     }
 
-    // More on the timeline (if there are non-featured topics)
+    // "More on the timeline" section
     if (rest.length > 0) {
       newBlocks.push({ id: nextBlockId(), type: 'divider' })
       const sorted2 = sortTopics(topics)
@@ -1017,22 +1122,32 @@ export function DigestComposer() {
       })
     }
 
-    // Divider + outro
-    newBlocks.push({ id: nextBlockId(), type: 'divider' })
-    newBlocks.push({
-      id: nextBlockId(),
-      type: 'text',
-      content: 'Until next time.',
-    })
+    // Kek section
+    if (kekTweets.length > 0) {
+      newBlocks.push({ id: nextBlockId(), type: 'divider' })
+      newBlocks.push({ id: nextBlockId(), type: 'text', content: 'kek moments of the day' })
+      for (const tweetId of kekTweets) {
+        newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tweetId })
+      }
+    }
 
     return newBlocks
-  }, [topics, date])
+  }, [topics, date, generateTemplate])
 
-  const handleCreateFromTemplate = useCallback((selectedIds: Set<number>) => {
-    const newBlocks = generateTemplateBlocks(selectedIds)
-    setBlocks(newBlocks)
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const handleCreateFromTemplate = useCallback(async (selectedIds: Set<number>) => {
+    setIsGenerating(true)
     setShowTopicSelector(false)
-    triggerAutoSave()
+    try {
+      const newBlocks = await generateTemplateBlocks(selectedIds)
+      setBlocks(newBlocks)
+      triggerAutoSave()
+    } catch {
+      showStatus('Failed to generate template', 'error')
+    } finally {
+      setIsGenerating(false)
+    }
   }, [generateTemplateBlocks, triggerAutoSave])
 
   const showStatus = (text: string, type: 'success' | 'error') => {
@@ -1084,9 +1199,9 @@ export function DigestComposer() {
   }
 
   const isSent = draft?.status === 'sent'
-  const isBusy = createDraft.isPending || updateDraft.isPending || sendTest.isPending || sendDigest.isPending
+  const isBusy = createDraft.isPending || updateDraft.isPending || sendTest.isPending || sendDigest.isPending || isGenerating
   const blockIds = blocks.map((b) => b.id)
-  const topicCount = blocks.filter((b) => b.type === 'topic').length
+  const topicCount = blocks.filter((b) => b.type === 'topic-header').length
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
@@ -1274,14 +1389,23 @@ export function DigestComposer() {
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <button
               onClick={() => setShowTopicSelector(true)}
+              disabled={isGenerating}
               style={{
                 background: 'var(--accent)', color: '#fff', border: 'none',
                 borderRadius: 'var(--radius-md)', padding: '10px 20px', fontSize: 14,
-                fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)',
+                fontWeight: 500, cursor: isGenerating ? 'default' : 'pointer', fontFamily: 'var(--font-body)',
+                opacity: isGenerating ? 0.6 : 1,
               }}
             >
-              New Draft from Topics
+              {isGenerating ? 'Generating...' : 'New Draft from Topics'}
             </button>
+          </div>
+        )}
+
+        {/* Generating indicator when blocks are being assembled */}
+        {isGenerating && blocks.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)', fontSize: 14 }}>
+            Generating template with AI summaries...
           </div>
         )}
 
@@ -1303,7 +1427,7 @@ export function DigestComposer() {
           <div style={{ padding: '16px 20px' }}>
             {blocks.length === 0 ? (
               <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                No blocks yet. Add a text, topic, or tweet block below.
+                No blocks yet. Add blocks below or create from topics.
               </div>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1317,6 +1441,7 @@ export function DigestComposer() {
                       onUpdateBlock={updateBlock}
                       onDeleteBlock={deleteBlock}
                       onAutoSave={triggerAutoSave}
+                      onOpenTweetSelector={setTweetSelectorTopicId}
                     />
                   ))}
                 </SortableContext>
@@ -1332,7 +1457,7 @@ export function DigestComposer() {
                 <TopicPicker
                   topics={topics}
                   usedTopicIds={usedTopicIds}
-                  onSelect={addTopicBlock}
+                  onSelect={addTopicHeaderBlock}
                 />
                 <TweetPicker
                   topics={topics}
@@ -1479,6 +1604,53 @@ export function DigestComposer() {
           onClose={() => setShowTopicSelector(false)}
         />
       )}
+
+      {/* Tweet selector side panel */}
+      {tweetSelectorTopicId && (() => {
+        const topic = topics.find(t => t.id === tweetSelectorTopicId)
+        if (!topic) return null
+        const includedTweetIds = new Set(
+          blocks
+            .filter(b => b.type === 'tweet' && topic.tweets.some(t => t.id === b.tweet_id))
+            .map(b => b.tweet_id!)
+        )
+        return (
+          <TweetSelectorPanel
+            topic={topic}
+            includedTweetIds={includedTweetIds}
+            onToggleTweet={(tweetId, include) => {
+              if (include) {
+                // Find the last block that belongs to this topic's section
+                const topicHeaderIdx = blocks.findIndex(
+                  b => b.type === 'topic-header' && b.topic_id === tweetSelectorTopicId
+                )
+                // Find last tweet/text block before next topic-header or divider
+                let insertIdx = topicHeaderIdx + 1
+                for (let i = topicHeaderIdx + 1; i < blocks.length; i++) {
+                  if (blocks[i].type === 'topic-header' || blocks[i].type === 'divider') break
+                  insertIdx = i + 1
+                }
+                const newBlock: DigestBlock = {
+                  id: nextBlockId(),
+                  type: 'tweet',
+                  tweet_id: tweetId,
+                }
+                setBlocks(prev => [
+                  ...prev.slice(0, insertIdx),
+                  newBlock,
+                  ...prev.slice(insertIdx),
+                ])
+                triggerAutoSave()
+              } else {
+                // Remove the tweet block
+                setBlocks(prev => prev.filter(b => !(b.type === 'tweet' && b.tweet_id === tweetId)))
+                triggerAutoSave()
+              }
+            }}
+            onClose={() => setTweetSelectorTopicId(null)}
+          />
+        )
+      })()}
 
       {/* Drafts modal */}
       {showDraftsModal && drafts && (

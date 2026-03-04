@@ -105,27 +105,19 @@ async def test_email_service_renders_template():
             "content": "Welcome to today's digest",
         },
         {
-            "type": "topic",
+            "type": "topic-header",
             "title": "AI News",
             "topic_number": 1,
-            "summary": None,
-            "category_groups": [
-                {
-                    "category": "og post",
-                    "transition": None,
-                    "tweets": [
-                        {
-                            "author_handle": "karpathy",
-                            "author_display_name": "Andrej Karpathy",
-                            "author_avatar_url": "https://example.com/avatar.jpg",
-                            "text": "Claude 4 is amazing",
-                            "engagement": {"likes": 5000, "retweets": 1200},
-                            "url": "https://x.com/karpathy/status/123",
-                        }
-                    ],
-                }
-            ],
-        }
+        },
+        {
+            "type": "tweet",
+            "author_handle": "karpathy",
+            "author_display_name": "Andrej Karpathy",
+            "author_avatar_url": "https://example.com/avatar.jpg",
+            "text": "Claude 4 is amazing",
+            "url": "https://x.com/karpathy/status/123",
+            "show_engagement": False,
+        },
     ]
 
     html = render_digest_email(

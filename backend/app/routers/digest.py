@@ -24,6 +24,7 @@ from app.schemas.digest import (
     DigestDraftUpdate,
     DigestPreview,
     DigestSendTestRequest,
+    GenerateTemplateRequest,
 )
 from app.services.email import render_digest_email, send_digest_email
 
@@ -149,8 +150,80 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | No
     return tweet_dict
 
 
+@router.post("/generate-template")
+async def generate_template(body: GenerateTemplateRequest, db: AsyncSession = Depends(get_db)):
+    """Generate AI content (summaries + transitions) for template assembly."""
+    result_topics = []
+
+    for topic_id in body.topic_ids:
+        topic = await db.get(Topic, topic_id)
+        if not topic:
+            continue
+
+        # Fetch tweets with categories
+        stmt = (
+            select(Tweet, TweetAssignment.category)
+            .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
+            .where(TweetAssignment.topic_id == topic_id)
+            .order_by(Tweet.saved_at)
+        )
+        rows = await db.execute(stmt)
+        tweet_rows = rows.all()
+
+        # Collect grok_contexts for summary
+        grok_contexts = [tw.grok_context for tw, _ in tweet_rows if tw.grok_context]
+
+        # Group tweets by category
+        category_tweets: OrderedDict[str, list[dict]] = OrderedDict()
+        for tw, category in tweet_rows:
+            cat = category or "og post"
+            if cat not in category_tweets:
+                category_tweets[cat] = []
+            category_tweets[cat].append({
+                "tweet_id": tw.id,
+                "text": tw.text[:200],
+            })
+
+        # Sort categories
+        sorted_categories = sorted(
+            category_tweets.keys(),
+            key=lambda c: CATEGORY_ORDER.index(c) if c in CATEGORY_ORDER else len(CATEGORY_ORDER),
+        )
+
+        category_groups = [
+            {"category": cat, "tweet_ids": [t["tweet_id"] for t in category_tweets[cat]]}
+            for cat in sorted_categories
+        ]
+
+        # Generate AI summary
+        summary = await _generate_topic_summary(topic.title, grok_contexts)
+
+        # Generate AI transitions
+        transition_groups = [
+            {"category": cat, "tweets": category_tweets[cat]}
+            for cat in sorted_categories
+        ]
+        transitions = await _generate_category_transitions(topic.title, transition_groups)
+
+        result_topics.append({
+            "topic_id": topic_id,
+            "title": topic.title,
+            "summary": summary,
+            "category_groups": [
+                {**g, "transition": transitions.get(g["category"])}
+                for g in category_groups
+            ],
+        })
+
+    return {"topics": result_topics}
+
+
 async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[dict]:
-    """Build list of block dicts for rendering from content_blocks."""
+    """Build list of block dicts for rendering from content_blocks.
+
+    With the new block architecture, AI content is pre-generated into text blocks
+    at template creation time. This function just renders blocks as-is.
+    """
     import markdown as md
 
     result_blocks = []
@@ -168,91 +241,18 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
         elif block_type == "divider":
             result_blocks.append({"type": "divider"})
 
-        elif block_type == "topic":
+        elif block_type == "topic-header":
             topic_id = block.get("topic_id")
             if not topic_id:
                 continue
-
             topic = await db.get(Topic, topic_id)
             if not topic:
                 continue
-
             topic_number += 1
-
-            # Fetch tweets WITH their assignments (for category)
-            stmt = (
-                select(Tweet, TweetAssignment.category)
-                .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
-                .where(TweetAssignment.topic_id == topic_id)
-                .order_by(Tweet.saved_at)
-            )
-            rows = await db.execute(stmt)
-            tweet_rows = rows.all()  # list of (Tweet, category)
-
-            tweet_overrides = block.get("tweet_overrides") or {}
-
-            # Collect grok_contexts for summary generation
-            grok_contexts = []
-
-            # Collect quoted tweet IDs to batch-fetch
-            quoted_ids = set()
-            for tw, _ in tweet_rows:
-                if tw.grok_context:
-                    grok_contexts.append(tw.grok_context)
-                if tw.quoted_tweet_id:
-                    quoted_ids.add(tw.quoted_tweet_id)
-
-            # Batch-fetch quoted tweets
-            quoted_tweets_map: dict[str, Tweet] = {}
-            if quoted_ids:
-                qt_stmt = select(Tweet).where(Tweet.tweet_id.in_(quoted_ids))
-                qt_result = await db.execute(qt_stmt)
-                for qt in qt_result.scalars().all():
-                    quoted_tweets_map[qt.tweet_id] = qt
-
-            # Group tweets by category, maintaining order
-            category_tweets: OrderedDict[str, list[dict]] = OrderedDict()
-            for tw, category in tweet_rows:
-                cat = category or "og post"
-                tw_override = tweet_overrides.get(str(tw.id), {})
-                show_engagement = tw_override.get("show_engagement", False)
-                quoted = quoted_tweets_map.get(tw.quoted_tweet_id) if tw.quoted_tweet_id else None
-                tweet_dict = _build_tweet_dict(tw, show_engagement, quoted)
-
-                if cat not in category_tweets:
-                    category_tweets[cat] = []
-                category_tweets[cat].append(tweet_dict)
-
-            # Sort categories by defined order
-            sorted_categories = sorted(
-                category_tweets.keys(),
-                key=lambda c: CATEGORY_ORDER.index(c) if c in CATEGORY_ORDER else len(CATEGORY_ORDER),
-            )
-
-            # Build category groups for template
-            category_groups = []
-            for cat in sorted_categories:
-                category_groups.append({
-                    "category": cat,
-                    "tweets": category_tweets[cat],
-                })
-
-            # Generate AI topic summary
-            summary = await _generate_topic_summary(topic.title, grok_contexts)
-
-            # Generate AI category transitions
-            transitions = await _generate_category_transitions(topic.title, category_groups)
-
-            # Attach transitions to groups
-            for group in category_groups:
-                group["transition"] = transitions.get(group["category"])
-
             result_blocks.append({
-                "type": "topic",
+                "type": "topic-header",
                 "title": topic.title,
                 "topic_number": topic_number,
-                "summary": summary,
-                "category_groups": category_groups,
             })
 
         elif block_type == "tweet":
@@ -274,6 +274,39 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             tweet_block = _build_tweet_dict(tw, show_engagement, quoted)
             tweet_block["type"] = "tweet"
             result_blocks.append(tweet_block)
+
+        # Legacy: old 'topic' blocks still render for existing drafts
+        elif block_type == "topic":
+            topic_id = block.get("topic_id")
+            if not topic_id:
+                continue
+            topic = await db.get(Topic, topic_id)
+            if not topic:
+                continue
+            topic_number += 1
+
+            stmt = (
+                select(Tweet)
+                .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
+                .where(TweetAssignment.topic_id == topic_id)
+                .order_by(Tweet.saved_at)
+            )
+            rows = await db.execute(stmt)
+            tweet_rows = rows.scalars().all()
+            tweet_overrides = block.get("tweet_overrides") or {}
+            tweet_dicts = []
+            for tw in tweet_rows:
+                tw_override = tweet_overrides.get(str(tw.id), {})
+                show_eng = tw_override.get("show_engagement", False)
+                tweet_dicts.append(_build_tweet_dict(tw, show_eng))
+
+            result_blocks.append({
+                "type": "topic",
+                "title": topic.title,
+                "topic_number": topic_number,
+                "summary": None,
+                "category_groups": [{"category": "og post", "transition": None, "tweets": tweet_dicts}],
+            })
 
     return result_blocks
 
