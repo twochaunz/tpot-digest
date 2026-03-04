@@ -128,6 +128,14 @@ Example: {{"pushback": "some pushback on the pricing model:", "kek": "and of cou
         return {}
 
 
+def _proxy_avatar_url(avatar_url: str | None) -> str | None:
+    """Rewrite avatar URL to go through our image proxy for email compatibility."""
+    if not avatar_url:
+        return avatar_url
+    from urllib.parse import quote
+    return f"https://abridged.tech/api/image-proxy?url={quote(avatar_url, safe='')}"
+
+
 def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | dict | None = None) -> dict:
     """Build a tweet dict for template rendering."""
     text = tw.text
@@ -137,7 +145,7 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | di
     tweet_dict = {
         "author_handle": tw.author_handle,
         "author_display_name": tw.author_display_name,
-        "author_avatar_url": tw.author_avatar_url,
+        "author_avatar_url": _proxy_avatar_url(tw.author_avatar_url),
         "text": text,
         "url": tw.url,
         "show_engagement": show_engagement,
@@ -146,12 +154,14 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: Tweet | di
         tweet_dict["engagement"] = tw.engagement
     if quoted_tweet:
         if isinstance(quoted_tweet, dict):
-            tweet_dict["quoted_tweet"] = quoted_tweet
+            qt = dict(quoted_tweet)
+            qt["author_avatar_url"] = _proxy_avatar_url(qt.get("author_avatar_url"))
+            tweet_dict["quoted_tweet"] = qt
         else:
             tweet_dict["quoted_tweet"] = {
                 "author_handle": quoted_tweet.author_handle,
                 "author_display_name": quoted_tweet.author_display_name,
-                "author_avatar_url": quoted_tweet.author_avatar_url,
+                "author_avatar_url": _proxy_avatar_url(quoted_tweet.author_avatar_url),
                 "text": quoted_tweet.text,
                 "url": quoted_tweet.url,
             }

@@ -72,14 +72,40 @@ def _tweet_token(tweet_id: str) -> str:
 
 @app.get("/api/image-proxy")
 async def image_proxy(url: str):
-    """Proxy external images to avoid CORS issues in html-to-image captures."""
+    """Proxy external images with disk caching for email compatibility."""
+    import hashlib
+    from pathlib import Path
+    from fastapi.responses import Response
+
+    cache_dir = Path(settings.data_dir) / "image-cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    url_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
+
+    # Check disk cache
+    cached = list(cache_dir.glob(f"{url_hash}.*"))
+    if cached:
+        cached_file = cached[0]
+        ext = cached_file.suffix
+        media_types = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+        return Response(
+            content=cached_file.read_bytes(),
+            media_type=media_types.get(ext, "image/jpeg"),
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    # Fetch and cache
     async with httpx.AsyncClient(follow_redirects=True) as client:
         resp = await client.get(url, timeout=10)
-    from fastapi.responses import Response
+    content_type = resp.headers.get("content-type", "image/jpeg")
+    ext_map = {"image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "image/jpeg": ".jpg"}
+    ext = ext_map.get(content_type.split(";")[0].strip(), ".jpg")
+    cache_path = cache_dir / f"{url_hash}{ext}"
+    cache_path.write_bytes(resp.content)
+
     return Response(
         content=resp.content,
-        media_type=resp.headers.get("content-type", "image/jpeg"),
-        headers={"Cache-Control": "public, max-age=3600"},
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
     )
 
 
