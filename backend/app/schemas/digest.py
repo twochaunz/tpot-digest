@@ -49,3 +49,7 @@ class DigestPreview(BaseModel):
 
 class DigestSendTestRequest(BaseModel):
     email: str | None = None
+
+
+class DigestSendRequest(BaseModel):
+    subscriber_ids: list[int] | None = None
