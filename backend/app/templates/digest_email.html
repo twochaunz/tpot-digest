@@ -23,8 +23,12 @@
     {% if block.type == 'text' %}
     <!-- Text block -->
     <div style="background:#16181c;border:1px solid #2f3336;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
-      <p style="margin:0;font-size:15px;line-height:1.5;color:#e7e9ea;">{{ block.content }}</p>
+      <div style="margin:0;font-size:15px;line-height:1.5;color:#e7e9ea;">{% if block.html %}{{ block.html | safe }}{% else %}{{ block.content }}{% endif %}</div>
     </div>
+
+    {% elif block.type == 'divider' %}
+    <!-- Divider -->
+    <hr style="border:none;border-top:1px solid #2f3336;margin:24px 0;">
 
     {% elif block.type == 'topic' %}
     <!-- Topic: {{ block.title }} -->

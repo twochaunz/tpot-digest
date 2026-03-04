@@ -194,6 +194,88 @@ async def test_delete_draft(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_preview_divider_block(client: AsyncClient):
+    """A divider block should render as an hr in the preview."""
+    today = date.today()
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": today.isoformat(),
+        "content_blocks": [
+            {"id": "b1", "type": "text", "content": "Before divider"},
+            {"id": "b2", "type": "divider"},
+            {"id": "b3", "type": "text", "content": "After divider"},
+        ],
+    })
+    draft_id = create_resp.json()["id"]
+    resp = await client.get(f"/api/digest/drafts/{draft_id}/preview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "<hr" in data["html"]
+    assert "Before divider" in data["html"]
+    assert "After divider" in data["html"]
+
+
+@pytest.mark.asyncio
+async def test_preview_markdown_text_block(client: AsyncClient):
+    """Text blocks with markdown should render as HTML in the email."""
+    today = date.today()
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": today.isoformat(),
+        "content_blocks": [
+            {"id": "b1", "type": "text", "content": "Hello **bold** and [a link](https://example.com)"},
+        ],
+    })
+    draft_id = create_resp.json()["id"]
+    resp = await client.get(f"/api/digest/drafts/{draft_id}/preview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "<strong>bold</strong>" in data["html"]
+    assert 'href="https://example.com"' in data["html"]
+
+
+@pytest.mark.asyncio
+async def test_preview_tweet_engagement_toggle(client: AsyncClient):
+    """Tweet blocks with show_engagement=true should include engagement in preview."""
+    today = date.today()
+    async with async_session() as session:
+        tweet = Tweet(
+            tweet_id="engage_1",
+            author_handle="engager",
+            author_display_name="Engager",
+            text="Engagement test",
+            engagement={"likes": 500, "retweets": 100},
+            url="https://x.com/engager/status/1",
+        )
+        session.add(tweet)
+        await session.commit()
+        await session.refresh(tweet)
+        tweet_db_id = tweet.id
+
+    # Without engagement (default)
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": today.isoformat(),
+        "content_blocks": [
+            {"id": "b1", "type": "tweet", "tweet_id": tweet_db_id, "show_engagement": False},
+        ],
+    })
+    draft_id = create_resp.json()["id"]
+    resp = await client.get(f"/api/digest/drafts/{draft_id}/preview")
+    data = resp.json()
+    # Engagement should NOT appear
+    assert "500" not in data["html"]
+
+    # With engagement
+    await client.patch(f"/api/digest/drafts/{draft_id}", json={
+        "content_blocks": [
+            {"id": "b1", "type": "tweet", "tweet_id": tweet_db_id, "show_engagement": True},
+        ],
+    })
+    resp = await client.get(f"/api/digest/drafts/{draft_id}/preview")
+    data = resp.json()
+    # Engagement should appear
+    assert "500" in data["html"]
+
+
+@pytest.mark.asyncio
 async def test_cannot_edit_sent_draft(client: AsyncClient):
     # Create a draft and mark it as sent directly in DB
     create_resp = await client.post("/api/digest/drafts", json={
