@@ -10,7 +10,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
-_jinja_env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
+_jinja_env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=False)
 
 
 def render_digest_email(
