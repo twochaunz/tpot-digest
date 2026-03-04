@@ -5,10 +5,12 @@ from pydantic import BaseModel
 
 class DigestBlock(BaseModel):
     id: str
-    type: str  # 'text' | 'topic' | 'tweet'
-    content: str | None = None    # text blocks
+    type: str  # 'text' | 'topic' | 'tweet' | 'divider'
+    content: str | None = None    # text blocks (supports markdown)
     topic_id: int | None = None   # topic blocks
     tweet_id: int | None = None   # tweet blocks (DB integer id)
+    show_engagement: bool = False  # tweet blocks: show engagement metrics
+    tweet_overrides: dict[str, dict] | None = None  # topic blocks: per-tweet overrides (keys are str tweet IDs)
 
 
 class DigestDraftCreate(BaseModel):
