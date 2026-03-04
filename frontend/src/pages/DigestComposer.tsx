@@ -1416,11 +1416,31 @@ export function DigestComposer() {
             borderRadius: 'var(--radius-lg)',
           }}
         >
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h3 style={sectionTitleStyle}>Content Blocks</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
-              {blocks.length} block{blocks.length !== 1 ? 's' : ''} &middot; {topicCount} topic{topicCount !== 1 ? 's' : ''}
-            </p>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h3 style={sectionTitleStyle}>Content Blocks</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
+                {blocks.length} block{blocks.length !== 1 ? 's' : ''} &middot; {topicCount} topic{topicCount !== 1 ? 's' : ''}
+              </p>
+            </div>
+            {selectedDraftId && !isSent && (
+              <button
+                onClick={handleDelete}
+                disabled={isBusy}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontFamily: 'var(--font-body)',
+                  padding: '4px 0',
+                }}
+              >
+                Delete draft
+              </button>
+            )}
           </div>
 
           <div style={{ padding: '16px 20px' }}>
@@ -1532,24 +1552,6 @@ export function DigestComposer() {
               {sendDigest.isPending ? 'Sending...' : 'Send Now'}
             </button>
 
-            <div style={{ flex: 1 }} />
-
-            <button
-              onClick={handleDelete}
-              disabled={isBusy}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-tertiary)',
-                fontSize: 12,
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                fontFamily: 'var(--font-body)',
-                padding: '8px 4px',
-              }}
-            >
-              Delete draft
-            </button>
           </div>
         )}
 
