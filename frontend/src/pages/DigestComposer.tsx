@@ -726,7 +726,7 @@ function DraftsModal({
 /* ---- Topic selector for new draft template ---- */
 function TopicSelectorModal({
   topics,
-  date,
+  date: _date,
   onConfirm,
   onClose,
 }: {
