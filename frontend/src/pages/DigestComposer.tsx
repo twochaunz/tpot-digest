@@ -47,14 +47,25 @@ function nextBlockId(): string {
 }
 
 /* ---- Compact tweet preview (used inside topic blocks and tweet blocks) ---- */
-function CompactTweet({ tweet }: { tweet: Tweet }) {
+function CompactTweet({
+  tweet,
+  expanded = false,
+  onToggleExpand,
+}: {
+  tweet: Tweet
+  expanded?: boolean
+  onToggleExpand?: () => void
+}) {
+  const isLong = tweet.text.length > 120
+
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 8,
-      padding: '6px 0',
-    }}>
+    <div
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0',
+        cursor: isLong ? 'pointer' : 'default',
+      }}
+      onClick={isLong && onToggleExpand ? onToggleExpand : undefined}
+    >
       {tweet.author_avatar_url && (
         <img
           src={tweet.author_avatar_url}
@@ -67,8 +78,13 @@ function CompactTweet({ tweet }: { tweet: Tweet }) {
           @{tweet.author_handle}
         </span>
         <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>
-          {tweet.text.length > 120 ? tweet.text.slice(0, 120) + '...' : tweet.text}
+          {expanded || !isLong ? tweet.text : tweet.text.slice(0, 120) + '...'}
         </span>
+        {isLong && (
+          <span style={{ fontSize: 11, color: 'var(--accent)', marginLeft: 4, cursor: 'pointer' }}>
+            {expanded ? '(less)' : '(more)'}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -98,6 +114,16 @@ function SortableBlock({
     transition,
     isDragging,
   } = useSortable({ id: block.id })
+
+  const [expandedTweets, setExpandedTweets] = useState<Set<number>>(new Set())
+  const toggleExpand = (tweetId: number) => {
+    setExpandedTweets(prev => {
+      const next = new Set(prev)
+      if (next.has(tweetId)) next.delete(tweetId)
+      else next.add(tweetId)
+      return next
+    })
+  }
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -224,7 +250,7 @@ function SortableBlock({
                 {topic.tweets.map((tw) => (
                   <div key={tw.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <CompactTweet tweet={tw} />
+                      <CompactTweet tweet={tw} expanded={expandedTweets.has(tw.id)} onToggleExpand={() => toggleExpand(tw.id)} />
                     </div>
                     {!isSent && (
                       <input
@@ -284,7 +310,7 @@ function SortableBlock({
               marginTop: 5,
             }} />
             <div style={{ minWidth: 0, flex: 1 }}>
-              <CompactTweet tweet={tweetData.tweet} />
+              <CompactTweet tweet={tweetData.tweet} expanded={expandedTweets.has(tweetData.tweet.id)} onToggleExpand={() => toggleExpand(tweetData.tweet.id)} />
               <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                 from {tweetData.topicTitle}
               </span>
