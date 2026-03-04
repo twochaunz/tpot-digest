@@ -24,6 +24,7 @@ from app.schemas.digest import (
     DigestDraftOut,
     DigestDraftUpdate,
     DigestPreview,
+    DigestSendRequest,
     DigestSendTestRequest,
     GenerateTemplateRequest,
 )
@@ -520,20 +521,19 @@ async def send_test(draft_id: int, body: DigestSendTestRequest | None = None, db
 
 
 @router.post("/drafts/{draft_id}/send")
-async def send_digest(draft_id: int, db: AsyncSession = Depends(get_db)):
-    """Send the digest to all active subscribers and mark as sent."""
+async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: AsyncSession = Depends(get_db)):
+    """Send the digest to active subscribers and mark as sent."""
     draft = await db.get(DigestDraft, draft_id)
     if not draft:
         raise HTTPException(404, "Draft not found")
     if draft.status == "sent":
         raise HTTPException(400, "Draft already sent")
 
-    # Fetch active subscribers
-    result = await db.execute(
-        select(Subscriber).where(
-            Subscriber.unsubscribed_at.is_(None),
-        )
-    )
+    # Fetch active subscribers, optionally filtered by IDs
+    query = select(Subscriber).where(Subscriber.unsubscribed_at.is_(None))
+    if body and body.subscriber_ids is not None:
+        query = query.where(Subscriber.id.in_(body.subscriber_ids))
+    result = await db.execute(query)
     subscribers = result.scalars().all()
 
     blocks = await _build_digest_content(draft, db)

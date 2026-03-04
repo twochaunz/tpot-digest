@@ -123,9 +123,14 @@ export function useSendTestDigest() {
 
 export function useSendDigest() {
   const qc = useQueryClient()
-  return useMutation<{ sent_count: number; total_subscribers: number }, Error, number>({
-    mutationFn: async (draftId) => {
-      const { data } = await api.post(`/digest/drafts/${draftId}/send`)
+  return useMutation<
+    { sent_count: number; total_subscribers: number },
+    Error,
+    { draftId: number; subscriberIds?: number[] }
+  >({
+    mutationFn: async ({ draftId, subscriberIds }) => {
+      const body = subscriberIds ? { subscriber_ids: subscriberIds } : undefined
+      const { data } = await api.post(`/digest/drafts/${draftId}/send`, body)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),

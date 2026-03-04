@@ -6,6 +6,7 @@ import type { Tweet } from '../api/tweets'
 import { sortTopics } from '../utils/topics'
 import {
   type DigestBlock,
+  type SubscriberInfo,
   useDigestDrafts,
   useDigestDraft,
   useCreateDigestDraft,
@@ -884,6 +885,133 @@ function TopicSelectorModal({
   )
 }
 
+/* ---- Send confirmation modal with subscriber selection ---- */
+function SendConfirmModal({
+  subscribers,
+  onConfirm,
+  onClose,
+}: {
+  subscribers: SubscriberInfo[]
+  onConfirm: (subscriberIds: number[]) => void
+  onClose: () => void
+}) {
+  const active = subscribers.filter(s => !s.unsubscribed_at)
+  const [selected, setSelected] = useState<Set<number>>(() => new Set(active.map(s => s.id)))
+  const [search, setSearch] = useState('')
+
+  const filtered = active.filter(s =>
+    s.email.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const toggle = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10000,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)', width: 420, maxHeight: '70vh',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+            Send digest
+          </h3>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            Select which subscribers to send to.
+          </p>
+        </div>
+
+        <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            type="text"
+            placeholder="Search subscribers..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            autoFocus
+            style={{
+              width: '100%', padding: '8px 12px',
+              background: 'var(--bg-base)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
+              fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)',
+              boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setSelected(new Set(active.map(s => s.id)))} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+              All
+            </button>
+            <button onClick={() => setSelected(new Set())} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+              None
+            </button>
+          </div>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 12px' }}>
+          {filtered.map(s => (
+            <label
+              key={s.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px',
+                cursor: 'pointer', borderRadius: 'var(--radius-sm)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
+              <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{s.email}</span>
+            </label>
+          ))}
+          {filtered.length === 0 && (
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', padding: 16 }}>
+              No subscribers found.
+            </p>
+          )}
+        </div>
+
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+            {selected.size} of {active.length} selected
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={addBtnStyle}>Cancel</button>
+            <button
+              onClick={() => onConfirm(Array.from(selected))}
+              disabled={selected.size === 0}
+              style={{
+                background: selected.size === 0 ? 'var(--text-tertiary)' : '#ef4444',
+                color: '#fff', border: 'none',
+                borderRadius: 'var(--radius-md)', padding: '8px 16px', fontSize: 13,
+                fontWeight: 500, cursor: selected.size === 0 ? 'default' : 'pointer',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              Send to {selected.size} subscriber{selected.size !== 1 ? 's' : ''}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---- Main DigestComposer ---- */
 export function DigestComposer() {
   const navigate = useNavigate()
@@ -901,8 +1029,9 @@ export function DigestComposer() {
   const { data: preview } = useDigestPreview(selectedDraftId)
   const { data: subCount } = useSubscriberCount()
   const [showSubs, setShowSubs] = useState(false)
+  const [showSendConfirm, setShowSendConfirm] = useState(false)
   const [subSearch, setSubSearch] = useState('')
-  const { data: subscribers } = useSubscribers(showSubs)
+  const { data: subscribers } = useSubscribers(showSubs || showSendConfirm)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
   const [showTopicSelector, setShowTopicSelector] = useState(false)
   const [tweetSelectorTopicId, setTweetSelectorTopicId] = useState<number | null>(null)
@@ -1164,11 +1293,16 @@ export function DigestComposer() {
     }
   }
 
-  const handleSendNow = async () => {
+  const handleSendNow = () => {
     if (!selectedDraftId) return
-    if (!window.confirm('Send digest to all subscribers now?')) return
+    setShowSendConfirm(true)
+  }
+
+  const handleSendConfirm = async (subscriberIds: number[]) => {
+    if (!selectedDraftId) return
+    setShowSendConfirm(false)
     try {
-      const result = await sendDigest.mutateAsync(selectedDraftId)
+      const result = await sendDigest.mutateAsync({ draftId: selectedDraftId, subscriberIds })
       showStatus(`Sent to ${result.sent_count} of ${result.total_subscribers} subscribers`, 'success')
     } catch {
       showStatus('Failed to send digest', 'error')
@@ -1666,6 +1800,15 @@ export function DigestComposer() {
             setBlocks([])
             setShowTopicSelector(true)
           }}
+        />
+      )}
+
+      {/* Send confirm modal */}
+      {showSendConfirm && subscribers && (
+        <SendConfirmModal
+          subscribers={subscribers}
+          onConfirm={handleSendConfirm}
+          onClose={() => setShowSendConfirm(false)}
         />
       )}
 
