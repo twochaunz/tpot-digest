@@ -3,10 +3,12 @@ import { api } from './client'
 
 export interface DigestBlock {
   id: string
-  type: 'text' | 'topic' | 'tweet'
-  content?: string | null    // text blocks
+  type: 'text' | 'topic' | 'tweet' | 'divider'
+  content?: string | null    // text blocks (supports markdown)
   topic_id?: number | null   // topic blocks
   tweet_id?: number | null   // tweet blocks (DB integer id)
+  show_engagement?: boolean  // tweet blocks: show engagement metrics (default false)
+  tweet_overrides?: Record<string, { show_engagement: boolean }>  // topic blocks: per-tweet overrides
 }
 
 export interface DigestDraft {
