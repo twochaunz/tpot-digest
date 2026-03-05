@@ -20,17 +20,20 @@ class GenerateTemplateRequest(BaseModel):
 class DigestDraftCreate(BaseModel):
     date: _dt.date
     content_blocks: list[DigestBlock] = []
+    subject: str | None = None
 
 
 class DigestDraftUpdate(BaseModel):
     content_blocks: list[DigestBlock] | None = None
     scheduled_for: _dt.datetime | None = None
+    subject: str | None = None
 
 
 class DigestDraftOut(BaseModel):
     id: int
     date: _dt.date
     content_blocks: list[dict]
+    subject: str | None
     status: str
     scheduled_for: _dt.datetime | None
     sent_at: _dt.datetime | None

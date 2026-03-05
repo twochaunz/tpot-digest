@@ -64,6 +64,12 @@ function recentDates(count: number): string[] {
   return dates
 }
 
+function defaultSubject(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const yy = String(d.getFullYear()).slice(2)
+  return `[${d.getMonth() + 1}/${d.getDate()}/${yy}] abridged tech`
+}
+
 let _blockCounter = 0
 function nextBlockId(): string {
   return `block-${Date.now()}-${_blockCounter++}`
@@ -1043,6 +1049,7 @@ export function DigestComposer() {
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null)
   const [blocks, setBlocks] = useState<DigestBlock[]>([])
   const [scheduledFor, setScheduledFor] = useState('')
+  const [subject, setSubject] = useState('')
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   const { data: bundle } = useDayBundle(date)
@@ -1071,6 +1078,8 @@ export function DigestComposer() {
   blocksRef.current = blocks
   const scheduledForRef = useRef(scheduledFor)
   scheduledForRef.current = scheduledFor
+  const subjectRef = useRef(subject)
+  subjectRef.current = subject
   const selectedDraftIdRef = useRef(selectedDraftId)
   selectedDraftIdRef.current = selectedDraftId
   const dateRef = useRef(date)
@@ -1089,6 +1098,7 @@ export function DigestComposer() {
             id: currentDraftId,
             content_blocks: currentBlocks,
             scheduled_for: scheduledForRef.current || undefined,
+            subject: subjectRef.current || undefined,
           })
           setSaveStatus('saved')
         } catch {
@@ -1115,6 +1125,7 @@ export function DigestComposer() {
     if (draft) {
       setBlocks(draft.content_blocks || [])
       setScheduledFor(draft.scheduled_for || '')
+      setSubject(draft.subject || defaultSubject(draft.date))
       setDate(draft.date)
     }
   }, [draft])
@@ -1339,6 +1350,7 @@ export function DigestComposer() {
       setSelectedDraftId(null)
       setBlocks([])
       setScheduledFor('')
+      setSubject('')
       showStatus('Draft deleted', 'success')
     } catch {
       showStatus('Failed to delete draft', 'error')
@@ -1599,11 +1611,12 @@ export function DigestComposer() {
               &#8943;
             </button>
           </div>
-        </div>
 
-        {/* Draft selector (if drafts exist for any date) */}
-        {drafts && drafts.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: -8 }}>
+          {/* Spacer to push draft selector to right */}
+          <div style={{ flex: 1 }} />
+
+          {/* Draft selector inline */}
+          {drafts && drafts.length > 0 && (
             <select
               value={selectedDraftId ?? ''}
               onChange={(e) => {
@@ -1614,7 +1627,7 @@ export function DigestComposer() {
                 ...inputStyle,
                 fontSize: 12,
                 padding: '5px 8px',
-                maxWidth: 280,
+                maxWidth: 220,
               }}
             >
               <option value="">New draft</option>
@@ -1624,8 +1637,8 @@ export function DigestComposer() {
                 </option>
               ))}
             </select>
-          </div>
-        )}
+          )}
+        </div>
 
         {isSent && (
           <div style={{ fontSize: 12, color: '#4ade80', fontWeight: 500, marginTop: -8 }}>
@@ -1813,12 +1826,31 @@ export function DigestComposer() {
             }}
           >
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={sectionTitleStyle}>Email Preview</h3>
-              {preview && (
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
-                  Subject: {preview.subject} &middot; {preview.recipient_count} recipient{preview.recipient_count !== 1 ? 's' : ''}
-                </p>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <h3 style={{ ...sectionTitleStyle, margin: 0 }}>Email Preview</h3>
+                {preview && (
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    {preview.recipient_count} recipient{preview.recipient_count !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>Subject:</span>
+                <input
+                  value={subject}
+                  onChange={(e) => {
+                    setSubject(e.target.value)
+                    triggerAutoSave()
+                  }}
+                  placeholder={defaultSubject(date)}
+                  style={{
+                    ...inputStyle,
+                    fontSize: 12,
+                    padding: '4px 8px',
+                    flex: 1,
+                  }}
+                />
+              </div>
             </div>
             <div style={{ padding: 0, minHeight: 200 }}>
               {preview ? (

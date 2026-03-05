@@ -27,6 +27,7 @@ export interface DigestDraft {
   id: number
   date: string
   content_blocks: DigestBlock[]
+  subject: string | null
   scheduled_for: string | null
   sent_at: string | null
   recipient_count: number | null
@@ -76,7 +77,7 @@ export function useCreateDigestDraft() {
 
 export function useUpdateDigestDraft() {
   const qc = useQueryClient()
-  return useMutation<DigestDraft, Error, { id: number; content_blocks?: DigestBlock[]; scheduled_for?: string }>({
+  return useMutation<DigestDraft, Error, { id: number; content_blocks?: DigestBlock[]; scheduled_for?: string; subject?: string }>({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await api.patch(`/digest/drafts/${id}`, body)
       return data
