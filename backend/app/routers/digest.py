@@ -213,6 +213,12 @@ def _build_link_cards(url_entities: list[dict] | None) -> list[dict]:
 def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | dict | None" = None, nested_qt: "Tweet | dict | None" = None) -> dict:
     """Build a tweet dict for template rendering."""
     text = _strip_tco_links(tw.text)
+    # Collect photo URLs (proxy for email compatibility)
+    media_images = []
+    for m in (tw.media_urls or []):
+        if m.get("type") == "photo" and m.get("url"):
+            media_images.append(_proxy_avatar_url(m["url"]))
+
     tweet_dict = {
         "author_handle": tw.author_handle,
         "author_display_name": tw.author_display_name,
@@ -221,6 +227,7 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | d
         "url": tw.url,
         "show_engagement": show_engagement,
         "link_cards": _build_link_cards(tw.url_entities),
+        "media_images": media_images,
     }
     if show_engagement:
         tweet_dict["engagement"] = tw.engagement
