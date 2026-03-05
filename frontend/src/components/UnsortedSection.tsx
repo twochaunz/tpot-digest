@@ -28,7 +28,7 @@ const DraggableFeedTweetCard = memo(function DraggableFeedTweetCard({
   tweet,
   onDelete,
   onContextMenu,
-  isAdmin = true,
+  isAdmin = false,
 }: {
   tweet: Tweet
   onDelete: (id: number) => void
@@ -86,7 +86,7 @@ export const UnsortedSection = memo(function UnsortedSection({
   tweets,
   onDelete,
   onContextMenu,
-  isAdmin = true,
+  isAdmin = false,
 }: UnsortedSectionProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'droppable-unsorted',

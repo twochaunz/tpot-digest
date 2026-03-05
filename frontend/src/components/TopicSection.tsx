@@ -191,7 +191,7 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   tweet,
   topicId,
   onContextMenu,
-  isAdmin = true,
+  isAdmin = false,
 }: {
   tweet: Tweet
   topicId: number
@@ -668,7 +668,7 @@ function TopicSection({
   onUpdateTitle,
   onContextMenu,
   onTopicContextMenu,
-  isAdmin = true,
+  isAdmin = false,
   isPreview = false,
 }: TopicSectionProps) {
   const isMobile = useIsMobile()

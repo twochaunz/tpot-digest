@@ -60,7 +60,7 @@ export const TweetCard = memo(function TweetCard({
   tweet,
   selected = false,
   onToggle,
-  selectable = true,
+  selectable = false,
   onContextMenu,
   onDelete,
   width = '100%',
@@ -213,8 +213,8 @@ export const TweetCard = memo(function TweetCard({
           </a>
         )}
 
-        {/* Hover actions */}
-        {hovered && (
+        {/* Hover actions (admin only) */}
+        {isAdmin && hovered && (
           <div
             style={{
               position: 'absolute',
@@ -280,8 +280,8 @@ export const TweetCard = memo(function TweetCard({
         )}
       </div>
 
-      {/* Hidden clean card for PNG download (no UI chrome) */}
-      {!legacy && (
+      {/* Hidden clean card for PNG download (admin only, no UI chrome) */}
+      {isAdmin && !legacy && (
         <div
           ref={cleanRef}
           style={{
