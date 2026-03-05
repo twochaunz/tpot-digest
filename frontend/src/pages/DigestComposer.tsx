@@ -35,12 +35,45 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-function todayDateStr(): string {
-  const now = new Date()
-  const yyyy = now.getFullYear()
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
-  const dd = String(now.getDate()).padStart(2, '0')
+function formatDateStr(d: Date): string {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
+}
+
+function defaultDateStr(): string {
+  const now = new Date()
+  // Default to yesterday unless it's past 4pm
+  if (now.getHours() < 16) {
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    return formatDateStr(yesterday)
+  }
+  return formatDateStr(now)
+}
+
+function recentDates(count: number): string[] {
+  const dates: string[] = []
+  const now = new Date()
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    dates.push(formatDateStr(d))
+  }
+  return dates
+}
+
+function shortDateLabel(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (formatDateStr(d) === formatDateStr(today)) return 'Today'
+  if (formatDateStr(d) === formatDateStr(yesterday)) return 'Yesterday'
+
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
 }
 
 let _blockCounter = 0
@@ -1017,7 +1050,8 @@ export function DigestComposer() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
 
-  const [date, setDate] = useState(todayDateStr())
+  const [date, setDate] = useState(defaultDateStr())
+  const datePickerRef = useRef<HTMLInputElement>(null)
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null)
   const [blocks, setBlocks] = useState<DigestBlock[]>([])
   const [scheduledFor, setScheduledFor] = useState('')
@@ -1477,16 +1511,63 @@ export function DigestComposer() {
         >
           <div>
             <label style={labelStyle}>Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => {
-                setDate(e.target.value)
-                setSelectedDraftId(null)
-                setBlocks([])
-              }}
-              style={inputStyle}
-            />
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {recentDates(5).map(d => (
+                <button
+                  key={d}
+                  onClick={() => {
+                    setDate(d)
+                    setSelectedDraftId(null)
+                    setBlocks([])
+                  }}
+                  style={{
+                    background: d === date ? 'var(--accent)' : 'var(--bg-elevated)',
+                    color: d === date ? '#fff' : 'var(--text-secondary)',
+                    border: d === date ? 'none' : '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '6px 10px',
+                    fontSize: 12,
+                    fontWeight: d === date ? 600 : 400,
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-body)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {shortDateLabel(d)}
+                </button>
+              ))}
+              <input
+                ref={datePickerRef}
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  setSelectedDraftId(null)
+                  setBlocks([])
+                }}
+                style={{
+                  position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none',
+                }}
+              />
+              <button
+                onClick={() => datePickerRef.current?.showPicker()}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '5px 8px',
+                  cursor: 'pointer',
+                  color: 'var(--text-tertiary)',
+                  fontSize: 14,
+                  lineHeight: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Pick any date"
+              >
+                &#128197;
+              </button>
+            </div>
           </div>
 
           {drafts && drafts.length > 0 && (
