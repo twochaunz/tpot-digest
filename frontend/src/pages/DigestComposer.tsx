@@ -986,6 +986,7 @@ function TopicSelectorModal({
           {topics.map(t => (
             <label
               key={t.id}
+              onClick={() => toggle(t.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px',
                 cursor: 'pointer', borderRadius: 'var(--radius-sm)',
@@ -993,18 +994,24 @@ function TopicSelectorModal({
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             >
-              <span
-                style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  border: ordered.includes(t.id) ? 'none' : '2px solid var(--border)',
-                  background: ordered.includes(t.id) ? 'var(--accent)' : 'transparent',
-                  color: '#fff', fontSize: 11, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {ordered.includes(t.id) ? ordered.indexOf(t.id) + 1 : ''}
-              </span>
+              {(() => {
+                const pos = ordered.indexOf(t.id)
+                const isSelected = pos !== -1
+                return (
+                  <span
+                    style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      border: isSelected ? 'none' : '2px solid var(--border)',
+                      background: isSelected ? 'var(--accent)' : 'transparent',
+                      color: '#fff', fontSize: 11, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {isSelected ? pos + 1 : ''}
+                  </span>
+                )
+              })()}
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.color || 'var(--accent)', flexShrink: 0 }} />
               <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{t.title}</span>
               <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
@@ -1018,13 +1025,16 @@ function TopicSelectorModal({
           <button onClick={onClose} style={addBtnStyle}>Cancel</button>
           <button
             onClick={() => onConfirm(ordered)}
+            disabled={ordered.length === 0}
             style={{
-              background: 'var(--accent)', color: '#fff', border: 'none',
+              background: ordered.length === 0 ? 'var(--text-tertiary)' : 'var(--accent)',
+              color: '#fff', border: 'none',
               borderRadius: 'var(--radius-md)', padding: '8px 16px', fontSize: 13,
-              fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)',
+              fontWeight: 500, cursor: ordered.length === 0 ? 'default' : 'pointer',
+              fontFamily: 'var(--font-body)',
             }}
           >
-            Create Draft
+            Create Draft ({ordered.length})
           </button>
         </div>
       </div>
@@ -1340,7 +1350,7 @@ export function DigestComposer() {
 
   const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
     const orderedSet = new Set(orderedIds)
-    const featured = orderedIds.map(id => topics.find(t => t.id === id)!).filter(Boolean)
+    const featured = orderedIds.map(id => topics.find(t => t.id === id)).filter((t): t is TopicBundle => t !== undefined)
     const rest = sortTopics(topics).filter(t => !orderedSet.has(t.id))
 
     const d = new Date(date + 'T00:00:00')
