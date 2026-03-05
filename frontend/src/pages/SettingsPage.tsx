@@ -77,7 +77,8 @@ export function SettingsPage() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100dvh',
+        overflowY: 'auto' as const,
         background: 'var(--bg-base)',
       }}
     >
