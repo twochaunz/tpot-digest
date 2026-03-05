@@ -308,6 +308,12 @@ function SortableBlock({
 
   const [expandedTweets, setExpandedTweets] = useState<Set<number>>(new Set())
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    if (!ctxMenu) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setCtxMenu(null) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [ctxMenu])
   const toggleExpand = (tweetId: number) => {
     setExpandedTweets(prev => {
       const next = new Set(prev)
