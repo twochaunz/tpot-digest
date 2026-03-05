@@ -558,7 +558,7 @@ function NarrowCategoryNavRow({
     })
   }
 
-  // Auto-scale font to fit all categories in one row
+  // Auto-scale font to fit all categories in one row, scroll if they still overflow
   const NAV_PAD = 20 // horizontal padding on the row container
   const PILL_HPAD = 24 // horizontal padding inside each pill (12*2)
   const DOT_WIDTH = 12 // dot + gap for active pill
@@ -568,6 +568,7 @@ function NarrowCategoryNavRow({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [fontSize, setFontSize] = useState(MAX_FONT)
+  const [overflows, setOverflows] = useState(false)
 
   const recalcFontSize = useCallback(() => {
     const container = containerRef.current
@@ -584,6 +585,12 @@ function NarrowCategoryNavRow({
       if (totalWidth <= availableWidth) break
       size--
     }
+    // Check if it still overflows at MIN_FONT
+    const finalWidth = allCategories.reduce((sum, cat) => {
+      const textW = measureTextWidth(cat.name, size)
+      return sum + textW + PILL_HPAD + DOT_WIDTH
+    }, 0) + totalGaps
+    setOverflows(finalWidth > availableWidth)
     setFontSize(size)
   }, [allCategories])
 
@@ -599,16 +606,19 @@ function NarrowCategoryNavRow({
   return (
     <div
       ref={containerRef}
+      className={overflows ? 'hide-scrollbar' : undefined}
       style={{
         position: 'sticky',
         top: stickyTop,
         zIndex: 4,
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: overflows ? 'flex-start' : 'center',
         gap: 8,
         padding: compact ? `10px ${NAV_PAD}px` : `8px ${NAV_PAD}px`,
         background: 'var(--bg-raised)',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+        overflowX: overflows ? 'auto' : undefined,
+        scrollbarWidth: 'none',
       }}
     >
       {allCategories.map((cat) => {
