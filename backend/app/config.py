@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     admin_secret: str = ""
     resend_api_key: str = ""
     digest_from_email: str = "today's tech discourse <today@abridged.tech>"
+    digest_reply_to_email: str = "hi@wonchan.com"
     admin_email: str = ""
     openrouter_api_key: str = ""
 

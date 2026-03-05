@@ -48,6 +48,7 @@ def send_digest_email(
 
     params = {
         "from": settings.digest_from_email,
+        "reply_to": settings.digest_reply_to_email,
         "to": [to_email],
         "subject": subject,
         "html": html_content,
