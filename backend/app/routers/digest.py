@@ -551,7 +551,7 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
 
     draft.status = "sent"
     draft.sent_at = datetime.now(timezone.utc)
-    draft.recipient_count = (draft.recipient_count or 0) + sent_count
+    draft.recipient_count = sent_count
     await db.commit()
 
     return {"sent_count": sent_count, "total_subscribers": len(subscribers)}
