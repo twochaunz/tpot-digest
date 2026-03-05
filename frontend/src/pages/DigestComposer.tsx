@@ -1825,83 +1825,107 @@ export function DigestComposer() {
         )}
 
         {/* Inline draft list when no draft selected */}
-        {!selectedDraftId && (
-          <div
-            style={{
-              background: 'var(--bg-raised)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-lg)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
-                Drafts
-              </h3>
-            </div>
-            {!drafts || drafts.length === 0 ? (
-              <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                No drafts yet. Create one from topics above.
+        {!selectedDraftId && (() => {
+          const activeDrafts = (drafts || []).filter(d => d.status !== 'sent').sort((a, b) => b.date.localeCompare(a.date))
+          const sentDrafts = (drafts || []).filter(d => d.status === 'sent').sort((a, b) => b.date.localeCompare(a.date))
+
+          const draftRow = (d: typeof drafts[0]) => {
+            const topicCount = (d.content_blocks || []).filter(
+              (b: any) => b.type === 'topic-header' || b.type === 'topic'
+            ).length
+            const isSentRow = d.status === 'sent'
+            return (
+              <div
+                key={d.id}
+                onClick={() => setSelectedDraftId(d.id)}
+                style={{
+                  padding: '12px 20px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid var(--border)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <div>
+                  <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
+                    {d.subject || d.date}
+                  </span>
+                  {d.subject && (
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
+                      {d.date}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
+                    {topicCount} topic{topicCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {isSentRow && d.sent_at && (
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                      {d.recipient_count} recipients &middot; {new Date(d.sent_at).toLocaleDateString()}
+                    </span>
+                  )}
+                  {!isSentRow && d.status === 'scheduled' && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#a78bfa', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+                      scheduled
+                    </span>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div>
-                {[...drafts].sort((a, b) => b.date.localeCompare(a.date)).map(d => {
-                  const topicCount = (d.content_blocks || []).filter(
-                    (b: any) => b.type === 'topic-header' || b.type === 'topic'
-                  ).length
-                  const statusColor: Record<string, string> = {
-                    draft: 'var(--text-secondary)',
-                    scheduled: '#a78bfa',
-                    sent: '#4ade80',
-                  }
-                  return (
-                    <div
-                      key={d.id}
-                      onClick={() => setSelectedDraftId(d.id)}
-                      style={{
-                        padding: '12px 20px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        borderBottom: '1px solid var(--border)',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                    >
-                      <div>
-                        <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
-                          {d.subject || d.date}
-                        </span>
-                        {d.subject && (
-                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
-                            {d.date}
-                          </span>
-                        )}
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
-                          {topicCount} topic{topicCount !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {d.sent_at && (
-                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                            {d.recipient_count} recipients
-                          </span>
-                        )}
-                        <span style={{
-                          fontSize: 11, fontWeight: 600, color: statusColor[d.status] || 'var(--text-tertiary)',
-                          textTransform: 'uppercase' as const, letterSpacing: '0.05em',
-                        }}>
-                          {d.status}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
+            )
+          }
+
+          return (
+            <>
+              <div
+                style={{
+                  background: 'var(--bg-raised)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-lg)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Drafts
+                  </h3>
+                </div>
+                {activeDrafts.length === 0 ? (
+                  <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                    No drafts yet. Create one from topics above.
+                  </div>
+                ) : (
+                  <div>{activeDrafts.map(draftRow)}</div>
+                )}
               </div>
-            )}
-          </div>
-        )}
+
+              {sentDrafts.length > 0 && (
+                <details style={{ marginTop: 12 }}>
+                  <summary style={{
+                    cursor: 'pointer', fontSize: 13, color: 'var(--text-tertiary)',
+                    padding: '8px 0', userSelect: 'none' as const,
+                  }}>
+                    Sent ({sentDrafts.length})
+                  </summary>
+                  <div
+                    style={{
+                      background: 'var(--bg-raised)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-lg)',
+                      overflow: 'hidden',
+                      marginTop: 4,
+                    }}
+                  >
+                    {sentDrafts.map(draftRow)}
+                  </div>
+                </details>
+              )}
+            </>
+          )
+        })()}
 
         {/* Block List — no overflow:hidden so dropdowns can escape */}
         {selectedDraftId && (
@@ -1919,7 +1943,7 @@ export function DigestComposer() {
                 {blocks.length} block{blocks.length !== 1 ? 's' : ''} &middot; {topicCount} topic{topicCount !== 1 ? 's' : ''}
               </p>
             </div>
-            {selectedDraftId && (
+            {selectedDraftId && !isSent && (
               <button
                 onClick={handleDelete}
                 disabled={isBusy}
