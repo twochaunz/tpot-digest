@@ -64,18 +64,6 @@ function recentDates(count: number): string[] {
   return dates
 }
 
-function shortDateLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-
-  if (formatDateStr(d) === formatDateStr(today)) return 'Today'
-  if (formatDateStr(d) === formatDateStr(yesterday)) return 'Yesterday'
-
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
-}
-
 let _blockCounter = 0
 function nextBlockId(): string {
   return `block-${Date.now()}-${_blockCounter++}`
@@ -1496,107 +1484,154 @@ export function DigestComposer() {
           gap: 20,
         }}
       >
-        {/* Date and Draft Selection */}
+        {/* Date selector strip */}
         <div
           style={{
-            background: 'var(--bg-raised)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '16px 20px',
             display: 'flex',
-            gap: 16,
-            alignItems: 'flex-end',
-            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 2,
           }}
         >
-          <div>
-            <label style={labelStyle}>Date</label>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              {recentDates(5).map(d => (
-                <button
-                  key={d}
-                  onClick={() => {
-                    setDate(d)
-                    setSelectedDraftId(null)
-                    setBlocks([])
-                  }}
-                  style={{
-                    background: d === date ? 'var(--accent)' : 'var(--bg-elevated)',
-                    color: d === date ? '#fff' : 'var(--text-secondary)',
-                    border: d === date ? 'none' : '1px solid var(--border)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '6px 10px',
-                    fontSize: 12,
-                    fontWeight: d === date ? 600 : 400,
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {shortDateLabel(d)}
-                </button>
-              ))}
-              <input
-                ref={datePickerRef}
-                type="date"
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value)
+          {recentDates(7).reverse().map(d => {
+            const dateObj = new Date(d + 'T00:00:00')
+            const isSelected = d === date
+            const isToday = d === formatDateStr(new Date())
+            const dayAbbr = dateObj.toLocaleDateString('en-US', { weekday: 'narrow' })
+            const dayNum = dateObj.getDate()
+            // Check if this date has an existing draft
+            const hasDraft = drafts?.some(dr => dr.date === d)
+
+            return (
+              <button
+                key={d}
+                onClick={() => {
+                  setDate(d)
                   setSelectedDraftId(null)
                   setBlocks([])
                 }}
                 style={{
-                  position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none',
-                }}
-              />
-              <button
-                onClick={() => datePickerRef.current?.showPicker()}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '5px 8px',
+                  background: isSelected ? 'var(--accent)' : 'transparent',
+                  color: isSelected ? '#fff' : 'var(--text-secondary)',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '6px 0',
+                  width: 40,
                   cursor: 'pointer',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 14,
-                  lineHeight: 1,
+                  fontFamily: 'var(--font-body)',
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
+                  gap: 2,
+                  transition: 'background 0.15s ease',
+                  position: 'relative',
                 }}
-                title="Pick any date"
               >
-                &#128197;
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-tertiary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                }}>
+                  {dayAbbr}
+                </span>
+                <span style={{
+                  fontSize: 15,
+                  fontWeight: isSelected || isToday ? 700 : 400,
+                  lineHeight: 1,
+                }}>
+                  {dayNum}
+                </span>
+                {/* Dot indicators */}
+                <div style={{ height: 4, display: 'flex', gap: 3, marginTop: 1 }}>
+                  {isToday && !isSelected && (
+                    <span style={{
+                      width: 4, height: 4, borderRadius: '50%',
+                      background: 'var(--accent)',
+                    }} />
+                  )}
+                  {hasDraft && !isSelected && (
+                    <span style={{
+                      width: 4, height: 4, borderRadius: '50%',
+                      background: 'var(--text-tertiary)',
+                    }} />
+                  )}
+                </div>
               </button>
-            </div>
+            )
+          })}
+
+          {/* Calendar picker for other dates */}
+          <div style={{ position: 'relative', marginLeft: 4 }}>
+            <input
+              ref={datePickerRef}
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value)
+                setSelectedDraftId(null)
+                setBlocks([])
+              }}
+              style={{
+                position: 'absolute', opacity: 0, width: 0, height: 0,
+                top: '100%', left: 0, pointerEvents: 'none',
+              }}
+            />
+            <button
+              onClick={() => datePickerRef.current?.showPicker()}
+              title="Pick any date"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                fontSize: 11,
+                padding: '8px 6px',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)' }}
+            >
+              &#8943;
+            </button>
           </div>
-
-          {drafts && drafts.length > 0 && (
-            <div>
-              <label style={labelStyle}>Existing Drafts</label>
-              <select
-                value={selectedDraftId ?? ''}
-                onChange={(e) => {
-                  setSelectedDraftId(e.target.value ? Number(e.target.value) : null)
-                  if (!e.target.value) setBlocks([])
-                }}
-                style={inputStyle}
-              >
-                <option value="">New draft</option>
-                {drafts.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.date} ({d.status}){d.sent_at ? ' - Last used' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {isSent && (
-            <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 500 }}>
-              Last sent {draft!.sent_at ? new Date(draft!.sent_at).toLocaleString() : ''} ({draft!.recipient_count} recipients)
-            </span>
-          )}
         </div>
+
+        {/* Draft selector (if drafts exist for any date) */}
+        {drafts && drafts.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: -8 }}>
+            <select
+              value={selectedDraftId ?? ''}
+              onChange={(e) => {
+                setSelectedDraftId(e.target.value ? Number(e.target.value) : null)
+                if (!e.target.value) setBlocks([])
+              }}
+              style={{
+                ...inputStyle,
+                fontSize: 12,
+                padding: '5px 8px',
+                maxWidth: 280,
+              }}
+            >
+              <option value="">New draft</option>
+              {drafts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.date} ({d.status}){d.sent_at ? ' - Last used' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
+
+        {isSent && (
+          <div style={{ fontSize: 12, color: '#4ade80', fontWeight: 500, marginTop: -8 }}>
+            Last sent {draft!.sent_at ? new Date(draft!.sent_at).toLocaleString() : ''} ({draft!.recipient_count} recipients)
+          </div>
+        )}
 
         {/* New Draft from Topics button */}
         {blocks.length === 0 && !selectedDraftId && topics.length > 0 && (
