@@ -247,7 +247,7 @@ function BlockInsertRow({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        height: hovered ? 28 : 8,
+        height: hovered ? 32 : 16,
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
@@ -330,7 +330,7 @@ function SortableBlock({
     display: 'flex',
     alignItems: 'flex-start',
     gap: 0,
-    marginBottom: 8,
+    marginBottom: 0,
   }
 
   const topic = block.type === 'topic-header' && block.topic_id
