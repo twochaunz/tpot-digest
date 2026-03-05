@@ -81,6 +81,11 @@ function defaultScheduleTime(dateStr: string): string {
   return `${yyyy}-${mm}-${dd}T08:00`
 }
 
+function normalizeDateTime(dt: string): string {
+  // datetime-local inputs expect YYYY-MM-DDTHH:MM (no seconds/timezone)
+  return dt.slice(0, 16)
+}
+
 let _blockCounter = 0
 function nextBlockId(): string {
   return `block-${Date.now()}-${_blockCounter++}`
@@ -1108,7 +1113,7 @@ export function DigestComposer() {
           await updateDraft.mutateAsync({
             id: currentDraftId,
             content_blocks: currentBlocks,
-            scheduled_for: scheduledForRef.current || undefined,
+            scheduled_for: scheduledForRef.current || null,
             subject: subjectRef.current || undefined,
           })
           setSaveStatus('saved')
@@ -1131,20 +1136,22 @@ export function DigestComposer() {
     }, 2000)
   }, [updateDraft, createDraft])
 
-  // Load draft data when a draft is selected
+  // Load draft data when a *different* draft is selected (not on every auto-save update)
+  const loadedDraftIdRef = useRef<number | null>(null)
   useEffect(() => {
-    if (draft) {
+    if (draft && draft.id !== loadedDraftIdRef.current) {
+      loadedDraftIdRef.current = draft.id
       setBlocks(draft.content_blocks || [])
-      setScheduledFor(draft.scheduled_for || '')
+      setScheduledFor(draft.scheduled_for ? normalizeDateTime(draft.scheduled_for) : '')
       setSubject(draft.subject || defaultSubject(draft.date))
       setDate(draft.date)
     }
   }, [draft])
 
-  // Auto-select existing draft for this date
+  // Auto-select existing draft for this date (draft or scheduled)
   useEffect(() => {
     if (!drafts) return
-    const existing = drafts.find((d) => d.date === date && d.status === 'draft')
+    const existing = drafts.find((d) => d.date === date && (d.status === 'draft' || d.status === 'scheduled'))
     if (existing) {
       setSelectedDraftId(existing.id)
     }
@@ -1234,20 +1241,9 @@ export function DigestComposer() {
       content: `${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
-    // Collect kek tweets across all topics
-    const kekTweets: number[] = []
-
     let isFirstTopic = true
     for (const topicData of templateData.topics) {
-      // Separate kek tweets
-      const nonKekGroups = topicData.category_groups.filter(g => g.category !== 'kek')
-      const kekGroup = topicData.category_groups.find(g => g.category === 'kek')
-      if (kekGroup) {
-        kekTweets.push(...kekGroup.tweet_ids)
-      }
-
-      // Skip topics that only have kek tweets
-      if (nonKekGroups.length === 0) continue
+      if (topicData.category_groups.length === 0) continue
 
       // Divider before topic (except first)
       if (!isFirstTopic) {
@@ -1265,7 +1261,7 @@ export function DigestComposer() {
 
       // Tweet blocks grouped by category
       let isFirstGroup = true
-      for (const group of nonKekGroups) {
+      for (const group of topicData.category_groups) {
         // Category transition text
         if (!isFirstGroup && group.transition) {
           newBlocks.push({ id: nextBlockId(), type: 'text', content: `*${group.transition}*` })
@@ -1292,15 +1288,6 @@ export function DigestComposer() {
         type: 'text',
         content: `**More on the timeline**\n\n${links}`,
       })
-    }
-
-    // Kek section
-    if (kekTweets.length > 0) {
-      newBlocks.push({ id: nextBlockId(), type: 'divider' })
-      newBlocks.push({ id: nextBlockId(), type: 'text', content: 'kek moments of the day' })
-      for (const tweetId of kekTweets) {
-        newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tweetId })
-      }
     }
 
     return newBlocks
