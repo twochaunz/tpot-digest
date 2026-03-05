@@ -2091,13 +2091,7 @@ export function DigestComposer() {
   )
 }
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--text-secondary)',
-  marginBottom: 6,
-}
+
 
 const inputStyle: React.CSSProperties = {
   background: 'var(--bg-elevated)',
