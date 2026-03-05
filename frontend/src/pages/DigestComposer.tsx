@@ -1557,7 +1557,7 @@ export function DigestComposer() {
                 {blocks.length} block{blocks.length !== 1 ? 's' : ''} &middot; {topicCount} topic{topicCount !== 1 ? 's' : ''}
               </p>
             </div>
-            {selectedDraftId && !isSent && (
+            {selectedDraftId && (
               <button
                 onClick={handleDelete}
                 disabled={isBusy}
@@ -1590,7 +1590,7 @@ export function DigestComposer() {
                       key={block.id}
                       block={block}
                       topics={topics}
-                      isSent={!!isSent}
+                      isSent={false}
                       onUpdateBlock={updateBlock}
                       onDeleteBlock={deleteBlock}
                       onAutoSave={triggerAutoSave}
@@ -1602,8 +1602,7 @@ export function DigestComposer() {
             )}
 
             {/* Add block buttons */}
-            {!isSent && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <button onClick={addTextBlock} style={addBtnStyle}>
                   + Text
                 </button>
@@ -1621,7 +1620,6 @@ export function DigestComposer() {
                   + Divider
                 </button>
               </div>
-            )}
           </div>
         </div>
 
@@ -1644,7 +1642,6 @@ export function DigestComposer() {
               type="datetime-local"
               value={scheduledFor}
               onChange={(e) => setScheduledFor(e.target.value)}
-              disabled={isSent}
               style={inputStyle}
             />
           </div>
