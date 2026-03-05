@@ -249,7 +249,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
               />
             )}
 
-            <div style={{ pointerEvents: isCenter ? 'auto' : 'none', height: '100%' }}>
+            <div style={{ pointerEvents: isCenter ? 'auto' : 'none', height: '100%', width: '100%' }}>
               {(isCenter || isAdjacent) ? (
                 <DayFeedPanel
                   date={dayDate}

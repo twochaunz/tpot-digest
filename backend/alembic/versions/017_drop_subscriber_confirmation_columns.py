@@ -6,7 +6,7 @@ Single opt-in with popup on every visit -- no confirmation email, no cookie trac
 from alembic import op
 
 revision = "017"
-down_revision = "016"
+down_revision = "016_digest_content_blocks"
 
 
 def upgrade():

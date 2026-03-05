@@ -187,7 +187,7 @@ export function DailyView() {
   return (
     <div
       style={{
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         background: 'var(--bg-base)',
         display: 'flex',
