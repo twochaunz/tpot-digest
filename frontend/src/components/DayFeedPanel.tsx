@@ -312,6 +312,7 @@ export function DayFeedPanel({
       data-active-feed={isActive ? 'true' : undefined}
       style={{
         overflowY: 'auto',
+        overscrollBehavior: 'contain',
         height: '100%',
         padding: isWide ? '0 16px 80px 40px' : '0 8px 80px 8px',
       }}
