@@ -1625,7 +1625,7 @@ export function DigestComposer() {
               ))}
             </select>
           </div>
-        )
+        )}
 
         {isSent && (
           <div style={{ fontSize: 12, color: '#4ade80', fontWeight: 500, marginTop: -8 }}>
