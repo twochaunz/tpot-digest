@@ -186,20 +186,6 @@ export function TopicSectionWithData({
   )
 }
 
-// Grip handle SVG (6 dots, 2x3)
-function TopicGripHandle() {
-  return (
-    <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
-      <circle cx="3" cy="3" r="1.5" />
-      <circle cx="7" cy="3" r="1.5" />
-      <circle cx="3" cy="8" r="1.5" />
-      <circle cx="7" cy="8" r="1.5" />
-      <circle cx="3" cy="13" r="1.5" />
-      <circle cx="7" cy="13" r="1.5" />
-    </svg>
-  )
-}
-
 // --- Draggable tweet card within a topic ---
 const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   tweet,
@@ -212,46 +198,35 @@ const DraggableTweetInTopic = memo(function DraggableTweetInTopic({
   onContextMenu?: (e: React.MouseEvent, tweet: Tweet) => void
   isAdmin?: boolean
 }) {
+  const isMobile = useIsMobile()
+  const canDrag = isAdmin && !isMobile
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `draggable-tweet-${tweet.id}`,
     data: { tweet, sourceTopicId: topicId },
-    disabled: !isAdmin,
+    disabled: !canDrag,
   })
 
   return (
     <div
       ref={setNodeRef}
       style={{
-        display: 'flex',
-        gap: 8,
-        alignItems: 'flex-start',
         opacity: isDragging ? 0.3 : 1,
         transition: 'opacity 0.15s ease',
       }}
     >
-      {/* Drag handle (admin only) */}
-      {isAdmin && (
-        <div
-          {...attributes}
-          {...listeners}
-          style={{
-            cursor: 'grab',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '16px 2px',
-            flexShrink: 0,
-            touchAction: 'none',
-          }}
-        >
-          <TopicGripHandle />
-        </div>
-      )}
-      <TweetCard
-        tweet={tweet}
-        selectable={false}
-        onContextMenu={onContextMenu}
-        isAdmin={isAdmin}
-      />
+      <div
+        {...(canDrag ? { ...attributes, ...listeners } : {})}
+        style={{
+          touchAction: canDrag ? 'none' : undefined,
+        }}
+      >
+        <TweetCard
+          tweet={tweet}
+          selectable={false}
+          onContextMenu={onContextMenu}
+          isAdmin={isAdmin}
+        />
+      </div>
     </div>
   )
 })
