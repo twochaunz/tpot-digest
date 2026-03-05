@@ -928,22 +928,19 @@ function TopicSelectorModal({
 }: {
   topics: TopicBundle[]
   date: string
-  onConfirm: (selectedIds: Set<number>) => void
+  onConfirm: (orderedIds: number[]) => void
   onClose: () => void
 }) {
-  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [ordered, setOrdered] = useState<number[]>([])
 
   const toggle = (id: number) => {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    setOrdered(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
   }
 
   const selectTop3 = () => {
-    setSelected(new Set(topics.slice(0, 3).map(t => t.id)))
+    setOrdered(topics.slice(0, 3).map(t => t.id))
   }
 
   return (
@@ -977,10 +974,10 @@ function TopicSelectorModal({
           <button onClick={selectTop3} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
             Top 3
           </button>
-          <button onClick={() => setSelected(new Set(topics.map(t => t.id)))} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+          <button onClick={() => setOrdered(topics.map(t => t.id))} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
             All
           </button>
-          <button onClick={() => setSelected(new Set())} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+          <button onClick={() => setOrdered([])} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
             None
           </button>
         </div>
@@ -996,7 +993,18 @@ function TopicSelectorModal({
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             >
-              <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
+              <span
+                style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  border: ordered.includes(t.id) ? 'none' : '2px solid var(--border)',
+                  background: ordered.includes(t.id) ? 'var(--accent)' : 'transparent',
+                  color: '#fff', fontSize: 11, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                {ordered.includes(t.id) ? ordered.indexOf(t.id) + 1 : ''}
+              </span>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.color || 'var(--accent)', flexShrink: 0 }} />
               <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{t.title}</span>
               <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
@@ -1009,7 +1017,7 @@ function TopicSelectorModal({
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={addBtnStyle}>Cancel</button>
           <button
-            onClick={() => onConfirm(selected)}
+            onClick={() => onConfirm(ordered)}
             style={{
               background: 'var(--accent)', color: '#fff', border: 'none',
               borderRadius: 'var(--radius-md)', padding: '8px 16px', fontSize: 13,
@@ -1330,10 +1338,10 @@ export function DigestComposer() {
 
   const generateTemplate = useGenerateTemplate()
 
-  const generateTemplateBlocks = useCallback(async (selectedIds: Set<number>): Promise<DigestBlock[]> => {
-    const sorted = sortTopics(topics)
-    const featured = sorted.filter(t => selectedIds.has(t.id))
-    const rest = sorted.filter(t => !selectedIds.has(t.id))
+  const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
+    const orderedSet = new Set(orderedIds)
+    const featured = orderedIds.map(id => topics.find(t => t.id === id)!).filter(Boolean)
+    const rest = sortTopics(topics).filter(t => !orderedSet.has(t.id))
 
     const d = new Date(date + 'T00:00:00')
     const formattedDate = `${d.getMonth() + 1}/${d.getDate()}`
@@ -1407,11 +1415,11 @@ export function DigestComposer() {
 
   const [isGenerating, setIsGenerating] = useState(false)
 
-  const handleCreateFromTemplate = useCallback(async (selectedIds: Set<number>) => {
+  const handleCreateFromTemplate = useCallback(async (orderedIds: number[]) => {
     setIsGenerating(true)
     setShowTopicSelector(false)
     try {
-      const newBlocks = await generateTemplateBlocks(selectedIds)
+      const newBlocks = await generateTemplateBlocks(orderedIds)
       setBlocks(newBlocks)
       triggerAutoSave()
     } catch {
