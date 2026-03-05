@@ -52,6 +52,7 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 .day-carousel::-webkit-scrollbar { display: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
 
 /* react-tweet (used for quoted tweet embeds): clean up chrome */
 [data-theme="dark"] [class*="actions"] {
