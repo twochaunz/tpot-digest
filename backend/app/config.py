@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     admin_secret: str = ""
     resend_api_key: str = ""
-    digest_from_email: str = "abridged tech <today@abridged.tech>"
+    digest_from_email: str = "abridged tech <read@abridged.tech>"
     digest_reply_to_email: str = "hi@wonchan.com"
     admin_email: str = ""
     openrouter_api_key: str = ""

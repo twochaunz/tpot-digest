@@ -1524,7 +1524,7 @@ export function DigestComposer() {
   const topicCount = blocks.filter((b) => b.type === 'topic-header').length
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
+    <div style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg-base)' }}>
       {/* Header */}
       <header
         style={{
