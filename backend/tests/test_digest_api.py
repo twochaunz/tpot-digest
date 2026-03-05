@@ -277,7 +277,7 @@ async def test_preview_tweet_engagement_toggle(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_cannot_edit_sent_draft(client: AsyncClient):
+async def test_editing_sent_draft_resets_to_draft(client: AsyncClient):
     # Create a draft and mark it as sent directly in DB
     create_resp = await client.post("/api/digest/drafts", json={
         "date": "2026-03-01",
@@ -291,8 +291,9 @@ async def test_cannot_edit_sent_draft(client: AsyncClient):
         draft.sent_at = datetime.now(timezone.utc)
         await session.commit()
 
-    # Try to update
+    # Editing a sent draft should succeed and reset status to draft
     resp = await client.patch(f"/api/digest/drafts/{draft_id}", json={
-        "content_blocks": [{"id": "b1", "type": "text", "content": "Should fail"}],
+        "content_blocks": [{"id": "b1", "type": "text", "content": "Updated"}],
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "draft"
