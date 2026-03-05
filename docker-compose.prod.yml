@@ -28,7 +28,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       ADMIN_SECRET: ${ADMIN_SECRET}
       RESEND_API_KEY: ${RESEND_API_KEY}
-      DIGEST_FROM_EMAIL: ${DIGEST_FROM_EMAIL:-abridged tech <today@abridged.tech>}
+      DIGEST_FROM_EMAIL: ${DIGEST_FROM_EMAIL:-abridged tech <read@abridged.tech>}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
     volumes:
