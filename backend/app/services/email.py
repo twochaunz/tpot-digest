@@ -32,11 +32,11 @@ def send_digest_email(
     subject: str,
     html_content: str,
     unsubscribe_url: str | None = None,
-) -> dict | None:
-    """Send a digest email via Resend. Returns Resend response or None if not configured."""
+) -> dict:
+    """Send a digest email via Resend. Returns a dict with keys: success, result, error."""
     if not settings.resend_api_key:
         logger.warning("RESEND_API_KEY not set -- skipping digest email to %s", to_email)
-        return None
+        return {"success": False, "result": None, "error": "RESEND_API_KEY not set"}
 
     import resend
 
@@ -57,9 +57,9 @@ def send_digest_email(
     try:
         result = resend.Emails.send(params)
         logger.info("Digest email sent to %s: %s", to_email, result)
-        return result
-    except Exception:
+        return {"success": True, "result": result, "error": None}
+    except Exception as exc:
         logger.exception("Failed to send digest email to %s", to_email)
-        return None
+        return {"success": False, "result": None, "error": str(exc)}
 
 
