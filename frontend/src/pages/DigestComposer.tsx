@@ -1247,8 +1247,33 @@ export function DigestComposer() {
           setSaveStatus('idle')
         }
       }
-    }, 2000)
+    }, 800)
   }, [updateDraft, createDraft])
+
+  // Flush pending autosave on page unload to prevent data loss
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!saveTimeoutRef.current) return
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+      const currentDraftId = selectedDraftIdRef.current
+      if (!currentDraftId) return
+      const currentBlocks = blocksRef.current.map(b => ({ ...b }))
+      const body = JSON.stringify({
+        content_blocks: currentBlocks,
+        scheduled_for: scheduledForRef.current || null,
+        subject: subjectRef.current || undefined,
+      })
+      fetch(`/api/digest/drafts/${currentDraftId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      })
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
 
   // Load draft data when a *different* draft is selected (not on every auto-save update)
   const loadedDraftIdRef = useRef<number | null>(null)
