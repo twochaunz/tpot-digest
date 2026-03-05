@@ -143,8 +143,8 @@ def _proxy_avatar_url(avatar_url: str | None) -> str | None:
 
 
 def _strip_tco_links(text: str) -> str:
-    """Strip trailing t.co links from tweet text."""
-    return re.sub(r'\s*https://t\.co/\w+\s*$', '', text)
+    """Strip ALL t.co links from tweet text."""
+    return re.sub(r'\s*https://t\.co/\w+', '', text).strip()
 
 
 def _build_quoted_tweet_dict(quoted_tweet: "Tweet | dict", nested_qt: "Tweet | dict | None" = None) -> dict:
@@ -184,12 +184,35 @@ def _build_quoted_tweet_dict(quoted_tweet: "Tweet | dict", nested_qt: "Tweet | d
     return qt
 
 
+def _build_link_cards(url_entities: list[dict] | None) -> list[dict]:
+    """Build link preview cards from url_entities, excluding media links."""
+    if not url_entities:
+        return []
+    cards = []
+    for e in url_entities:
+        display = e.get("display_url", "")
+        # Skip media links (these are rendered as images, not link cards)
+        if any(domain in display for domain in ("pic.x.com", "pic.twitter.com", "x.com/", "twitter.com/")):
+            continue
+        card: dict = {
+            "url": e.get("unwound_url") or e.get("expanded_url") or e.get("url", ""),
+            "display_url": display,
+        }
+        if e.get("title"):
+            card["title"] = e["title"]
+        if e.get("description"):
+            card["description"] = e["description"]
+        if e.get("images") and len(e["images"]) > 0:
+            img_url = e["images"][0].get("url", "")
+            if img_url:
+                card["image_url"] = _proxy_avatar_url(img_url)
+        cards.append(card)
+    return cards
+
+
 def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | dict | None" = None, nested_qt: "Tweet | dict | None" = None) -> dict:
     """Build a tweet dict for template rendering."""
-    text = tw.text
-    # Strip trailing t.co quote tweet link (matches frontend TweetCard behavior)
-    if quoted_tweet or tw.quoted_tweet_id:
-        text = _strip_tco_links(text)
+    text = _strip_tco_links(tw.text)
     tweet_dict = {
         "author_handle": tw.author_handle,
         "author_display_name": tw.author_display_name,
@@ -197,6 +220,7 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | d
         "text": text,
         "url": tw.url,
         "show_engagement": show_engagement,
+        "link_cards": _build_link_cards(tw.url_entities),
     }
     if show_engagement:
         tweet_dict["engagement"] = tw.engagement
