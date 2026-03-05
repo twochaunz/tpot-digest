@@ -44,8 +44,8 @@ def _format_date(d) -> str:
 
 
 def _default_subject(d) -> str:
-    """Generate default subject like '[3/3/26] abridged tech'."""
-    return f"[{d.month}/{d.day}/{d.strftime('%y')}] abridged tech"
+    """Generate default subject like '3/3/26 abridged tech'."""
+    return f"{d.month}/{d.day}/{d.strftime('%y')} abridged tech"
 
 
 async def _generate_topic_summary(topic_title: str, grok_contexts: list[str]) -> str | None:

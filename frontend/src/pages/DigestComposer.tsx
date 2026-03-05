@@ -67,7 +67,18 @@ function recentDates(count: number): string[] {
 function defaultSubject(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
   const yy = String(d.getFullYear()).slice(2)
-  return `[${d.getMonth() + 1}/${d.getDate()}/${yy}] abridged tech`
+  return `${d.getMonth() + 1}/${d.getDate()}/${yy} abridged tech`
+}
+
+function defaultScheduleTime(dateStr: string): string {
+  // Next day at 8am local time
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + 1)
+  d.setHours(8, 0, 0, 0)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T08:00`
 }
 
 let _blockCounter = 0
@@ -1753,45 +1764,74 @@ export function DigestComposer() {
         </div>
 
         {/* Schedule */}
-        <div
-          style={{
-            background: 'var(--bg-raised)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '16px 20px',
-            display: 'flex',
-            gap: 16,
-            alignItems: 'flex-end',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <label style={labelStyle}>Schedule Send (optional)</label>
-            <input
-              type="datetime-local"
-              value={scheduledFor}
-              onChange={(e) => setScheduledFor(e.target.value)}
-              style={inputStyle}
-            />
+        {selectedDraftId && (
+          <div
+            style={{
+              background: 'var(--bg-raised)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '16px 20px',
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
+          >
+            {scheduledFor ? (
+              <>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Scheduled for {new Date(scheduledFor).toLocaleString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </span>
+                <input
+                  type="datetime-local"
+                  value={scheduledFor}
+                  onChange={(e) => {
+                    setScheduledFor(e.target.value)
+                    triggerAutoSave()
+                  }}
+                  style={{ ...inputStyle, fontSize: 12, padding: '4px 8px', width: 'auto' }}
+                />
+                <button
+                  onClick={() => {
+                    setScheduledFor('')
+                    triggerAutoSave()
+                  }}
+                  style={{
+                    background: 'none',
+                    border: '1px solid var(--border)',
+                    color: '#ef4444',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    padding: '5px 12px',
+                    borderRadius: 'var(--radius-md)',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  Cancel Schedule
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setScheduledFor(defaultScheduleTime(date))
+                  triggerAutoSave()
+                }}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                Schedule Send
+              </button>
+            )}
           </div>
-          {scheduledFor && (
-            <button
-              onClick={() => setScheduledFor('')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-tertiary)',
-                fontSize: 12,
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                padding: '8px 0',
-                fontFamily: 'var(--font-body)',
-              }}
-            >
-              Clear schedule
-            </button>
-          )}
-        </div>
+        )}
 
         {/* Action Buttons */}
         {selectedDraftId && (
