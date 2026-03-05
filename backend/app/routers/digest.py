@@ -434,8 +434,9 @@ async def update_draft(draft_id: int, body: DigestDraftUpdate, db: AsyncSession 
     draft = await db.get(DigestDraft, draft_id)
     if not draft:
         raise HTTPException(404, "Draft not found")
+    # Reset status to 'draft' if editing a previously-sent draft
     if draft.status == "sent":
-        raise HTTPException(400, "Cannot edit a sent draft")
+        draft.status = "draft"
 
     data = body.model_dump(exclude_unset=True)
 
