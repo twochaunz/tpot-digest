@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle, type TopicBundle } from '../api/dayBundle'
@@ -217,6 +217,64 @@ function TweetSelectorPanel({
         </div>
       </div>
     </>
+  )
+}
+
+/* ---- Insertion point between blocks ---- */
+function BlockInsertRow({
+  index,
+  topics,
+  usedTopicIds,
+  usedTweetIds,
+  onAddText,
+  onAddTopic,
+  onAddTweet,
+  onAddDivider,
+}: {
+  index: number
+  topics: TopicBundle[]
+  usedTopicIds: Set<number>
+  usedTweetIds: Set<number>
+  onAddText: (atIndex: number) => void
+  onAddTopic: (topicId: number, atIndex: number) => void
+  onAddTweet: (tweetId: number, atIndex: number) => void
+  onAddDivider: (atIndex: number) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        height: hovered ? 'auto' : 8,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginLeft: 32,
+        transition: 'height 0.15s',
+      }}
+    >
+      {hovered && (
+        <>
+          <button onClick={() => onAddText(index)} style={smallBtnStyle}>+ Text</button>
+          <TopicPicker
+            topics={topics}
+            usedTopicIds={usedTopicIds}
+            onSelect={(topicId) => onAddTopic(topicId, index)}
+            small
+          />
+          <TweetPicker
+            topics={topics}
+            usedTweetIds={usedTweetIds}
+            onSelect={(tweetId) => onAddTweet(tweetId, index)}
+            small
+          />
+          <button onClick={() => onAddDivider(index)} style={smallBtnStyle}>+ Divider</button>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -502,10 +560,12 @@ function TopicPicker({
   topics,
   usedTopicIds,
   onSelect,
+  small,
 }: {
   topics: TopicBundle[]
   usedTopicIds: Set<number>
   onSelect: (topicId: number) => void
+  small?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -527,7 +587,7 @@ function TopicPicker({
         onClick={() => setOpen(!open)}
         disabled={available.length === 0}
         style={{
-          ...addBtnStyle,
+          ...(small ? smallBtnStyle : addBtnStyle),
           opacity: available.length === 0 ? 0.4 : 1,
           cursor: available.length === 0 ? 'default' : 'pointer',
         }}
@@ -569,10 +629,12 @@ function TweetPicker({
   topics,
   usedTweetIds,
   onSelect,
+  small,
 }: {
   topics: TopicBundle[]
   usedTweetIds: Set<number>
   onSelect: (tweetId: number) => void
+  small?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [expandedTopics, setExpandedTopics] = useState<Set<number>>(new Set())
@@ -614,7 +676,7 @@ function TweetPicker({
         }}
         disabled={!hasAny}
         style={{
-          ...addBtnStyle,
+          ...(small ? smallBtnStyle : addBtnStyle),
           opacity: hasAny ? 1 : 0.4,
           cursor: hasAny ? 'pointer' : 'default',
         }}
@@ -1178,23 +1240,39 @@ export function DigestComposer() {
     triggerAutoSave()
   }, [triggerAutoSave])
 
-  const addTextBlock = useCallback(() => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'text' as const, content: '' }])
+  const addTextBlock = useCallback((atIndex?: number) => {
+    const newBlock = { id: nextBlockId(), type: 'text' as const, content: '' }
+    setBlocks((prev) => atIndex !== undefined
+      ? [...prev.slice(0, atIndex), newBlock, ...prev.slice(atIndex)]
+      : [...prev, newBlock]
+    )
     triggerAutoSave()
   }, [triggerAutoSave])
 
-  const addTopicHeaderBlock = useCallback((topicId: number) => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'topic-header' as const, topic_id: topicId }])
+  const addTopicHeaderBlock = useCallback((topicId: number, atIndex?: number) => {
+    const newBlock = { id: nextBlockId(), type: 'topic-header' as const, topic_id: topicId }
+    setBlocks((prev) => atIndex !== undefined
+      ? [...prev.slice(0, atIndex), newBlock, ...prev.slice(atIndex)]
+      : [...prev, newBlock]
+    )
     triggerAutoSave()
   }, [triggerAutoSave])
 
-  const addTweetBlock = useCallback((tweetId: number) => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'tweet' as const, tweet_id: tweetId }])
+  const addTweetBlock = useCallback((tweetId: number, atIndex?: number) => {
+    const newBlock = { id: nextBlockId(), type: 'tweet' as const, tweet_id: tweetId }
+    setBlocks((prev) => atIndex !== undefined
+      ? [...prev.slice(0, atIndex), newBlock, ...prev.slice(atIndex)]
+      : [...prev, newBlock]
+    )
     triggerAutoSave()
   }, [triggerAutoSave])
 
-  const addDividerBlock = useCallback(() => {
-    setBlocks((prev) => [...prev, { id: nextBlockId(), type: 'divider' as const }])
+  const addDividerBlock = useCallback((atIndex?: number) => {
+    const newBlock = { id: nextBlockId(), type: 'divider' as const }
+    setBlocks((prev) => atIndex !== undefined
+      ? [...prev.slice(0, atIndex), newBlock, ...prev.slice(atIndex)]
+      : [...prev, newBlock]
+    )
     triggerAutoSave()
   }, [triggerAutoSave])
 
@@ -1712,17 +1790,28 @@ export function DigestComposer() {
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
-                  {blocks.map((block) => (
-                    <SortableBlock
-                      key={block.id}
-                      block={block}
-                      topics={topics}
-                      isSent={false}
-                      onUpdateBlock={updateBlock}
-                      onDeleteBlock={deleteBlock}
-                      onAutoSave={triggerAutoSave}
-                      onOpenTweetSelector={setTweetSelectorTopicId}
-                    />
+                  {blocks.map((block, idx) => (
+                    <React.Fragment key={block.id}>
+                      <BlockInsertRow
+                        index={idx}
+                        topics={topics}
+                        usedTopicIds={usedTopicIds}
+                        usedTweetIds={usedTweetIds}
+                        onAddText={addTextBlock}
+                        onAddTopic={addTopicHeaderBlock}
+                        onAddTweet={addTweetBlock}
+                        onAddDivider={addDividerBlock}
+                      />
+                      <SortableBlock
+                        block={block}
+                        topics={topics}
+                        isSent={false}
+                        onUpdateBlock={updateBlock}
+                        onDeleteBlock={deleteBlock}
+                        onAutoSave={triggerAutoSave}
+                        onOpenTweetSelector={setTweetSelectorTopicId}
+                      />
+                    </React.Fragment>
                   ))}
                 </SortableContext>
               </DndContext>
@@ -1730,20 +1819,20 @@ export function DigestComposer() {
 
             {/* Add block buttons */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button onClick={addTextBlock} style={addBtnStyle}>
+                <button onClick={() => addTextBlock()} style={addBtnStyle}>
                   + Text
                 </button>
                 <TopicPicker
                   topics={topics}
                   usedTopicIds={usedTopicIds}
-                  onSelect={addTopicHeaderBlock}
+                  onSelect={(topicId) => addTopicHeaderBlock(topicId)}
                 />
                 <TweetPicker
                   topics={topics}
                   usedTweetIds={usedTweetIds}
-                  onSelect={addTweetBlock}
+                  onSelect={(tweetId) => addTweetBlock(tweetId)}
                 />
-                <button onClick={addDividerBlock} style={addBtnStyle}>
+                <button onClick={() => addDividerBlock()} style={addBtnStyle}>
                   + Divider
                 </button>
               </div>
@@ -2124,6 +2213,18 @@ const addBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontFamily: 'var(--font-body)',
   transition: 'all 0.15s ease',
+}
+
+const smallBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: '1px dashed var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-tertiary)',
+  padding: '2px 8px',
+  fontSize: 11,
+  cursor: 'pointer',
+  fontFamily: 'var(--font-body)',
+  lineHeight: '18px',
 }
 
 const dropdownStyle: React.CSSProperties = {
