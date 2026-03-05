@@ -247,7 +247,8 @@ function BlockInsertRow({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        height: hovered ? 'auto' : 8,
+        height: hovered ? 28 : 8,
+        overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -306,6 +307,7 @@ function SortableBlock({
   } = useSortable({ id: block.id })
 
   const [expandedTweets, setExpandedTweets] = useState<Set<number>>(new Set())
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
   const toggleExpand = (tweetId: number) => {
     setExpandedTweets(prev => {
       const next = new Set(prev)
@@ -342,19 +344,24 @@ function SortableBlock({
 
   return (
     <div ref={setNodeRef} style={style}>
-      {/* Gutter: drag handle + delete */}
+      {/* Gutter: drag handle */}
       <div style={{
         width: 32,
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: 10,
-        gap: 2,
+        justifyContent: 'center',
+        alignSelf: 'stretch',
       }}>
         <span
           {...attributes}
           {...listeners}
+          onContextMenu={(e) => {
+            if (isSent) return
+            e.preventDefault()
+            setCtxMenu({ x: e.clientX, y: e.clientY })
+          }}
           style={{
             cursor: isSent ? 'default' : 'grab',
             color: 'var(--text-tertiary)',
@@ -369,36 +376,57 @@ function SortableBlock({
             width: 20,
             height: 20,
           }}
-          title="Drag to reorder"
+          title="Drag to reorder · Right-click to delete"
         >
           &#10303;
         </span>
-        {!isSent && (
-          <button
-            onClick={() => onDeleteBlock(block.id)}
-            title="Remove block"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              lineHeight: 1,
-              fontSize: 14,
-              color: 'var(--text-tertiary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 20,
-              height: 20,
-              borderRadius: 4,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#e53e3e' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)' }}
-          >
-            &times;
-          </button>
-        )}
       </div>
+
+      {/* Right-click context menu */}
+      {ctxMenu && (
+        <>
+          <div
+            onClick={() => setCtxMenu(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              left: ctxMenu.x,
+              top: ctxMenu.y,
+              zIndex: 10000,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              padding: '4px 0',
+              minWidth: 120,
+            }}
+          >
+            <button
+              onClick={() => {
+                onDeleteBlock(block.id)
+                setCtxMenu(null)
+              }}
+              style={{
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontSize: 13,
+                color: '#ef4444',
+                fontFamily: 'var(--font-body)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+            >
+              Delete
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Block content */}
       <div style={{ flex: 1, minWidth: 0 }}>

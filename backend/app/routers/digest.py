@@ -446,8 +446,11 @@ async def update_draft(draft_id: int, body: DigestDraftUpdate, db: AsyncSession 
 
     data = body.model_dump(exclude_unset=True)
 
-    if "scheduled_for" in data and data["scheduled_for"] is not None:
-        draft.status = "scheduled"
+    if "scheduled_for" in data:
+        if data["scheduled_for"] is not None:
+            draft.status = "scheduled"
+        else:
+            draft.status = "draft"
 
     if "content_blocks" in data and data["content_blocks"] is not None:
         draft.content_blocks = [b if isinstance(b, dict) else b.model_dump() for b in data["content_blocks"]]

@@ -77,7 +77,7 @@ export function useCreateDigestDraft() {
 
 export function useUpdateDigestDraft() {
   const qc = useQueryClient()
-  return useMutation<DigestDraft, Error, { id: number; content_blocks?: DigestBlock[]; scheduled_for?: string; subject?: string }>({
+  return useMutation<DigestDraft, Error, { id: number; content_blocks?: DigestBlock[]; scheduled_for?: string | null; subject?: string }>({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await api.patch(`/digest/drafts/${id}`, body)
       return data
