@@ -142,7 +142,7 @@ async def test_preview_digest(client: AsyncClient):
     assert "Test Topic" in data["html"]
     assert "testuser" in data["html"]
     assert "Preview tweet text" in data["html"]
-    assert data["subject"].startswith("abridged")
+    assert "abridged tech" in data["subject"]
 
 
 @pytest.mark.asyncio

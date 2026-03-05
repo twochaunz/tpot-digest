@@ -43,6 +43,11 @@ def _format_date(d) -> str:
     return d.strftime("%B %-d, %Y")
 
 
+def _default_subject(d) -> str:
+    """Generate default subject like '[3/3/26] abridged tech'."""
+    return f"[{d.month}/{d.day}/{d.strftime('%y')}] abridged tech"
+
+
 async def _generate_topic_summary(topic_title: str, grok_contexts: list[str]) -> str | None:
     """Generate a 1-2 sentence topic summary from all tweets' grok_context."""
     if not settings.anthropic_api_key or not grok_contexts:
@@ -402,6 +407,7 @@ async def create_draft(body: DigestDraftCreate, db: AsyncSession = Depends(get_d
     draft = DigestDraft(
         date=body.date,
         content_blocks=[b.model_dump() for b in body.content_blocks],
+        subject=body.subject,
     )
     db.add(draft)
     await db.commit()
@@ -476,7 +482,7 @@ async def preview_draft(draft_id: int, db: AsyncSession = Depends(get_db)):
 
     blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
-    subject = f"abridged tech -- {date_str}"
+    subject = draft.subject or _default_subject(draft.date)
 
     html = render_digest_email(
         date_str=date_str,
@@ -509,7 +515,8 @@ async def send_test(draft_id: int, body: DigestSendTestRequest | None = None, db
 
     blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
-    subject = f"[TEST] abridged tech -- {date_str}"
+    base_subject = draft.subject or _default_subject(draft.date)
+    subject = f"[TEST] {base_subject}"
 
     html = render_digest_email(
         date_str=date_str,
@@ -536,7 +543,7 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
 
     blocks = await _build_digest_content(draft, db)
     date_str = _format_date(draft.date)
-    subject = f"abridged tech -- {date_str}"
+    subject = draft.subject or _default_subject(draft.date)
 
     sent_count = 0
     for sub in subscribers:
@@ -582,7 +589,7 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
 
         blocks = await _build_digest_content(draft, db)
         date_str = _format_date(draft.date)
-        subject = f"abridged tech -- {date_str}"
+        subject = draft.subject or _default_subject(draft.date)
 
         sent_count = 0
         for sub in subscribers:
