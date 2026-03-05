@@ -64,7 +64,7 @@ Topic: "{topic_title}"
 Context from tweets in this topic (each separated by ---):
 {contexts_text}
 
-Write a 1-2 sentence summary that captures the FULL discourse around this topic — not just the original post, but the reactions, pushback, and key points of debate. Be concise and informative. Write in a neutral, journalistic tone. No hype. No emojis.
+Write a 1-2 sentence summary that captures the FULL discourse around this topic — not just the original post, but the reactions, pushback, and key points of debate. Be concise and informative. Write in a neutral, journalistic tone. No hype. No emojis. Use simple past tense (e.g. "announced", "sparked debate", "pushed back"), NOT past progressive (e.g. "is announcing", "are debating"). Keep it quippy.
 
 Return ONLY the summary text, nothing else."""
 
@@ -106,9 +106,11 @@ Topic: "{topic_title}"
 
 The tweets are grouped by category. For each category EXCEPT the first one (which needs no transition), write a brief, contextual one-liner that introduces the group. These should intrigue readers — not just name the category, but add a touch of color about what the tweets discuss.
 
+Use simple past tense — keep it quippy and punchy, not progressive/continuous tense.
+
 Examples of good transitions:
-- "some pushback on the pricing model:"
-- "others are drawing parallels:"
+- "some pushed back on the pricing model:"
+- "others drew parallels:"
 - "a few sharp takes:"
 - "the community had thoughts:"
 

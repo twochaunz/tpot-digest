@@ -1393,7 +1393,7 @@ export function DigestComposer() {
     newBlocks.push({
       id: nextBlockId(),
       type: 'text',
-      content: `${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
+      content: `# ${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
     let isFirstTopic = true
@@ -1419,7 +1419,7 @@ export function DigestComposer() {
       for (const group of topicData.category_groups) {
         // Category transition text
         if (!isFirstGroup && group.transition) {
-          newBlocks.push({ id: nextBlockId(), type: 'text', content: `*${group.transition}*` })
+          newBlocks.push({ id: nextBlockId(), type: 'text', content: group.transition })
         }
         isFirstGroup = false
 
