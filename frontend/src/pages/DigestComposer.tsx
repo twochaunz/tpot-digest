@@ -1829,7 +1829,7 @@ export function DigestComposer() {
           const activeDrafts = (drafts || []).filter(d => d.status !== 'sent').sort((a, b) => b.date.localeCompare(a.date))
           const sentDrafts = (drafts || []).filter(d => d.status === 'sent').sort((a, b) => b.date.localeCompare(a.date))
 
-          const draftRow = (d: typeof drafts[0]) => {
+          const draftRow = (d: (typeof activeDrafts)[number]) => {
             const topicCount = (d.content_blocks || []).filter(
               (b: any) => b.type === 'topic-header' || b.type === 'topic'
             ).length
