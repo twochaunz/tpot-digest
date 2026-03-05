@@ -16,6 +16,7 @@ from app.config import settings
 from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.digest_draft import DigestDraft
+from app.models.digest_send_log import DigestSendLog
 from app.models.subscriber import Subscriber
 from app.models.topic import Topic
 from app.models.tweet import Tweet
@@ -590,7 +591,16 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
             unsubscribe_url=unsubscribe_url,
         )
         email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
-        if email_result:
+        log = DigestSendLog(
+            draft_id=draft_id,
+            subscriber_id=sub.id,
+            email=sub.email,
+            status="sent" if email_result["success"] else "failed",
+            error_message=email_result["error"],
+            resend_message_id=email_result["result"].get("id") if email_result["result"] and isinstance(email_result["result"], dict) else None,
+        )
+        db.add(log)
+        if email_result["success"]:
             sent_count += 1
 
     draft.status = "sent"
@@ -636,7 +646,16 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
                 unsubscribe_url=unsubscribe_url,
             )
             email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
-            if email_result:
+            log = DigestSendLog(
+                draft_id=draft.id,
+                subscriber_id=sub.id,
+                email=sub.email,
+                status="sent" if email_result["success"] else "failed",
+                error_message=email_result["error"],
+                resend_message_id=email_result["result"].get("id") if email_result["result"] and isinstance(email_result["result"], dict) else None,
+            )
+            db.add(log)
+            if email_result["success"]:
                 sent_count += 1
 
         draft.status = "sent"
