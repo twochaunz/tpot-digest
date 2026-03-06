@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle, type TopicBundle } from '../api/dayBundle'
@@ -351,7 +351,7 @@ function SortableBlock({
     : null
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} {...(block.type === 'topic-header' && block.topic_id ? { 'data-topic-id': block.topic_id } : {})}>
       {/* Gutter: drag handle */}
       <div style={{
         width: 32,
@@ -1578,8 +1578,34 @@ export function DigestComposer() {
   const blockIds = blocks.map((b) => b.id)
   const topicCount = blocks.filter((b) => b.type === 'topic-header').length
 
+  // Build topic nav items from blocks
+  const topicNavItems = useMemo(() => {
+    const items: { topicId: number; title: string; color: string; tweetCount: number }[] = []
+    let currentTopicId: number | null = null
+    for (const b of blocks) {
+      if (b.type === 'topic-header' && b.topic_id) {
+        const t = topics.find(tp => tp.id === b.topic_id)
+        items.push({
+          topicId: b.topic_id,
+          title: t?.title || `Topic #${b.topic_id}`,
+          color: t?.color || 'var(--text-tertiary)',
+          tweetCount: 0,
+        })
+        currentTopicId = b.topic_id
+      } else if (b.type === 'tweet' && currentTopicId !== null) {
+        const last = items[items.length - 1]
+        if (last) last.tweetCount++
+      } else if (b.type === 'divider' || b.type === 'text') {
+        // text/divider between topics doesn't reset — only topic-header does
+      }
+    }
+    return items
+  }, [blocks, topics])
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
   return (
-    <div style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg-base)' }}>
+    <div ref={scrollContainerRef} style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg-base)' }}>
       {/* Header */}
       <header
         style={{
@@ -2405,6 +2431,75 @@ export function DigestComposer() {
         )}
 
       </main>
+
+      {/* Topic nav sidebar */}
+      {topicNavItems.length > 0 && selectedDraftId && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            right: `max(8px, calc((100vw - 800px) / 2 - 8px))`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            zIndex: 30,
+            maxHeight: 'calc(100dvh - 120px)',
+            overflowY: 'auto',
+          }}
+        >
+          {topicNavItems.map((item, i) => (
+            <button
+              key={item.topicId}
+              onClick={() => {
+                const el = scrollContainerRef.current?.querySelector(`[data-topic-id="${item.topicId}"]`)
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 10px',
+                background: item.color,
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px 0 0 6px',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: 'var(--font-body)',
+                letterSpacing: '0.02em',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.3,
+                opacity: 0.9,
+                transition: 'opacity 0.15s',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.9' }}
+              title={item.title}
+            >
+              <span style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: 120,
+              }}>
+                {item.title}
+              </span>
+              <span style={{
+                background: 'rgba(255,255,255,0.25)',
+                borderRadius: 999,
+                padding: '1px 5px',
+                fontSize: 10,
+                fontWeight: 700,
+                lineHeight: 1.4,
+              }}>
+                {item.tweetCount}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Topic selector modal */}
       {showTopicSelector && (
