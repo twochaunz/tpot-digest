@@ -351,7 +351,7 @@ function SortableBlock({
     : null
 
   return (
-    <div ref={setNodeRef} style={style} {...(block.type === 'topic-header' && block.topic_id ? { 'data-topic-id': block.topic_id } : {})}>
+    <div ref={setNodeRef} style={style} data-block-id={block.id}>
       {/* Gutter: drag handle */}
       <div style={{
         width: 32,
@@ -1567,21 +1567,34 @@ export function DigestComposer() {
 
   // Build topic nav items from blocks (must be before early returns — Rules of Hooks)
   const topicNavItems = useMemo(() => {
-    const items: { topicId: number; title: string; color: string; tweetCount: number }[] = []
-    let currentTopicId: number | null = null
-    for (const b of blocks) {
+    const items: { id: string; topicId: number | null; label: string; title: string; color: string; tweetCount: number; blockId: string }[] = []
+    let topicNum = 0
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i]
       if (b.type === 'topic-header' && b.topic_id) {
+        topicNum++
         const t = topics.find(tp => tp.id === b.topic_id)
         items.push({
+          id: `topic-${b.topic_id}`,
           topicId: b.topic_id,
+          label: String(topicNum),
           title: t?.title || `Topic #${b.topic_id}`,
           color: t?.color || 'var(--text-tertiary)',
           tweetCount: 0,
+          blockId: b.id,
         })
-        currentTopicId = b.topic_id
-      } else if (b.type === 'tweet' && currentTopicId !== null) {
-        const last = items[items.length - 1]
-        if (last) last.tweetCount++
+      } else if (b.type === 'text' && b.content?.trim().toLowerCase() === '**kek**') {
+        items.push({
+          id: 'kek',
+          topicId: null,
+          label: 'kek',
+          title: 'kek',
+          color: '#6b7280',
+          tweetCount: 0,
+          blockId: b.id,
+        })
+      } else if (b.type === 'tweet' && items.length > 0) {
+        items[items.length - 1].tweetCount++
       }
     }
     return items
@@ -2445,26 +2458,26 @@ export function DigestComposer() {
             zIndex: 30,
           }}
         >
-          {topicNavItems.map((item, idx) => (
+          {topicNavItems.map((item) => (
             <button
-              key={item.topicId}
+              key={item.id}
               onClick={() => {
-                const el = scrollContainerRef.current?.querySelector(`[data-topic-id="${item.topicId}"]`)
+                const el = scrollContainerRef.current?.querySelector(`[data-block-id="${item.blockId}"]`)
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 28,
+                minWidth: 28,
                 height: 28,
-                padding: 0,
+                padding: item.label.length > 2 ? '0 8px' : 0,
                 background: item.color,
                 color: '#fff',
                 border: 'none',
-                borderRadius: '6px 0 0 6px',
+                borderRadius: 6,
                 cursor: 'pointer',
-                fontSize: 12,
+                fontSize: item.label.length > 2 ? 10 : 12,
                 fontWeight: 700,
                 fontFamily: 'var(--font-body)',
                 lineHeight: 1,
@@ -2475,7 +2488,7 @@ export function DigestComposer() {
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85' }}
               title={item.title}
             >
-              {idx + 1}
+              {item.label}
             </button>
           ))}
           {/* Preview tab */}
@@ -2494,8 +2507,7 @@ export function DigestComposer() {
               background: 'var(--bg-elevated)',
               color: 'var(--text-secondary)',
               border: '1px solid var(--border)',
-              borderRight: 'none',
-              borderRadius: '6px 0 0 6px',
+              borderRadius: 6,
               cursor: 'pointer',
               fontSize: 10,
               fontWeight: 600,
