@@ -59,9 +59,24 @@
       {% endfor %}
       {% endif %}
       {% if tweet.media_images %}
-      {% for img in tweet.media_images %}
-      <img src="{{ img }}" alt="" width="100%" style="display:block;border-radius:10px;margin-bottom:10px;">
-      {% endfor %}
+      {% if tweet.media_images|length == 1 %}
+      <img src="{{ tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:10px;margin-bottom:10px;max-height:240px;object-fit:cover;">
+      {% else %}
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
+        {% for pair in tweet.media_images|batch(2) %}
+        <tr>
+          {% for img in pair %}
+          <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
+            <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:8px;max-height:160px;object-fit:cover;">
+          </td>
+          {% endfor %}
+          {% if pair|length == 1 %}
+          <td style="width:50%;"></td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
       {% endif %}
       {% if tweet.quoted_tweet %}
       <div style="border:1px solid #e1e8ed;border-radius:12px;padding:12px;margin-bottom:10px;background:#f7f9fa;">
@@ -107,9 +122,24 @@
         {% endfor %}
         {% endif %}
         {% if tweet.quoted_tweet.media_images %}
-        {% for img in tweet.quoted_tweet.media_images %}
-        <img src="{{ img }}" alt="" width="100%" style="display:block;border-radius:8px;margin-bottom:8px;">
-        {% endfor %}
+        {% if tweet.quoted_tweet.media_images|length == 1 %}
+        <img src="{{ tweet.quoted_tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:8px;margin-bottom:8px;max-height:180px;object-fit:cover;">
+        {% else %}
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
+          {% for pair in tweet.quoted_tweet.media_images|batch(2) %}
+          <tr>
+            {% for img in pair %}
+            <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
+              <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:6px;max-height:120px;object-fit:cover;">
+            </td>
+            {% endfor %}
+            {% if pair|length == 1 %}
+            <td style="width:50%;"></td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </table>
+        {% endif %}
         {% endif %}
         {% if tweet.quoted_tweet.quoted_tweet %}
         <div style="border:1px solid #d1d9e0;border-radius:10px;padding:10px;margin-top:8px;background:#ffffff;">
