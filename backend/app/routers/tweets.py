@@ -21,6 +21,53 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 
 
+async def _persist_quoted_tweet(db, quoted_tweet_id: str, depth: int = 0):
+    """Fetch a quoted tweet from X API and persist it if not already in DB.
+
+    Recurses one level deep for nested quotes.
+    """
+    from app.services.x_api import fetch_tweet, XAPIError
+
+    # Already in DB?
+    existing = (await db.execute(
+        select(Tweet).where(Tweet.tweet_id == quoted_tweet_id)
+    )).scalars().first()
+    if existing:
+        return
+
+    try:
+        qt_data = await fetch_tweet(quoted_tweet_id)
+    except XAPIError as e:
+        logger.warning("Could not fetch quoted tweet %s: %s", quoted_tweet_id, e)
+        return
+
+    qt = Tweet(
+        tweet_id=quoted_tweet_id,
+        author_handle=qt_data.get("author_handle", ""),
+        author_display_name=qt_data.get("author_display_name", ""),
+        author_avatar_url=qt_data.get("author_avatar_url", ""),
+        author_verified=qt_data.get("author_verified", False),
+        text=qt_data.get("text", ""),
+        url=qt_data.get("url", f"https://x.com/i/status/{quoted_tweet_id}"),
+        media_urls=qt_data.get("media_urls"),
+        engagement=qt_data.get("engagement"),
+        is_quote_tweet=qt_data.get("is_quote_tweet", False),
+        is_reply=qt_data.get("is_reply", False),
+        quoted_tweet_id=qt_data.get("quoted_tweet_id"),
+        reply_to_tweet_id=qt_data.get("reply_to_tweet_id"),
+        reply_to_handle=qt_data.get("reply_to_handle"),
+        url_entities=qt_data.get("url_entities"),
+        feed_source="quoted_fetch",
+    )
+    if qt_data.get("created_at"):
+        qt.created_at = datetime.fromisoformat(qt_data["created_at"].replace("Z", "+00:00"))
+    db.add(qt)
+
+    # One level of nesting
+    if depth < 1 and qt_data.get("quoted_tweet_id"):
+        await _persist_quoted_tweet(db, qt_data["quoted_tweet_id"], depth + 1)
+
+
 async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, category: str | None):
     """Background task: fetch X API data and update the placeholder tweet."""
     from app.services.x_api import fetch_tweet, XAPIError
@@ -62,6 +109,10 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
             )).scalar_one_or_none()
             if not existing:
                 db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id, category=category))
+
+        # Also persist quoted tweet(s) so digest preview never needs X API
+        if api_data.get("quoted_tweet_id"):
+            await _persist_quoted_tweet(db, api_data["quoted_tweet_id"])
 
         await db.commit()
 
