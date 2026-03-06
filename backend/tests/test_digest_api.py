@@ -14,7 +14,7 @@ from app.db import Base, get_db
 from app.main import app
 
 # Import all models so Base.metadata knows about them
-from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft, DigestSendLog  # noqa: F401
+from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft, DigestSendLog, EmailEvent  # noqa: F401
 
 
 @compiles(JSONB, "sqlite")
@@ -400,3 +400,102 @@ async def test_retry_failed_sends(client: AsyncClient):
     log_resp = await client.get(f"/api/digest/drafts/{draft_id}/send-log")
     logs = log_resp.json()
     assert len(logs) == 2
+
+
+@pytest.mark.asyncio
+async def test_webhook_stores_event(client: AsyncClient):
+    """Webhook should store events when signature verification is skipped (no secret configured)."""
+    import secrets as secrets_mod
+    draft_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-03-06", "content_blocks": []
+    })
+    draft_id = draft_resp.json()["id"]
+
+    async with async_session() as session:
+        sub = Subscriber(email="test@example.com", unsubscribe_token=secrets_mod.token_urlsafe(32))
+        session.add(sub)
+        await session.commit()
+        await session.refresh(sub)
+        sub_id = sub.id
+
+        log = DigestSendLog(
+            draft_id=draft_id,
+            subscriber_id=sub_id,
+            email="test@example.com",
+            status="sent",
+            resend_message_id="test-msg-id-123",
+        )
+        session.add(log)
+        await session.commit()
+
+    import json as json_mod
+    payload = {
+        "type": "email.opened",
+        "created_at": "2026-03-06T12:00:00.000Z",
+        "data": {
+            "email_id": "test-msg-id-123",
+            "from": "test@test.com",
+            "to": ["test@example.com"],
+            "subject": "Test"
+        }
+    }
+    resp = await client.post(
+        "/api/webhooks/resend",
+        content=json_mod.dumps(payload),
+        headers={"content-type": "application/json"},
+    )
+    assert resp.status_code == 204
+
+    async with async_session() as session:
+        result = await session.execute(select(EmailEvent))
+        events = result.scalars().all()
+        assert len(events) == 1
+        assert events[0].event_type == "opened"
+        assert events[0].draft_id == draft_id
+        assert events[0].subscriber_id == sub_id
+
+
+@pytest.mark.asyncio
+async def test_webhook_deduplicates(client: AsyncClient):
+    """Sending the same webhook event twice should only store one event."""
+    import secrets as secrets_mod
+    draft_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-03-06", "content_blocks": []
+    })
+    draft_id = draft_resp.json()["id"]
+
+    async with async_session() as session:
+        sub = Subscriber(email="dedup@test.com", unsubscribe_token=secrets_mod.token_urlsafe(32))
+        session.add(sub)
+        await session.commit()
+        await session.refresh(sub)
+        sub_id = sub.id
+
+        log = DigestSendLog(
+            draft_id=draft_id,
+            subscriber_id=sub_id,
+            email="dedup@test.com",
+            status="sent",
+            resend_message_id="msg-dedup",
+        )
+        session.add(log)
+        await session.commit()
+
+    import json as json_mod
+    payload = {
+        "type": "email.opened",
+        "created_at": "2026-03-06T12:00:00.000Z",
+        "data": {"email_id": "msg-dedup", "from": "t@t.com", "to": ["dedup@test.com"], "subject": "T"}
+    }
+    body = json_mod.dumps(payload)
+
+    resp1 = await client.post("/api/webhooks/resend", content=body, headers={"content-type": "application/json"})
+    assert resp1.status_code == 204
+
+    resp2 = await client.post("/api/webhooks/resend", content=body, headers={"content-type": "application/json"})
+    assert resp2.status_code == 204
+
+    async with async_session() as session:
+        result = await session.execute(select(EmailEvent))
+        events = result.scalars().all()
+        assert len(events) == 1  # Only one stored despite two requests
