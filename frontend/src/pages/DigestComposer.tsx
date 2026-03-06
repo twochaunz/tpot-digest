@@ -2448,7 +2448,7 @@ export function DigestComposer() {
             overflowY: 'auto',
           }}
         >
-          {topicNavItems.map((item, i) => (
+          {topicNavItems.map((item) => (
             <button
               key={item.topicId}
               onClick={() => {
