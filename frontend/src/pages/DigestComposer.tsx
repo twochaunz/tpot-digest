@@ -1565,20 +1565,7 @@ export function DigestComposer() {
     }
   }
 
-  if (!isAdmin) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        Admin access required
-      </div>
-    )
-  }
-
-  const isSent = draft?.status === 'sent'
-  const isBusy = createDraft.isPending || updateDraft.isPending || sendTest.isPending || sendDigest.isPending || isGenerating
-  const blockIds = blocks.map((b) => b.id)
-  const topicCount = blocks.filter((b) => b.type === 'topic-header').length
-
-  // Build topic nav items from blocks
+  // Build topic nav items from blocks (must be before early returns — Rules of Hooks)
   const topicNavItems = useMemo(() => {
     const items: { topicId: number; title: string; color: string; tweetCount: number }[] = []
     let currentTopicId: number | null = null
@@ -1595,14 +1582,25 @@ export function DigestComposer() {
       } else if (b.type === 'tweet' && currentTopicId !== null) {
         const last = items[items.length - 1]
         if (last) last.tweetCount++
-      } else if (b.type === 'divider' || b.type === 'text') {
-        // text/divider between topics doesn't reset — only topic-header does
       }
     }
     return items
   }, [blocks, topics])
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  if (!isAdmin) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+        Admin access required
+      </div>
+    )
+  }
+
+  const isSent = draft?.status === 'sent'
+  const isBusy = createDraft.isPending || updateDraft.isPending || sendTest.isPending || sendDigest.isPending || isGenerating
+  const blockIds = blocks.map((b) => b.id)
+  const topicCount = blocks.filter((b) => b.type === 'topic-header').length
 
   return (
     <div ref={scrollContainerRef} style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg-base)' }}>
