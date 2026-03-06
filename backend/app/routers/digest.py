@@ -31,7 +31,7 @@ from app.schemas.digest import (
     DigestSendTestRequest,
     GenerateTemplateRequest,
 )
-from app.services.email import render_digest_email, send_digest_email
+from app.services.email import render_digest_email, send_digest_batch, send_digest_email
 
 logger = logging.getLogger(__name__)
 
@@ -584,7 +584,9 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
     date_str = _format_date(draft.date)
     subject = draft.subject or _default_subject(draft.date)
 
-    sent_count = 0
+    # Build batch email payloads (one per subscriber with personalized unsubscribe URL)
+    batch_emails = []
+    sub_by_email: dict[str, "Subscriber"] = {}
     for sub in subscribers:
         unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
         html = render_digest_email(
@@ -592,17 +594,30 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
             blocks=blocks,
             unsubscribe_url=unsubscribe_url,
         )
-        email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
+        batch_emails.append({
+            "to_email": sub.email,
+            "subject": subject,
+            "html_content": html,
+            "unsubscribe_url": unsubscribe_url,
+        })
+        sub_by_email[sub.email] = sub
+
+    # Send all emails in a single Resend batch API call (up to 100)
+    results = send_digest_batch(batch_emails)
+
+    sent_count = 0
+    for r in results:
+        sub = sub_by_email[r["to_email"]]
         log = DigestSendLog(
             draft_id=draft_id,
             subscriber_id=sub.id,
             email=sub.email,
-            status="sent" if email_result["success"] else "failed",
-            error_message=email_result["error"],
-            resend_message_id=email_result["result"].get("id") if email_result["result"] and isinstance(email_result["result"], dict) else None,
+            status="sent" if r["success"] else "failed",
+            error_message=r["error"],
+            resend_message_id=r["result"].get("id") if r["result"] and isinstance(r["result"], dict) else None,
         )
         db.add(log)
-        if email_result["success"]:
+        if r["success"]:
             sent_count += 1
 
     draft.status = "sent"
@@ -639,7 +654,8 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
         date_str = _format_date(draft.date)
         subject = draft.subject or _default_subject(draft.date)
 
-        sent_count = 0
+        batch_emails = []
+        sub_by_email: dict[str, "Subscriber"] = {}
         for sub in subscribers:
             unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
             html = render_digest_email(
@@ -647,17 +663,29 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
                 blocks=blocks,
                 unsubscribe_url=unsubscribe_url,
             )
-            email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
+            batch_emails.append({
+                "to_email": sub.email,
+                "subject": subject,
+                "html_content": html,
+                "unsubscribe_url": unsubscribe_url,
+            })
+            sub_by_email[sub.email] = sub
+
+        results = send_digest_batch(batch_emails)
+
+        sent_count = 0
+        for r in results:
+            sub = sub_by_email[r["to_email"]]
             log = DigestSendLog(
                 draft_id=draft.id,
                 subscriber_id=sub.id,
                 email=sub.email,
-                status="sent" if email_result["success"] else "failed",
-                error_message=email_result["error"],
-                resend_message_id=email_result["result"].get("id") if email_result["result"] and isinstance(email_result["result"], dict) else None,
+                status="sent" if r["success"] else "failed",
+                error_message=r["error"],
+                resend_message_id=r["result"].get("id") if r["result"] and isinstance(r["result"], dict) else None,
             )
             db.add(log)
-            if email_result["success"]:
+            if r["success"]:
                 sent_count += 1
 
         draft.status = "sent"
@@ -710,26 +738,38 @@ async def retry_failed_sends(draft_id: int, body: DigestRetryRequest | None = No
     date_str = _format_date(draft.date)
     subject = draft.subject or _default_subject(draft.date)
 
-    sent_count = 0
+    batch_emails = []
+    sub_by_email: dict[str, "Subscriber"] = {}
     for sub_id in sub_ids:
         sub = subscribers.get(sub_id)
         if not sub:
             continue
         unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
         html = render_digest_email(date_str=date_str, blocks=blocks, unsubscribe_url=unsubscribe_url)
-        email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
+        batch_emails.append({
+            "to_email": sub.email,
+            "subject": subject,
+            "html_content": html,
+            "unsubscribe_url": unsubscribe_url,
+        })
+        sub_by_email[sub.email] = sub
 
+    results = send_digest_batch(batch_emails)
+
+    sent_count = 0
+    for r in results:
+        sub = sub_by_email[r["to_email"]]
         new_log = DigestSendLog(
             draft_id=draft_id,
             subscriber_id=sub.id,
             email=sub.email,
-            status="sent" if email_result["success"] else "failed",
-            error_message=email_result["error"],
-            resend_message_id=email_result["result"].get("id") if email_result["result"] and isinstance(email_result["result"], dict) else None,
+            status="sent" if r["success"] else "failed",
+            error_message=r["error"],
+            resend_message_id=r["result"].get("id") if r["result"] and isinstance(r["result"], dict) else None,
         )
         db.add(new_log)
 
-        if email_result["success"]:
+        if r["success"]:
             sent_count += 1
 
     # Update draft recipient_count based on all successful sends
