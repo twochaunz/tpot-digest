@@ -60,18 +60,14 @@
       {% endif %}
       {% if tweet.media_images %}
       {% if tweet.media_images|length == 1 %}
-      <a href="{{ tweet.media_images[0].url }}" target="_blank" style="display:block;margin-bottom:10px;">
-        <img src="{{ tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:10px;max-height:240px;object-fit:cover;">
-      </a>
+      <img src="{{ tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:10px;margin-bottom:10px;">
       {% else %}
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
         {% for pair in tweet.media_images|batch(2) %}
         <tr>
           {% for img in pair %}
           <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
-            <a href="{{ img.url }}" target="_blank" style="display:block;">
-              <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:8px;max-height:160px;object-fit:cover;">
-            </a>
+            <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:8px;">
           </td>
           {% endfor %}
           {% if pair|length == 1 %}
@@ -127,18 +123,14 @@
         {% endif %}
         {% if tweet.quoted_tweet.media_images %}
         {% if tweet.quoted_tweet.media_images|length == 1 %}
-        <a href="{{ tweet.quoted_tweet.media_images[0].url }}" target="_blank" style="display:block;margin-bottom:8px;">
-          <img src="{{ tweet.quoted_tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:8px;max-height:180px;object-fit:cover;">
-        </a>
+        <img src="{{ tweet.quoted_tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:8px;margin-bottom:8px;">
         {% else %}
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
           {% for pair in tweet.quoted_tweet.media_images|batch(2) %}
           <tr>
             {% for img in pair %}
             <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
-              <a href="{{ img.url }}" target="_blank" style="display:block;">
-                <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:6px;max-height:120px;object-fit:cover;">
-              </a>
+              <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:6px;">
             </td>
             {% endfor %}
             {% if pair|length == 1 %}
