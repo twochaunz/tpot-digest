@@ -174,3 +174,55 @@ export function useSubscribers(enabled: boolean) {
     enabled,
   })
 }
+
+export interface DigestSendLog {
+  id: number
+  draft_id: number
+  subscriber_id: number
+  email: string
+  status: 'sent' | 'failed'
+  error_message: string | null
+  resend_message_id: string | null
+  attempted_at: string
+}
+
+export function useDraftSendLog(draftId: number | null) {
+  return useQuery<DigestSendLog[]>({
+    queryKey: ['draft-send-log', draftId],
+    queryFn: async () => {
+      const { data } = await api.get(`/digest/drafts/${draftId}/send-log`)
+      return data
+    },
+    enabled: draftId !== null,
+  })
+}
+
+export function useAllSendLogs(filters?: { status?: string; draft_id?: number; limit?: number; offset?: number }) {
+  return useQuery<DigestSendLog[]>({
+    queryKey: ['all-send-logs', filters],
+    queryFn: async () => {
+      const { data } = await api.get('/digest/send-log', { params: filters })
+      return data
+    },
+  })
+}
+
+export function useRetryFailedSends() {
+  const qc = useQueryClient()
+  return useMutation<
+    { retried: number; sent: number },
+    Error,
+    { draftId: number; subscriberIds?: number[] }
+  >({
+    mutationFn: async ({ draftId, subscriberIds }) => {
+      const body = subscriberIds ? { subscriber_ids: subscriberIds } : undefined
+      const { data } = await api.post(`/digest/drafts/${draftId}/retry`, body)
+      return data
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['draft-send-log', vars.draftId] })
+      qc.invalidateQueries({ queryKey: ['digest-drafts'] })
+      qc.invalidateQueries({ queryKey: ['all-send-logs'] })
+    },
+  })
+}
