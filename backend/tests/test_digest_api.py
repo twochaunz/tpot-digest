@@ -430,7 +430,7 @@ async def test_webhook_stores_event(client: AsyncClient):
 
     import json as json_mod
     payload = {
-        "type": "email.opened",
+        "type": "email.delivered",
         "created_at": "2026-03-06T12:00:00.000Z",
         "data": {
             "email_id": "test-msg-id-123",
@@ -450,7 +450,7 @@ async def test_webhook_stores_event(client: AsyncClient):
         result = await session.execute(select(EmailEvent))
         events = result.scalars().all()
         assert len(events) == 1
-        assert events[0].event_type == "opened"
+        assert events[0].event_type == "delivered"
         assert events[0].draft_id == draft_id
         assert events[0].subscriber_id == sub_id
 
@@ -483,7 +483,7 @@ async def test_webhook_deduplicates(client: AsyncClient):
 
     import json as json_mod
     payload = {
-        "type": "email.opened",
+        "type": "email.delivered",
         "created_at": "2026-03-06T12:00:00.000Z",
         "data": {"email_id": "msg-dedup", "from": "t@t.com", "to": ["dedup@test.com"], "subject": "T"}
     }
