@@ -158,18 +158,13 @@ def _build_quoted_tweet_dict(quoted_tweet: "Tweet", nested_qt: "Tweet | None" = 
     if nested_qt or quoted_tweet.quoted_tweet_id:
         text = _strip_tco_links(text)
 
-    media_images = []
-    for m in (quoted_tweet.media_urls or []):
-        if m.get("type") == "photo" and m.get("url"):
-            media_images.append(_proxy_avatar_url(m["url"]))
-
     qt: dict = {
         "author_handle": quoted_tweet.author_handle,
         "author_display_name": quoted_tweet.author_display_name,
         "author_avatar_url": _proxy_avatar_url(quoted_tweet.author_avatar_url),
         "text": text,
         "url": quoted_tweet.url,
-        "media_images": media_images,
+        "media_images": _collect_media(quoted_tweet.media_urls),
         "link_cards": _build_link_cards(quoted_tweet.url_entities),
     }
     if nested_qt:
@@ -203,14 +198,23 @@ def _build_link_cards(url_entities: list[dict] | None) -> list[dict]:
     return cards
 
 
+def _collect_media(media_urls: list[dict] | None) -> list[dict]:
+    """Extract photo media as structured dicts with URL and dimensions."""
+    images = []
+    for m in (media_urls or []):
+        if m.get("type") == "photo" and m.get("url"):
+            images.append({
+                "url": _proxy_avatar_url(m["url"]),
+                "width": m.get("width", 0),
+                "height": m.get("height", 0),
+            })
+    return images
+
+
 def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | dict | None" = None, nested_qt: "Tweet | dict | None" = None) -> dict:
     """Build a tweet dict for template rendering."""
     text = _strip_tco_links(tw.text)
-    # Collect photo URLs (proxy for email compatibility)
-    media_images = []
-    for m in (tw.media_urls or []):
-        if m.get("type") == "photo" and m.get("url"):
-            media_images.append(_proxy_avatar_url(m["url"]))
+    media_images = _collect_media(tw.media_urls)
 
     tweet_dict = {
         "author_handle": tw.author_handle,
