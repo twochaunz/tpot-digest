@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
-TRACKED_EVENTS = {"email.delivered", "email.opened", "email.clicked", "email.bounced", "email.complained"}
+TRACKED_EVENTS = {"email.delivered", "email.clicked", "email.bounced", "email.complained"}
 
 
 @router.post("/resend", status_code=status.HTTP_204_NO_CONTENT)
