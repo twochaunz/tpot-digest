@@ -14,7 +14,7 @@ from app.db import Base, get_db
 from app.main import app
 
 # Import all models so Base.metadata knows about them
-from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft  # noqa: F401
+from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft, DigestSendLog  # noqa: F401
 
 
 @compiles(JSONB, "sqlite")
@@ -297,3 +297,96 @@ async def test_editing_sent_draft_resets_to_draft(client: AsyncClient):
     })
     assert resp.status_code == 200
     assert resp.json()["status"] == "draft"
+
+
+@pytest.mark.asyncio
+async def test_send_creates_send_logs(client: AsyncClient):
+    """Sending a digest should create per-recipient send log entries."""
+    import secrets
+    async with async_session() as session:
+        sub1 = Subscriber(email="a@test.com", unsubscribe_token=secrets.token_urlsafe(32))
+        sub2 = Subscriber(email="b@test.com", unsubscribe_token=secrets.token_urlsafe(32))
+        session.add_all([sub1, sub2])
+        await session.commit()
+
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-03-01",
+        "content_blocks": [{"id": "b1", "type": "text", "content": "Hello"}],
+    })
+    draft_id = create_resp.json()["id"]
+
+    with patch("app.routers.digest.send_digest_email", return_value={"success": True, "result": {"id": "msg_123"}, "error": None}):
+        resp = await client.post(f"/api/digest/drafts/{draft_id}/send")
+    assert resp.status_code == 200
+    assert resp.json()["sent_count"] == 2
+
+    log_resp = await client.get(f"/api/digest/drafts/{draft_id}/send-log")
+    assert log_resp.status_code == 200
+    logs = log_resp.json()
+    assert len(logs) == 2
+    assert all(log["status"] == "sent" for log in logs)
+
+
+@pytest.mark.asyncio
+async def test_send_logs_partial_failure(client: AsyncClient):
+    """When some sends fail, logs should reflect mixed status."""
+    import secrets
+    async with async_session() as session:
+        sub1 = Subscriber(email="ok@test.com", unsubscribe_token=secrets.token_urlsafe(32))
+        sub2 = Subscriber(email="fail@test.com", unsubscribe_token=secrets.token_urlsafe(32))
+        session.add_all([sub1, sub2])
+        await session.commit()
+
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-03-01",
+        "content_blocks": [{"id": "b1", "type": "text", "content": "Hello"}],
+    })
+    draft_id = create_resp.json()["id"]
+
+    call_count = 0
+    def mock_send(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return {"success": True, "result": {"id": "msg_ok"}, "error": None}
+        return {"success": False, "result": None, "error": "Resend rate limit"}
+
+    with patch("app.routers.digest.send_digest_email", side_effect=mock_send):
+        resp = await client.post(f"/api/digest/drafts/{draft_id}/send")
+    assert resp.json()["sent_count"] == 1
+
+    log_resp = await client.get(f"/api/digest/drafts/{draft_id}/send-log")
+    logs = log_resp.json()
+    sent = [l for l in logs if l["status"] == "sent"]
+    failed = [l for l in logs if l["status"] == "failed"]
+    assert len(sent) == 1
+    assert len(failed) == 1
+    assert failed[0]["error_message"] == "Resend rate limit"
+
+
+@pytest.mark.asyncio
+async def test_retry_failed_sends(client: AsyncClient):
+    """Retrying should resend to failed recipients and create new log entries."""
+    import secrets
+    async with async_session() as session:
+        sub = Subscriber(email="retry@test.com", unsubscribe_token=secrets.token_urlsafe(32))
+        session.add(sub)
+        await session.commit()
+
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-03-01",
+        "content_blocks": [{"id": "b1", "type": "text", "content": "Hello"}],
+    })
+    draft_id = create_resp.json()["id"]
+
+    with patch("app.routers.digest.send_digest_email", return_value={"success": False, "result": None, "error": "timeout"}):
+        await client.post(f"/api/digest/drafts/{draft_id}/send")
+
+    with patch("app.routers.digest.send_digest_email", return_value={"success": True, "result": {"id": "msg_retry"}, "error": None}):
+        retry_resp = await client.post(f"/api/digest/drafts/{draft_id}/retry")
+    assert retry_resp.status_code == 200
+    assert retry_resp.json()["sent"] == 1
+
+    log_resp = await client.get(f"/api/digest/drafts/{draft_id}/send-log")
+    logs = log_resp.json()
+    assert len(logs) == 2
