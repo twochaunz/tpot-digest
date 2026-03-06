@@ -1572,24 +1572,15 @@ export function DigestComposer() {
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]
       if (b.type === 'topic-header' && b.topic_id) {
-        topicNum++
         const t = topics.find(tp => tp.id === b.topic_id)
+        const isKek = t?.title?.trim().toLowerCase() === 'kek'
+        if (!isKek) topicNum++
         items.push({
-          id: `topic-${b.topic_id}`,
+          id: isKek ? 'kek' : `topic-${b.topic_id}`,
           topicId: b.topic_id,
-          label: String(topicNum),
-          title: t?.title || `Topic #${b.topic_id}`,
+          label: isKek ? 'kek' : String(topicNum),
+          title: isKek ? 'kek' : (t?.title || `Topic #${b.topic_id}`),
           color: t?.color || 'var(--text-tertiary)',
-          tweetCount: 0,
-          blockId: b.id,
-        })
-      } else if (b.type === 'text' && b.content?.trim().toLowerCase() === '**kek**') {
-        items.push({
-          id: 'kek',
-          topicId: null,
-          label: 'kek',
-          title: 'kek',
-          color: '#6b7280',
           tweetCount: 0,
           blockId: b.id,
         })
@@ -2463,7 +2454,12 @@ export function DigestComposer() {
               key={item.id}
               onClick={() => {
                 const el = scrollContainerRef.current?.querySelector(`[data-block-id="${item.blockId}"]`)
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                if (el && scrollContainerRef.current) {
+                  const containerRect = scrollContainerRef.current.getBoundingClientRect()
+                  const elRect = el.getBoundingClientRect()
+                  const scrollTop = scrollContainerRef.current.scrollTop + (elRect.top - containerRect.top) - 70
+                  scrollContainerRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' })
+                }
               }}
               style={{
                 display: 'flex',
@@ -2495,7 +2491,12 @@ export function DigestComposer() {
           <button
             onClick={() => {
               const el = scrollContainerRef.current?.querySelector('[data-section="preview"]')
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              if (el && scrollContainerRef.current) {
+                const containerRect = scrollContainerRef.current.getBoundingClientRect()
+                const elRect = el.getBoundingClientRect()
+                const scrollTop = scrollContainerRef.current.scrollTop + (elRect.top - containerRect.top) - 70
+                scrollContainerRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' })
+              }
             }}
             style={{
               display: 'flex',
