@@ -152,40 +152,28 @@ def _strip_tco_links(text: str) -> str:
     return re.sub(r'\s*https://t\.co/\w+', '', text).strip()
 
 
-def _build_quoted_tweet_dict(quoted_tweet: "Tweet | dict", nested_qt: "Tweet | dict | None" = None) -> dict:
+def _build_quoted_tweet_dict(quoted_tweet: "Tweet", nested_qt: "Tweet | None" = None) -> dict:
     """Build a quoted tweet dict, optionally with its own nested quoted tweet."""
-    if isinstance(quoted_tweet, dict):
-        qt = dict(quoted_tweet)
-        qt["author_avatar_url"] = _proxy_avatar_url(qt.get("author_avatar_url"))
-        text = qt.get("text", "")
-        # Strip t.co links if this quoted tweet has its own quoted tweet
-        if nested_qt or qt.get("quoted_tweet_id"):
-            text = _strip_tco_links(text)
-        qt["text"] = text
-    else:
-        text = quoted_tweet.text
-        if nested_qt or quoted_tweet.quoted_tweet_id:
-            text = _strip_tco_links(text)
-        qt = {
-            "author_handle": quoted_tweet.author_handle,
-            "author_display_name": quoted_tweet.author_display_name,
-            "author_avatar_url": _proxy_avatar_url(quoted_tweet.author_avatar_url),
-            "text": text,
-            "url": quoted_tweet.url,
-        }
+    text = quoted_tweet.text
+    if nested_qt or quoted_tweet.quoted_tweet_id:
+        text = _strip_tco_links(text)
+
+    media_images = []
+    for m in (quoted_tweet.media_urls or []):
+        if m.get("type") == "photo" and m.get("url"):
+            media_images.append(_proxy_avatar_url(m["url"]))
+
+    qt: dict = {
+        "author_handle": quoted_tweet.author_handle,
+        "author_display_name": quoted_tweet.author_display_name,
+        "author_avatar_url": _proxy_avatar_url(quoted_tweet.author_avatar_url),
+        "text": text,
+        "url": quoted_tweet.url,
+        "media_images": media_images,
+        "link_cards": _build_link_cards(quoted_tweet.url_entities),
+    }
     if nested_qt:
-        if isinstance(nested_qt, dict):
-            nqt = dict(nested_qt)
-            nqt["author_avatar_url"] = _proxy_avatar_url(nqt.get("author_avatar_url"))
-            qt["quoted_tweet"] = nqt
-        else:
-            qt["quoted_tweet"] = {
-                "author_handle": nested_qt.author_handle,
-                "author_display_name": nested_qt.author_display_name,
-                "author_avatar_url": _proxy_avatar_url(nested_qt.author_avatar_url),
-                "text": nested_qt.text,
-                "url": nested_qt.url,
-            }
+        qt["quoted_tweet"] = _build_quoted_tweet_dict(nested_qt)
     return qt
 
 
