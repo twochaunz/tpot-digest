@@ -31,6 +31,7 @@ services:
       DIGEST_FROM_EMAIL: ${DIGEST_FROM_EMAIL:-abridged tech <read@abridged.tech>}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET}
     volumes:
       - app_data:/app/data
     depends_on:
