@@ -315,7 +315,10 @@ async def test_send_creates_send_logs(client: AsyncClient):
     })
     draft_id = create_resp.json()["id"]
 
-    with patch("app.routers.digest.send_digest_email", return_value={"success": True, "result": {"id": "msg_123"}, "error": None}):
+    def mock_batch(emails):
+        return [{"to_email": e["to_email"], "success": True, "result": {"id": "msg_123"}, "error": None} for e in emails]
+
+    with patch("app.routers.digest.send_digest_batch", side_effect=mock_batch):
         resp = await client.post(f"/api/digest/drafts/{draft_id}/send")
     assert resp.status_code == 200
     assert resp.json()["sent_count"] == 2
@@ -343,15 +346,16 @@ async def test_send_logs_partial_failure(client: AsyncClient):
     })
     draft_id = create_resp.json()["id"]
 
-    call_count = 0
-    def mock_send(*args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            return {"success": True, "result": {"id": "msg_ok"}, "error": None}
-        return {"success": False, "result": None, "error": "Resend rate limit"}
+    def mock_batch(emails):
+        results = []
+        for i, e in enumerate(emails):
+            if i == 0:
+                results.append({"to_email": e["to_email"], "success": True, "result": {"id": "msg_ok"}, "error": None})
+            else:
+                results.append({"to_email": e["to_email"], "success": False, "result": None, "error": "Resend rate limit"})
+        return results
 
-    with patch("app.routers.digest.send_digest_email", side_effect=mock_send):
+    with patch("app.routers.digest.send_digest_batch", side_effect=mock_batch):
         resp = await client.post(f"/api/digest/drafts/{draft_id}/send")
     assert resp.json()["sent_count"] == 1
 
@@ -379,10 +383,16 @@ async def test_retry_failed_sends(client: AsyncClient):
     })
     draft_id = create_resp.json()["id"]
 
-    with patch("app.routers.digest.send_digest_email", return_value={"success": False, "result": None, "error": "timeout"}):
+    def mock_batch_fail(emails):
+        return [{"to_email": e["to_email"], "success": False, "result": None, "error": "timeout"} for e in emails]
+
+    with patch("app.routers.digest.send_digest_batch", side_effect=mock_batch_fail):
         await client.post(f"/api/digest/drafts/{draft_id}/send")
 
-    with patch("app.routers.digest.send_digest_email", return_value={"success": True, "result": {"id": "msg_retry"}, "error": None}):
+    def mock_batch_success(emails):
+        return [{"to_email": e["to_email"], "success": True, "result": {"id": "msg_retry"}, "error": None} for e in emails]
+
+    with patch("app.routers.digest.send_digest_batch", side_effect=mock_batch_success):
         retry_resp = await client.post(f"/api/digest/drafts/{draft_id}/retry")
     assert retry_resp.status_code == 200
     assert retry_resp.json()["sent"] == 1
