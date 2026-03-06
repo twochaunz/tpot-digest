@@ -185,6 +185,11 @@ async def list_tweets(
     else:
         stmt = select(Tweet)
 
+    # Exclude quoted-tweet-only records from the feed
+    stmt = stmt.where(
+        (Tweet.feed_source.is_(None)) | (Tweet.feed_source != "quoted_fetch")
+    )
+
     if date:
         la = ZoneInfo('America/Los_Angeles')
         day_start = datetime.combine(date, time.min, tzinfo=la).astimezone(timezone.utc)
