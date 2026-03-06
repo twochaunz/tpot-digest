@@ -8,6 +8,8 @@ export interface DigestBlock {
   topic_id?: number | null      // topic-header blocks
   tweet_id?: number | null      // tweet blocks (DB integer id)
   show_engagement?: boolean     // tweet blocks
+  show_media?: boolean          // tweet blocks (default true)
+  show_quoted_tweet?: boolean   // tweet blocks (default true)
 }
 
 export interface GenerateTemplateResult {

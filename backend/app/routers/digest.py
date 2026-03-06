@@ -211,10 +211,10 @@ def _collect_media(media_urls: list[dict] | None) -> list[dict]:
     return images
 
 
-def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | dict | None" = None, nested_qt: "Tweet | dict | None" = None) -> dict:
+def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | dict | None" = None, nested_qt: "Tweet | dict | None" = None, *, show_media: bool = True) -> dict:
     """Build a tweet dict for template rendering."""
     text = _strip_tco_links(tw.text)
-    media_images = _collect_media(tw.media_urls)
+    media_images = _collect_media(tw.media_urls) if show_media else []
 
     tweet_dict = {
         "author_handle": tw.author_handle,
@@ -223,7 +223,7 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | d
         "text": text,
         "url": tw.url,
         "show_engagement": show_engagement,
-        "link_cards": _build_link_cards(tw.url_entities),
+        "link_cards": _build_link_cards(tw.url_entities) if show_media else [],
         "media_images": media_images,
     }
     if show_engagement:
@@ -368,9 +368,11 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
                 continue
 
             show_engagement = block.get("show_engagement", False)
-            quoted, nested_qt = await _fetch_quoted_chain(tw, db)
+            show_media = block.get("show_media", True)
+            show_quoted = block.get("show_quoted_tweet", True)
+            quoted, nested_qt = (await _fetch_quoted_chain(tw, db)) if show_quoted else (None, None)
 
-            tweet_block = _build_tweet_dict(tw, show_engagement, quoted, nested_qt)
+            tweet_block = _build_tweet_dict(tw, show_engagement, quoted, nested_qt, show_media=show_media)
             tweet_block["type"] = "tweet"
             result_blocks.append(tweet_block)
 
