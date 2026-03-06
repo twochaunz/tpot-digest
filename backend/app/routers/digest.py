@@ -309,41 +309,23 @@ async def generate_template(body: GenerateTemplateRequest, db: AsyncSession = De
     return {"topics": result_topics}
 
 
-async def _fetch_quoted_tweet(tweet_id: str, db: "AsyncSession") -> "Tweet | dict | None":
-    """Fetch a quoted tweet from DB, falling back to X API."""
+async def _fetch_quoted_tweet(tweet_id: str, db: "AsyncSession") -> "Tweet | None":
+    """Look up a quoted tweet from the DB. No X API calls."""
     qt_stmt = select(Tweet).where(Tweet.tweet_id == tweet_id)
     qt_result = await db.execute(qt_stmt)
-    quoted = qt_result.scalars().first()
-    if not quoted:
-        try:
-            from app.services.x_api import fetch_tweet
-            api_data = await fetch_tweet(tweet_id)
-            quoted = {
-                "author_handle": api_data.get("author_handle", ""),
-                "author_display_name": api_data.get("author_display_name", ""),
-                "author_avatar_url": api_data.get("author_avatar_url", ""),
-                "text": api_data.get("text", ""),
-                "url": api_data.get("url", f"https://x.com/i/status/{tweet_id}"),
-                "quoted_tweet_id": api_data.get("quoted_tweet_id"),
-            }
-        except Exception:
-            logger.warning("Could not fetch quoted tweet %s", tweet_id)
-    return quoted
+    return qt_result.scalars().first()
 
 
-async def _fetch_quoted_chain(tw: "Tweet | dict", db: "AsyncSession") -> tuple["Tweet | dict | None", "Tweet | dict | None"]:
-    """Fetch quoted tweet and its nested quoted tweet (one level deep)."""
-    qt_id = tw.quoted_tweet_id if isinstance(tw, Tweet) else tw.get("quoted_tweet_id")
-    if not qt_id:
+async def _fetch_quoted_chain(tw: "Tweet", db: "AsyncSession") -> tuple["Tweet | None", "Tweet | None"]:
+    """Look up quoted tweet and its nested quoted tweet (one level deep) from DB."""
+    if not tw.quoted_tweet_id:
         return None, None
-    quoted = await _fetch_quoted_tweet(qt_id, db)
+    quoted = await _fetch_quoted_tweet(tw.quoted_tweet_id, db)
     if not quoted:
         return None, None
-    # Fetch nested quoted tweet (one more level)
-    nested_qt_id = quoted.quoted_tweet_id if isinstance(quoted, Tweet) else quoted.get("quoted_tweet_id")
     nested = None
-    if nested_qt_id:
-        nested = await _fetch_quoted_tweet(nested_qt_id, db)
+    if quoted.quoted_tweet_id:
+        nested = await _fetch_quoted_tweet(quoted.quoted_tweet_id, db)
     return quoted, nested
 
 
