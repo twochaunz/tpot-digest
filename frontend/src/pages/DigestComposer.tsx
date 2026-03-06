@@ -2373,6 +2373,7 @@ export function DigestComposer() {
         {/* Email Preview — always visible when a draft exists */}
         {selectedDraftId && (
           <div
+            data-section="preview"
             style={{
               background: 'var(--bg-raised)',
               border: '1px solid var(--border)',
@@ -2442,11 +2443,9 @@ export function DigestComposer() {
             flexDirection: 'column',
             gap: 3,
             zIndex: 30,
-            maxHeight: 'calc(100dvh - 120px)',
-            overflowY: 'auto',
           }}
         >
-          {topicNavItems.map((item) => (
+          {topicNavItems.map((item, idx) => (
             <button
               key={item.topicId}
               onClick={() => {
@@ -2456,46 +2455,62 @@ export function DigestComposer() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '5px 10px',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                padding: 0,
                 background: item.color,
                 color: '#fff',
                 border: 'none',
                 borderRadius: '6px 0 0 6px',
                 cursor: 'pointer',
-                fontSize: 11,
-                fontWeight: 600,
+                fontSize: 12,
+                fontWeight: 700,
                 fontFamily: 'var(--font-body)',
-                letterSpacing: '0.02em',
-                whiteSpace: 'nowrap',
-                lineHeight: 1.3,
-                opacity: 0.9,
+                lineHeight: 1,
+                opacity: 0.85,
                 transition: 'opacity 0.15s',
-                textAlign: 'left',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.9' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85' }}
               title={item.title}
             >
-              <span style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: 120,
-              }}>
-                {item.title}
-              </span>
-              <span style={{
-                background: 'rgba(255,255,255,0.25)',
-                borderRadius: 999,
-                padding: '1px 5px',
-                fontSize: 10,
-                fontWeight: 700,
-                lineHeight: 1.4,
-              }}>
-                {item.tweetCount}
-              </span>
+              {idx + 1}
             </button>
           ))}
+          {/* Preview tab */}
+          <button
+            onClick={() => {
+              const el = scrollContainerRef.current?.querySelector('[data-section="preview"]')
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 28,
+              height: 28,
+              padding: 0,
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border)',
+              borderRight: 'none',
+              borderRadius: '6px 0 0 6px',
+              cursor: 'pointer',
+              fontSize: 10,
+              fontWeight: 600,
+              fontFamily: 'var(--font-body)',
+              lineHeight: 1,
+              marginTop: 4,
+              opacity: 0.85,
+              transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85' }}
+            title="Email Preview"
+          >
+            &#9993;
+          </button>
         </div>
       )}
 
