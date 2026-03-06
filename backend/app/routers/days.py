@@ -25,7 +25,11 @@ def _tweet_out_with_category(tweet: Tweet, category: str | None) -> TweetOut:
 async def get_latest_date(db: AsyncSession = Depends(get_db)):
     """Return the latest date (in LA timezone) that has at least one tweet."""
     la = ZoneInfo("America/Los_Angeles")
-    result = await db.execute(select(func.max(Tweet.saved_at)))
+    result = await db.execute(
+        select(func.max(Tweet.saved_at)).where(
+            (Tweet.feed_source.is_(None)) | (Tweet.feed_source != "quoted_fetch")
+        )
+    )
     latest = result.scalar_one_or_none()
     if not latest:
         return {"date": None}
@@ -44,10 +48,11 @@ async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
         select(Topic).where(Topic.date == day).order_by(Topic.position)
     )).scalars().all()
 
-    # 2. Fetch ALL tweets for this date in one query
+    # 2. Fetch ALL tweets for this date in one query (exclude quoted-fetch-only records)
     all_tweets = (await db.execute(
         select(Tweet)
         .where(Tweet.saved_at >= day_start, Tweet.saved_at <= day_end)
+        .where((Tweet.feed_source.is_(None)) | (Tweet.feed_source != "quoted_fetch"))
         .order_by(Tweet.saved_at.desc(), Tweet.id.desc())
     )).scalars().all()
 
