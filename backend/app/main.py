@@ -38,6 +38,9 @@ app.include_router(digest_router)
 from app.routers.webhooks import router as webhooks_router
 app.include_router(webhooks_router)
 
+from app.routers.analytics import router as analytics_router
+app.include_router(analytics_router)
+
 
 @app.get("/api/health")
 async def health():
