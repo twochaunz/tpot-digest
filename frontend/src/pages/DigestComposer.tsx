@@ -1593,6 +1593,22 @@ export function DigestComposer() {
             Drafts{drafts ? ` (${drafts.length})` : ''}
           </button>
 
+          <button
+            onClick={() => navigate('/app/send-log')}
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-secondary)',
+              padding: '6px 12px',
+              fontSize: 13,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Send Log
+          </button>
+
           {saveStatus === 'saving' && (
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Saving...</span>
           )}
