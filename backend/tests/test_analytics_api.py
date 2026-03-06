@@ -108,7 +108,8 @@ async def test_analytics_overview(client: AsyncClient):
     data = resp.json()
     assert data["subscriber_count"] >= 2
     assert data["last_digest"] is not None
-    assert data["last_digest"]["open_rate"] == 50.0
+    assert data["last_digest"]["click_rate"] == 150.0
+    assert "open_rate" not in data["last_digest"]
 
 
 @pytest.mark.asyncio
@@ -119,8 +120,8 @@ async def test_analytics_digests(client: AsyncClient):
     data = resp.json()
     assert len(data) == 1
     assert data[0]["recipients"] == 2
-    assert data[0]["opens"] == 1
     assert data[0]["clicks"] == 3
+    assert "opens" not in data[0]
 
 
 @pytest.mark.asyncio
@@ -142,6 +143,7 @@ async def test_analytics_subscribers(client: AsyncClient):
     data = resp.json()
     assert len(data) == 2
     alice = next(s for s in data if s["email"] == "alice@test.com")
-    assert alice["open_rate"] == 100.0
+    assert alice["click_rate"] == 300.0
+    assert "open_rate" not in alice
     bob = next(s for s in data if s["email"] == "bob@test.com")
-    assert bob["open_rate"] == 0.0
+    assert bob["click_rate"] == 0.0

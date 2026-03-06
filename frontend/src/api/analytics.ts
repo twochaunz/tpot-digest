@@ -8,8 +8,6 @@ export interface AnalyticsOverview {
     date: string
     subject: string | null
     recipients: number
-    opens: number
-    open_rate: number
     clicks: number
     click_rate: number
     sent_at: string | null
@@ -21,8 +19,6 @@ export interface DigestAnalytics {
   date: string
   subject: string | null
   recipients: number
-  opens: number
-  open_rate: number
   clicks: number
   click_rate: number
   sent_at: string | null
@@ -34,7 +30,6 @@ export interface DigestDetail {
     email: string
     subscriber_id: number
     delivered: boolean
-    opened: boolean
     clicked: boolean
   }>
 }
@@ -44,9 +39,8 @@ export interface SubscriberAnalytics {
   subscriber_id: number
   subscribed_at: string | null
   digests_received: number
-  open_rate: number
   click_rate: number
-  last_opened: string | null
+  last_clicked: string | null
 }
 
 export function useAnalyticsOverview() {

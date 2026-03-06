@@ -68,7 +68,7 @@ function DigestRow({
   isExpanded,
   onToggle,
 }: {
-  digest: { draft_id: number; date: string; subject: string | null; recipients: number; opens: number; open_rate: number; clicks: number; click_rate: number; sent_at: string | null }
+  digest: { draft_id: number; date: string; subject: string | null; recipients: number; clicks: number; click_rate: number; sent_at: string | null }
   isExpanded: boolean
   onToggle: () => void
 }) {
@@ -80,7 +80,7 @@ function DigestRow({
         onClick={onToggle}
         style={{
           display: 'grid',
-          gridTemplateColumns: '90px 1fr 80px 60px 80px 60px 80px',
+          gridTemplateColumns: '90px 1fr 80px 60px 80px',
           gap: 12,
           padding: '10px 20px',
           fontSize: 13,
@@ -112,12 +112,6 @@ function DigestRow({
         </span>
         <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>
           {digest.recipients}
-        </span>
-        <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>
-          {digest.opens}
-        </span>
-        <span style={{ color: rateColor(digest.open_rate), textAlign: 'right', fontWeight: 600 }}>
-          {formatPercent(digest.open_rate)}
         </span>
         <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>
           {digest.clicks}
@@ -227,7 +221,7 @@ function DigestRow({
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr 80px 80px 80px',
+                        gridTemplateColumns: '1fr 80px 80px',
                         gap: 8,
                         padding: '8px 14px',
                         fontSize: 11,
@@ -241,7 +235,6 @@ function DigestRow({
                     >
                       <span>Email</span>
                       <span style={{ textAlign: 'center' }}>Delivered</span>
-                      <span style={{ textAlign: 'center' }}>Opened</span>
                       <span style={{ textAlign: 'center' }}>Clicked</span>
                     </div>
                     {detail.data.subscribers.map((sub) => (
@@ -249,7 +242,7 @@ function DigestRow({
                         key={sub.subscriber_id}
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '1fr 80px 80px 80px',
+                          gridTemplateColumns: '1fr 80px 80px',
                           gap: 8,
                           padding: '6px 14px',
                           fontSize: 12,
@@ -269,9 +262,6 @@ function DigestRow({
                         </span>
                         <span style={{ textAlign: 'center', color: sub.delivered ? '#4ade80' : 'var(--text-tertiary)' }}>
                           {sub.delivered ? '\u2713' : '\u2014'}
-                        </span>
-                        <span style={{ textAlign: 'center', color: sub.opened ? '#4ade80' : 'var(--text-tertiary)' }}>
-                          {sub.opened ? '\u2713' : '\u2014'}
                         </span>
                         <span style={{ textAlign: 'center', color: sub.clicked ? '#4ade80' : 'var(--text-tertiary)' }}>
                           {sub.clicked ? '\u2713' : '\u2014'}
@@ -384,11 +374,6 @@ export function AnalyticsPage() {
               value={String(overview.data.subscriber_count)}
             />
             <StatCard
-              label="Last Open Rate"
-              value={lastDigest ? formatPercent(lastDigest.open_rate) : '—'}
-              color={lastDigest ? rateColor(lastDigest.open_rate) : undefined}
-            />
-            <StatCard
               label="Last Click Rate"
               value={lastDigest ? formatPercent(lastDigest.click_rate) : '—'}
               color={lastDigest ? rateColor(lastDigest.click_rate) : undefined}
@@ -460,7 +445,7 @@ export function AnalyticsPage() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '90px 1fr 80px 60px 80px 60px 80px',
+                    gridTemplateColumns: '90px 1fr 80px 60px 80px',
                     gap: 12,
                     padding: '10px 20px',
                     fontSize: 11,
@@ -474,8 +459,6 @@ export function AnalyticsPage() {
                   <span>Date</span>
                   <span>Subject</span>
                   <span style={{ textAlign: 'right' }}>Recipients</span>
-                  <span style={{ textAlign: 'right' }}>Opens</span>
-                  <span style={{ textAlign: 'right' }}>Open Rate</span>
                   <span style={{ textAlign: 'right' }}>Clicks</span>
                   <span style={{ textAlign: 'right' }}>Click Rate</span>
                 </div>
@@ -523,7 +506,7 @@ export function AnalyticsPage() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 110px 100px 80px 80px 110px',
+                    gridTemplateColumns: '1fr 110px 100px 80px 110px',
                     gap: 12,
                     padding: '10px 20px',
                     fontSize: 11,
@@ -537,9 +520,8 @@ export function AnalyticsPage() {
                   <span>Email</span>
                   <span style={{ textAlign: 'right' }}>Subscribed</span>
                   <span style={{ textAlign: 'right' }}>Received</span>
-                  <span style={{ textAlign: 'right' }}>Open Rate</span>
                   <span style={{ textAlign: 'right' }}>Click Rate</span>
-                  <span style={{ textAlign: 'right' }}>Last Opened</span>
+                  <span style={{ textAlign: 'right' }}>Last Clicked</span>
                 </div>
 
                 {subscribers.data.map((sub) => (
@@ -547,7 +529,7 @@ export function AnalyticsPage() {
                     key={sub.subscriber_id}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 110px 100px 80px 80px 110px',
+                      gridTemplateColumns: '1fr 110px 100px 80px 110px',
                       gap: 12,
                       padding: '10px 20px',
                       fontSize: 13,
@@ -574,15 +556,6 @@ export function AnalyticsPage() {
                     </span>
                     <span
                       style={{
-                        color: rateColor(sub.open_rate),
-                        textAlign: 'right',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {formatPercent(sub.open_rate)}
-                    </span>
-                    <span
-                      style={{
                         color: rateColor(sub.click_rate),
                         textAlign: 'right',
                         fontWeight: 600,
@@ -591,7 +564,7 @@ export function AnalyticsPage() {
                       {formatPercent(sub.click_rate)}
                     </span>
                     <span style={{ color: 'var(--text-tertiary)', fontSize: 12, textAlign: 'right' }}>
-                      {formatDate(sub.last_opened)}
+                      {formatDate(sub.last_clicked)}
                     </span>
                   </div>
                 ))}

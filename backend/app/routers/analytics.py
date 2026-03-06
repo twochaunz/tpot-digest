@@ -39,15 +39,8 @@ async def get_overview(db=Depends(get_db)):
     last_digest = None
     if last_draft:
         recipients = last_draft.recipient_count or 0
-        opens = 0
         clicks = 0
         if recipients > 0:
-            open_count = await db.execute(
-                select(func.count(distinct(EmailEvent.subscriber_id)))
-                .where(EmailEvent.draft_id == last_draft.id)
-                .where(EmailEvent.event_type == "opened")
-            )
-            opens = open_count.scalar() or 0
             click_count = await db.execute(
                 select(func.count())
                 .where(EmailEvent.draft_id == last_draft.id)
@@ -60,8 +53,6 @@ async def get_overview(db=Depends(get_db)):
             "date": str(last_draft.date),
             "subject": last_draft.subject,
             "recipients": recipients,
-            "opens": opens,
-            "open_rate": round(opens / recipients * 100, 1) if recipients else 0,
             "clicks": clicks,
             "click_rate": round(clicks / recipients * 100, 1) if recipients else 0,
             "sent_at": last_draft.sent_at.isoformat() if last_draft.sent_at else None,
@@ -82,13 +73,6 @@ async def get_digest_analytics(db=Depends(get_db)):
     results = []
     for draft in drafts:
         recipients = draft.recipient_count or 0
-        open_q = await db.execute(
-            select(func.count(distinct(EmailEvent.subscriber_id)))
-            .where(EmailEvent.draft_id == draft.id)
-            .where(EmailEvent.event_type == "opened")
-        )
-        opens = open_q.scalar() or 0
-
         click_q = await db.execute(
             select(func.count())
             .where(EmailEvent.draft_id == draft.id)
@@ -101,8 +85,6 @@ async def get_digest_analytics(db=Depends(get_db)):
             "date": str(draft.date),
             "subject": draft.subject,
             "recipients": recipients,
-            "opens": opens,
-            "open_rate": round(opens / recipients * 100, 1) if recipients else 0,
             "clicks": clicks,
             "click_rate": round(clicks / recipients * 100, 1) if recipients else 0,
             "sent_at": draft.sent_at.isoformat() if draft.sent_at else None,
@@ -144,7 +126,6 @@ async def get_digest_detail(draft_id: int, db=Depends(get_db)):
             "email": log.email,
             "subscriber_id": log.subscriber_id,
             "delivered": "delivered" in event_types,
-            "opened": "opened" in event_types,
             "clicked": "clicked" in event_types,
         })
 
@@ -167,13 +148,6 @@ async def get_subscriber_analytics(db=Depends(get_db)):
         )
         digests_received = sent_q.scalar() or 0
 
-        opened_q = await db.execute(
-            select(func.count(distinct(EmailEvent.draft_id)))
-            .where(EmailEvent.subscriber_id == sub.id)
-            .where(EmailEvent.event_type == "opened")
-        )
-        digests_opened = opened_q.scalar() or 0
-
         clicks_q = await db.execute(
             select(func.count())
             .where(EmailEvent.subscriber_id == sub.id)
@@ -181,21 +155,20 @@ async def get_subscriber_analytics(db=Depends(get_db)):
         )
         total_clicks = clicks_q.scalar() or 0
 
-        last_open_q = await db.execute(
+        last_click_q = await db.execute(
             select(func.max(EmailEvent.event_at))
             .where(EmailEvent.subscriber_id == sub.id)
-            .where(EmailEvent.event_type == "opened")
+            .where(EmailEvent.event_type == "clicked")
         )
-        last_opened = last_open_q.scalar()
+        last_clicked = last_click_q.scalar()
 
         results.append({
             "email": sub.email,
             "subscriber_id": sub.id,
             "subscribed_at": sub.subscribed_at.isoformat() if sub.subscribed_at else None,
             "digests_received": digests_received,
-            "open_rate": round(digests_opened / digests_received * 100, 1) if digests_received else 0,
             "click_rate": round(total_clicks / digests_received * 100, 1) if digests_received else 0,
-            "last_opened": last_opened.isoformat() if last_opened else None,
+            "last_clicked": last_clicked.isoformat() if last_clicked else None,
         })
 
     return results
