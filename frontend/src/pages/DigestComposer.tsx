@@ -18,6 +18,8 @@ import {
   useSubscriberCount,
   useSubscribers,
   useGenerateTemplate,
+  useDraftSendLog,
+  useRetryFailedSends,
 } from '../api/digest'
 import {
   DndContext,
@@ -1200,6 +1202,10 @@ export function DigestComposer() {
   const deleteDraft = useDeleteDigestDraft()
   const sendTest = useSendTestDigest()
   const sendDigest = useSendDigest()
+  const sendLog = useDraftSendLog(draft?.status === 'sent' ? selectedDraftId : null)
+  const retryFailed = useRetryFailedSends()
+  const [retrySelection, setRetrySelection] = useState<Set<number>>(new Set())
+  const [showFailedDetail, setShowFailedDetail] = useState(false)
 
   // --- Auto-save ---
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -2112,6 +2118,168 @@ export function DigestComposer() {
 
           </div>
         )}
+
+        {/* Send Status */}
+        {isSent && sendLog.data && sendLog.data.length > 0 && (() => {
+          const logs = sendLog.data
+          // Deduplicate: for each subscriber, use latest attempt
+          const latestBySubscriber = new Map<number, typeof logs[0]>()
+          for (const log of logs) {
+            const existing = latestBySubscriber.get(log.subscriber_id)
+            if (!existing || new Date(log.attempted_at) > new Date(existing.attempted_at)) {
+              latestBySubscriber.set(log.subscriber_id, log)
+            }
+          }
+          const latest = Array.from(latestBySubscriber.values())
+          const sentCount = latest.filter(l => l.status === 'sent').length
+          const failedLogs = latest.filter(l => l.status === 'failed')
+          const failedCount = failedLogs.length
+          const totalCount = latest.length
+          const allSuccess = failedCount === 0
+
+          return (
+            <div
+              style={{
+                background: 'var(--bg-raised)',
+                border: `1px solid ${allSuccess ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`,
+                borderRadius: 'var(--radius-lg)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Status bar */}
+              <div
+                style={{
+                  padding: '12px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: allSuccess ? '#4ade80' : '#f87171',
+                    flexShrink: 0,
+                  }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+                    Sent to {sentCount}/{totalCount}
+                  </span>
+                  {failedCount > 0 && (
+                    <span style={{ fontSize: 13, color: '#f87171' }}>
+                      &middot; {failedCount} failed
+                    </span>
+                  )}
+                </div>
+                {failedCount > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowFailedDetail(!showFailedDetail)
+                      setRetrySelection(new Set())
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-tertiary)',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    {showFailedDetail ? 'Hide' : 'Show'} details
+                  </button>
+                )}
+              </div>
+
+              {/* Failed detail */}
+              {showFailedDetail && failedCount > 0 && (
+                <div style={{ borderTop: '1px solid var(--border)' }}>
+                  {failedLogs.map(log => (
+                    <div
+                      key={log.id}
+                      style={{
+                        padding: '8px 20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        fontSize: 13,
+                        borderBottom: '1px solid var(--border)',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={retrySelection.has(log.subscriber_id)}
+                        onChange={() => {
+                          const next = new Set(retrySelection)
+                          if (next.has(log.subscriber_id)) next.delete(log.subscriber_id)
+                          else next.add(log.subscriber_id)
+                          setRetrySelection(next)
+                        }}
+                        style={{ accentColor: 'var(--accent)' }}
+                      />
+                      <span style={{ color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                        {log.email}
+                      </span>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: 12, marginLeft: 'auto', flexShrink: 0 }}>
+                        {log.error_message || 'Unknown error'}
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Retry buttons */}
+                  <div style={{ padding: '10px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    {retrySelection.size > 0 && (
+                      <button
+                        onClick={async () => {
+                          await retryFailed.mutateAsync({
+                            draftId: selectedDraftId!,
+                            subscriberIds: Array.from(retrySelection),
+                          })
+                          setRetrySelection(new Set())
+                          setShowFailedDetail(false)
+                        }}
+                        disabled={retryFailed.isPending}
+                        style={{
+                          background: 'none',
+                          border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius-md)',
+                          color: 'var(--text-secondary)',
+                          padding: '6px 14px',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          fontFamily: 'var(--font-body)',
+                        }}
+                      >
+                        {retryFailed.isPending ? 'Retrying...' : `Retry Selected (${retrySelection.size})`}
+                      </button>
+                    )}
+                    <button
+                      onClick={async () => {
+                        await retryFailed.mutateAsync({ draftId: selectedDraftId! })
+                        setRetrySelection(new Set())
+                        setShowFailedDetail(false)
+                      }}
+                      disabled={retryFailed.isPending}
+                      style={{
+                        background: '#f87171',
+                        border: 'none',
+                        borderRadius: 'var(--radius-md)',
+                        color: '#fff',
+                        padding: '6px 14px',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        fontFamily: 'var(--font-body)',
+                        opacity: retryFailed.isPending ? 0.6 : 1,
+                      }}
+                    >
+                      {retryFailed.isPending ? 'Retrying...' : `Retry All Failed (${failedCount})`}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Email Preview — always visible when a draft exists */}
         {selectedDraftId && (
