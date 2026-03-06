@@ -35,6 +35,9 @@ app.include_router(subscribers_router)
 from app.routers.digest import router as digest_router
 app.include_router(digest_router)
 
+from app.routers.webhooks import router as webhooks_router
+app.include_router(webhooks_router)
+
 
 @app.get("/api/health")
 async def health():
