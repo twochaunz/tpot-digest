@@ -1686,6 +1686,22 @@ export function DigestComposer() {
             Send Log
           </button>
 
+          <button
+            onClick={() => navigate('/app/analytics')}
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-secondary)',
+              padding: '6px 12px',
+              fontSize: 13,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Analytics
+          </button>
+
           {saveStatus === 'saving' && (
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Saving...</span>
           )}

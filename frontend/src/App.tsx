@@ -6,6 +6,7 @@ import { DailyView } from './pages/DailyView'
 import { SettingsPage } from './pages/SettingsPage'
 import { DigestComposer } from './pages/DigestComposer'
 import { SendLogPage } from './pages/SendLogPage'
+import { AnalyticsPage } from './pages/AnalyticsPage'
 import { DigestSignupPopup } from './components/DigestSignupPopup'
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ export function App() {
             <Route path="/app/settings" element={<SettingsPage />} />
             <Route path="/app/digest" element={<DigestComposer />} />
             <Route path="/app/send-log" element={<SendLogPage />} />
+            <Route path="/app/analytics" element={<AnalyticsPage />} />
           </Routes>
           <DigestSignupPopup />
         </BrowserRouter>
