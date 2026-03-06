@@ -10,6 +10,8 @@ class DigestBlock(BaseModel):
     topic_id: int | None = None      # topic-header blocks
     tweet_id: int | None = None      # tweet blocks (DB integer id)
     show_engagement: bool = False    # tweet blocks: show engagement metrics
+    show_media: bool = True          # tweet blocks: show images/link cards
+    show_quoted_tweet: bool = True   # tweet blocks: show quoted tweet embed
 
 
 class GenerateTemplateRequest(BaseModel):

@@ -509,18 +509,48 @@ function SortableBlock({
                 from {tweetData.topicTitle}
               </span>
               {!isSent && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={block.show_engagement || false}
-                    onChange={(e) => {
-                      onUpdateBlock(block.id, { show_engagement: e.target.checked })
-                      onAutoSave()
-                    }}
-                    style={{ margin: 0 }}
-                  />
-                  Show engagement
-                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 8 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={block.show_engagement || false}
+                      onChange={(e) => {
+                        onUpdateBlock(block.id, { show_engagement: e.target.checked })
+                        onAutoSave()
+                      }}
+                      style={{ margin: 0 }}
+                    />
+                    Engagement
+                  </label>
+                  {tweetData.tweet.media_urls && tweetData.tweet.media_urls.length > 0 && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={block.show_media !== false}
+                        onChange={(e) => {
+                          onUpdateBlock(block.id, { show_media: e.target.checked })
+                          onAutoSave()
+                        }}
+                        style={{ margin: 0 }}
+                      />
+                      Images
+                    </label>
+                  )}
+                  {tweetData.tweet.quoted_tweet_id && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={block.show_quoted_tweet !== false}
+                        onChange={(e) => {
+                          onUpdateBlock(block.id, { show_quoted_tweet: e.target.checked })
+                          onAutoSave()
+                        }}
+                        style={{ margin: 0 }}
+                      />
+                      Quoted tweet
+                    </label>
+                  )}
+                </div>
               )}
             </div>
           </div>
