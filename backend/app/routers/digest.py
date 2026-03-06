@@ -25,6 +25,8 @@ from app.schemas.digest import (
     DigestDraftOut,
     DigestDraftUpdate,
     DigestPreview,
+    DigestRetryRequest,
+    DigestSendLogOut,
     DigestSendRequest,
     DigestSendTestRequest,
     GenerateTemplateRequest,
@@ -665,3 +667,96 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
 
     await db.commit()
     return {"processed": len(processed), "details": processed}
+
+
+@router.get("/drafts/{draft_id}/send-log")
+async def get_draft_send_log(draft_id: int, db: AsyncSession = Depends(get_db)):
+    """Get send logs for a specific draft."""
+    result = await db.execute(
+        select(DigestSendLog)
+        .where(DigestSendLog.draft_id == draft_id)
+        .order_by(DigestSendLog.attempted_at.desc())
+    )
+    logs = result.scalars().all()
+    return [DigestSendLogOut.model_validate(log) for log in logs]
+
+
+@router.post("/drafts/{draft_id}/retry")
+async def retry_failed_sends(draft_id: int, body: DigestRetryRequest | None = None, db: AsyncSession = Depends(get_db)):
+    """Retry failed sends for a draft. Optional subscriber_ids to retry selectively."""
+    draft = await db.get(DigestDraft, draft_id)
+    if not draft:
+        raise HTTPException(404, "Draft not found")
+
+    # Find failed logs for this draft
+    query = select(DigestSendLog).where(
+        DigestSendLog.draft_id == draft_id,
+        DigestSendLog.status == "failed",
+    )
+    if body and body.subscriber_ids is not None:
+        query = query.where(DigestSendLog.subscriber_id.in_(body.subscriber_ids))
+    result = await db.execute(query)
+    failed_logs = result.scalars().all()
+
+    if not failed_logs:
+        return {"retried": 0, "sent": 0}
+
+    # Get subscriber IDs to retry — deduplicate in case multiple failed attempts
+    sub_ids = list({log.subscriber_id for log in failed_logs})
+    sub_result = await db.execute(select(Subscriber).where(Subscriber.id.in_(sub_ids)))
+    subscribers = {s.id: s for s in sub_result.scalars().all()}
+
+    blocks = await _build_digest_content(draft, db)
+    date_str = _format_date(draft.date)
+    subject = draft.subject or _default_subject(draft.date)
+
+    sent_count = 0
+    for sub_id in sub_ids:
+        sub = subscribers.get(sub_id)
+        if not sub:
+            continue
+        unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
+        html = render_digest_email(date_str=date_str, blocks=blocks, unsubscribe_url=unsubscribe_url)
+        email_result = send_digest_email(sub.email, subject, html, unsubscribe_url=unsubscribe_url)
+
+        new_log = DigestSendLog(
+            draft_id=draft_id,
+            subscriber_id=sub.id,
+            email=sub.email,
+            status="sent" if email_result["success"] else "failed",
+            error_message=email_result["error"],
+            resend_message_id=email_result["result"].get("id") if email_result["result"] and isinstance(email_result["result"], dict) else None,
+        )
+        db.add(new_log)
+
+        if email_result["success"]:
+            sent_count += 1
+
+    # Update draft recipient_count based on all successful sends
+    all_sent_result = await db.execute(
+        select(DigestSendLog).where(DigestSendLog.draft_id == draft_id, DigestSendLog.status == "sent")
+    )
+    draft.recipient_count = len(all_sent_result.scalars().all())
+    await db.commit()
+
+    return {"retried": len(sub_ids), "sent": sent_count}
+
+
+@router.get("/send-log")
+async def get_all_send_logs(
+    status: str | None = None,
+    draft_id: int | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all send logs with optional filters."""
+    query = select(DigestSendLog)
+    if status:
+        query = query.where(DigestSendLog.status == status)
+    if draft_id:
+        query = query.where(DigestSendLog.draft_id == draft_id)
+    query = query.order_by(DigestSendLog.attempted_at.desc()).limit(limit).offset(offset)
+    result = await db.execute(query)
+    logs = result.scalars().all()
+    return [DigestSendLogOut.model_validate(log) for log in logs]

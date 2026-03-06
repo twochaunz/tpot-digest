@@ -56,3 +56,20 @@ class DigestSendTestRequest(BaseModel):
 
 class DigestSendRequest(BaseModel):
     subscriber_ids: list[int] | None = None
+
+
+class DigestSendLogOut(BaseModel):
+    id: int
+    draft_id: int
+    subscriber_id: int
+    email: str
+    status: str
+    error_message: str | None
+    resend_message_id: str | None
+    attempted_at: _dt.datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DigestRetryRequest(BaseModel):
+    subscriber_ids: list[int] | None = None
