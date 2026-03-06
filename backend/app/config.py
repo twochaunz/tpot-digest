@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     digest_reply_to_email: str = "hi@wonchan.com"
     admin_email: str = ""
     openrouter_api_key: str = ""
+    resend_webhook_secret: str = ""
 
     model_config = {"env_file": ".env"}
 
