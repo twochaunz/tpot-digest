@@ -158,6 +158,18 @@ def _build_quoted_tweet_dict(quoted_tweet: "Tweet", nested_qt: "Tweet | None" = 
     if nested_qt or quoted_tweet.quoted_tweet_id:
         text = _strip_tco_links(text)
 
+    # Strip article t.co link from text when article_title is present
+    article_title = quoted_tweet.article_title
+    article_url = None
+    if article_title:
+        text = _strip_tco_links(text)
+        if quoted_tweet.url_entities:
+            for e in quoted_tweet.url_entities:
+                target = e.get("unwound_url") or e.get("expanded_url") or ""
+                if "/i/article/" in target:
+                    article_url = target
+                    break
+
     qt: dict = {
         "author_handle": quoted_tweet.author_handle,
         "author_display_name": quoted_tweet.author_display_name,
@@ -166,6 +178,8 @@ def _build_quoted_tweet_dict(quoted_tweet: "Tweet", nested_qt: "Tweet | None" = 
         "url": quoted_tweet.url,
         "media_images": _collect_media(quoted_tweet.media_urls),
         "link_cards": _build_link_cards(quoted_tweet.url_entities),
+        "article_title": article_title,
+        "article_url": article_url or quoted_tweet.url,
     }
     if nested_qt:
         qt["quoted_tweet"] = _build_quoted_tweet_dict(nested_qt)
