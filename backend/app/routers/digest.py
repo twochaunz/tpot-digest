@@ -216,6 +216,16 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | d
     text = _strip_tco_links(tw.text)
     media_images = _collect_media(tw.media_urls) if show_media else []
 
+    # Find article URL if this is an X Article tweet
+    article_title = tw.article_title
+    article_url = None
+    if article_title and tw.url_entities:
+        for e in tw.url_entities:
+            target = e.get("unwound_url") or e.get("expanded_url") or ""
+            if "/i/article/" in target:
+                article_url = target
+                break
+
     tweet_dict = {
         "author_handle": tw.author_handle,
         "author_display_name": tw.author_display_name,
@@ -225,6 +235,8 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | d
         "show_engagement": show_engagement,
         "link_cards": _build_link_cards(tw.url_entities) if show_media else [],
         "media_images": media_images,
+        "article_title": article_title,
+        "article_url": article_url or tw.url,
     }
     if show_engagement:
         tweet_dict["engagement"] = tw.engagement

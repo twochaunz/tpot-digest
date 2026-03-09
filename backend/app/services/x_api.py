@@ -115,6 +115,12 @@ async def fetch_tweet(tweet_id: str) -> dict:
 
     metrics = data.get("public_metrics", {})
 
+    # Extract article title (X Articles / long-form posts)
+    article_title = None
+    article_data = data.get("article")
+    if article_data and isinstance(article_data, dict):
+        article_title = article_data.get("title")
+
     return {
         "author_handle": author_handle,
         "author_display_name": author.get("name", "") if author else "",
@@ -134,6 +140,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "reply_to_tweet_id": reply_to_tweet_id,
         "reply_to_handle": reply_to_handle,
         "url_entities": url_entities,
+        "article_title": article_title,
         "created_at": data.get("created_at", ""),
     }
 

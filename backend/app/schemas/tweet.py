@@ -39,6 +39,7 @@ class TweetOut(BaseModel):
     created_at: datetime | None
     memo: str | None
     grok_context: str | None
+    article_title: str | None = None
     saved_at: datetime
     category: str | None = None
     status: str = "saved"

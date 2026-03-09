@@ -38,6 +38,9 @@
         </tr>
       </table>
       <p style="margin:0 0 12px 0;font-size:15px;line-height:1.5;color:#0f1419;white-space:pre-wrap;">{{ tweet.text }}</p>
+      {% if tweet.article_title %}
+      <p style="margin:0 0 12px 0;"><a href="{{ tweet.article_url }}" style="font-size:17px;font-weight:700;color:#1d9bf0;text-decoration:none;line-height:1.3;">{{ tweet.article_title }}</a></p>
+      {% endif %}
       {% if tweet.link_cards %}
       {% for card in tweet.link_cards %}
       <a href="{{ card.url }}" style="text-decoration:none;color:inherit;display:block;margin-bottom:10px;">
