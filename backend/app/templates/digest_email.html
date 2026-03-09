@@ -104,6 +104,9 @@
           </tr>
         </table>
         <p style="margin:0 0 8px 0;font-size:14px;line-height:1.4;color:#0f1419;white-space:pre-wrap;">{{ tweet.quoted_tweet.text }}</p>
+        {% if tweet.quoted_tweet.article_title %}
+        <p style="margin:0 0 8px 0;"><a href="{{ tweet.quoted_tweet.article_url }}" style="font-size:15px;font-weight:700;color:#1d9bf0;text-decoration:none;line-height:1.3;">{{ tweet.quoted_tweet.article_title }}</a></p>
+        {% endif %}
         {% if tweet.quoted_tweet.link_cards %}
         {% for card in tweet.quoted_tweet.link_cards %}
         <a href="{{ card.url }}" style="text-decoration:none;color:inherit;display:block;margin-bottom:8px;">

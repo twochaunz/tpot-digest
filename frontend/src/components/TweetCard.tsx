@@ -466,13 +466,22 @@ function buildUrlMap(urlEntities: Tweet['url_entities']): Map<string, { expanded
 }
 
 /** Render tweet text with clickable links. Uses url_entities to resolve t.co to real URLs. */
-function TweetText({ text, hasMedia, hasQuotedTweet, urlEntities }: { text: string; hasMedia: boolean; hasQuotedTweet: boolean; urlEntities: Tweet['url_entities'] }) {
+function TweetText({ text, hasMedia, hasQuotedTweet, hasArticleTitle, urlEntities }: { text: string; hasMedia: boolean; hasQuotedTweet: boolean; hasArticleTitle: boolean; urlEntities: Tweet['url_entities'] }) {
   const urlMap = buildUrlMap(urlEntities)
 
   // Strip trailing t.co URLs if media is shown or quoted tweet is embedded
   let cleaned = text
   if (hasMedia || hasQuotedTweet) {
     cleaned = cleaned.replace(/\s*https:\/\/t\.co\/\w+\s*$/, '')
+  }
+
+  // Strip t.co URLs that point to articles — the article title link replaces them
+  if (hasArticleTitle && urlEntities) {
+    for (const e of urlEntities) {
+      if ((e.expanded_url || e.unwound_url || '').includes('/i/article/')) {
+        cleaned = cleaned.replace(e.url, '').trim()
+      }
+    }
   }
 
   // Also strip t.co URLs that point to media (pic.x.com) — they're redundant with the media grid
@@ -676,7 +685,7 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
             whiteSpace: 'pre-wrap',
           }}
         >
-          <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} urlEntities={tweet.url_entities} />
+          <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} hasArticleTitle={!!tweet.article_title} urlEntities={tweet.url_entities} />
         </div>
 
         {/* Article title link */}
