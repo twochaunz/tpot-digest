@@ -57,6 +57,7 @@ async def _persist_quoted_tweet(db, quoted_tweet_id: str, depth: int = 0):
         reply_to_tweet_id=qt_data.get("reply_to_tweet_id"),
         reply_to_handle=qt_data.get("reply_to_handle"),
         url_entities=qt_data.get("url_entities"),
+        article_title=qt_data.get("article_title"),
         feed_source="quoted_fetch",
     )
     if qt_data.get("created_at"):
@@ -96,6 +97,7 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
         tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
         tweet.reply_to_handle = api_data.get("reply_to_handle")
         tweet.url_entities = api_data.get("url_entities")
+        tweet.article_title = api_data.get("article_title")
         tweet.url = api_data["url"]
         if api_data.get("created_at"):
             tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
@@ -301,6 +303,7 @@ async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db), _admi
     tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
     tweet.reply_to_handle = api_data.get("reply_to_handle")
     tweet.url_entities = api_data.get("url_entities")
+    tweet.article_title = api_data.get("article_title")
     if api_data.get("created_at"):
         tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
 
@@ -335,6 +338,7 @@ async def refetch_all_tweets(db: AsyncSession = Depends(get_db), _admin=Depends(
             tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
             tweet.reply_to_handle = api_data.get("reply_to_handle")
             tweet.url_entities = api_data.get("url_entities")
+            tweet.article_title = api_data.get("article_title")
             if api_data.get("created_at"):
                 tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
             updated += 1

@@ -23,6 +23,7 @@ export interface Tweet {
   url: string | null
   memo: string | null
   grok_context: string | null
+  article_title: string | null
   created_at: string | null
   saved_at: string
   category?: string | null

@@ -679,6 +679,33 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
           <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} urlEntities={tweet.url_entities} />
         </div>
 
+        {/* Article title link */}
+        {tweet.article_title && (() => {
+          const articleUrl = tweet.url_entities?.find(e =>
+            (e.expanded_url || e.unwound_url || '').includes('/i/article/')
+          )
+          const href = articleUrl?.unwound_url || articleUrl?.expanded_url || tweet.url || '#'
+          return (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: 17,
+                fontWeight: 700,
+                color: 'var(--accent)',
+                textDecoration: 'none',
+                lineHeight: 1.3,
+              }}
+            >
+              {tweet.article_title}
+            </a>
+          )
+        })()}
+
         {/* Media */}
         {tweet.media_urls && tweet.media_urls.length > 0 && (
           <div style={{ marginTop: 10 }}>
