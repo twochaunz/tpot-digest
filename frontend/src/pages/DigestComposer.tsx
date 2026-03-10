@@ -1432,19 +1432,16 @@ export function DigestComposer() {
       content: `# ${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
-    // Collect kek tweets across all topics for a dedicated section
-    const kekTweetIds: number[] = []
+    // Sort template topics so kek-titled topics always come last
+    const sortedTemplateTopics = [...templateData.topics].sort((a: any, b: any) => {
+      const aKek = (featured.find(f => f.id === a.topic_id)?.title || '').toLowerCase() === 'kek' ? 1 : 0
+      const bKek = (featured.find(f => f.id === b.topic_id)?.title || '').toLowerCase() === 'kek' ? 1 : 0
+      return aKek - bKek
+    })
 
     let isFirstTopic = true
-    for (const topicData of templateData.topics) {
-      // Separate kek from other category groups
-      const nonKekGroups = topicData.category_groups.filter((g: any) => g.category !== 'kek')
-      const kekGroup = topicData.category_groups.find((g: any) => g.category === 'kek')
-      if (kekGroup) {
-        kekTweetIds.push(...kekGroup.tweet_ids)
-      }
-
-      if (nonKekGroups.length === 0) continue
+    for (const topicData of sortedTemplateTopics) {
+      if (topicData.category_groups.length === 0) continue
 
       // Divider before topic (except first)
       if (!isFirstTopic) {
@@ -1460,9 +1457,9 @@ export function DigestComposer() {
         newBlocks.push({ id: nextBlockId(), type: 'text', content: `*${topicData.summary}*` })
       }
 
-      // Tweet blocks grouped by category (excluding kek)
+      // Tweet blocks grouped by category (including kek)
       let isFirstGroup = true
-      for (const group of nonKekGroups) {
+      for (const group of topicData.category_groups) {
         // Category transition text
         if (!isFirstGroup && group.transition) {
           newBlocks.push({ id: nextBlockId(), type: 'text', content: group.transition })
@@ -1473,15 +1470,6 @@ export function DigestComposer() {
         for (const tweetId of group.tweet_ids) {
           newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tweetId })
         }
-      }
-    }
-
-    // Kek section before "more on the timeline"
-    if (kekTweetIds.length > 0) {
-      newBlocks.push({ id: nextBlockId(), type: 'divider' })
-      newBlocks.push({ id: nextBlockId(), type: 'text', content: '**kek**' })
-      for (const tweetId of kekTweetIds) {
-        newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tweetId })
       }
     }
 
