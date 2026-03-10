@@ -1425,10 +1425,10 @@ export function DigestComposer() {
     const d = new Date(date + 'T00:00:00')
     const formattedDate = `${d.getMonth() + 1}/${d.getDate()}`
 
-    // Call backend for AI content
+    // Call backend for AI content (exclude kek topic — no summary/transitions needed)
     const templateData = await generateTemplate.mutateAsync({
       date,
-      topic_ids: featured.map(t => t.id),
+      topic_ids: featured.filter(t => !isKekTopic(t.title)).map(t => t.id),
     })
 
     const newBlocks: DigestBlock[] = []
@@ -1440,15 +1440,8 @@ export function DigestComposer() {
       content: `# ${featured.filter(t => !isKekTopic(t.title)).length} topic${featured.filter(t => !isKekTopic(t.title)).length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
-    // Sort template topics so kek-titled topics always come last
-    const sortedTemplateTopics = [...templateData.topics].sort((a: any, b: any) => {
-      const aKek = (featured.find(f => f.id === a.topic_id)?.title || '').toLowerCase() === 'kek' ? 1 : 0
-      const bKek = (featured.find(f => f.id === b.topic_id)?.title || '').toLowerCase() === 'kek' ? 1 : 0
-      return aKek - bKek
-    })
-
     let isFirstTopic = true
-    for (const topicData of sortedTemplateTopics) {
+    for (const topicData of templateData.topics) {
       if (topicData.category_groups.length === 0) continue
 
       // Divider before topic (except first)
@@ -1478,6 +1471,15 @@ export function DigestComposer() {
         for (const tweetId of group.tweet_ids) {
           newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tweetId })
         }
+      }
+    }
+
+    // Kek topic: just header + tweets, no summary/transitions
+    if (kekTopic && kekTopic.tweets.length > 0) {
+      newBlocks.push({ id: nextBlockId(), type: 'divider' })
+      newBlocks.push({ id: nextBlockId(), type: 'topic-header', topic_id: kekTopic.id })
+      for (const tw of kekTopic.tweets) {
+        newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tw.id })
       }
     }
 
