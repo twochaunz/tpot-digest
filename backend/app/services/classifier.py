@@ -29,12 +29,13 @@ async def prepare_tweet(tweet_id: int) -> None:
             tweet.embedding = embed_text(tweet.text)
             await db.commit()
 
-        # Fetch Grok context
-        if not tweet.grok_context and tweet.url:
-            grok_context = await _fetch_grok_safe(tweet)
-            if grok_context:
-                tweet.grok_context = grok_context
-                await db.commit()
+        # Grok context is only fetched when a tweet is set as OG for a topic
+        # (see topics.py update_topic), not on every save.
+        # if not tweet.grok_context and tweet.url:
+        #     grok_context = await _fetch_grok_safe(tweet)
+        #     if grok_context:
+        #         tweet.grok_context = grok_context
+        #         await db.commit()
 
 
 async def categorize_assigned_tweet(tweet_id: int, topic_id: int) -> None:

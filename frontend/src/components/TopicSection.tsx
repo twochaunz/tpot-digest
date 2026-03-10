@@ -1077,25 +1077,25 @@ function TopicSection({
                   )}
 
                   {/* Inline category divider (narrow screens) */}
-                  {!useMarginLabels && group.category && (
+                  {!useMarginLabels && (
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
                       padding: '4px 4px 8px',
                     }}>
-                      <div style={{ height: 1, flex: 1, background: `${group.category.color}40` }} />
+                      <div style={{ height: 1, flex: 1, background: `${(group.category?.color || '#6B7280')}40` }} />
                       <span style={{
                         fontSize: 11,
                         fontWeight: 600,
-                        color: group.category.color,
+                        color: group.category?.color || '#6B7280',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
                         whiteSpace: 'nowrap',
                       }}>
-                        {group.category.name}
+                        {group.category?.name || 'Uncategorized'}
                       </span>
-                      <div style={{ height: 1, flex: 1, background: `${group.category.color}40` }} />
+                      <div style={{ height: 1, flex: 1, background: `${(group.category?.color || '#6B7280')}40` }} />
                     </div>
                   )}
 

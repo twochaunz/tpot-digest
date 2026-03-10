@@ -1,10 +1,16 @@
 from datetime import date
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from starlette.background import BackgroundTask
+from starlette.responses import JSONResponse
 
 from app.auth import require_admin
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.db import get_db
 from app.models.assignment import TweetAssignment
@@ -86,11 +92,13 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
     data = body.model_dump(exclude_unset=True)
 
     # Handle og_tweet_id: validate tweet exists, auto-assign if needed
+    og_newly_set = False
     if "og_tweet_id" in data and data["og_tweet_id"] is not None:
         tweet_id = data["og_tweet_id"]
         tweet = await db.get(Tweet, tweet_id)
         if not tweet:
             raise HTTPException(404, "Tweet not found")
+        og_newly_set = topic.og_tweet_id != tweet_id
         # Check if assigned to this topic; if not, auto-assign
         existing = (await db.execute(
             select(TweetAssignment).where(
@@ -141,6 +149,16 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
 
     await db.commit()
     await db.refresh(topic)
+
+    # When OG tweet is set/changed, auto-categorize all uncategorized tweets in the topic
+    if og_newly_set:
+        from app.services.classifier import recategorize_topic_tweets
+        logger.info("OG tweet set for topic %d, triggering auto-categorization", topic_id)
+        return JSONResponse(
+            content=TopicOut.model_validate(topic).model_dump(mode="json"),
+            background=BackgroundTask(recategorize_topic_tweets, topic_id),
+        )
+
     return topic
 
 
@@ -152,8 +170,6 @@ async def recategorize_topic(topic_id: int, db: AsyncSession = Depends(get_db), 
         raise HTTPException(404, "Topic not found")
     if not topic.og_tweet_id:
         raise HTTPException(400, "Topic has no OG tweet set")
-    from starlette.responses import JSONResponse
-    from starlette.background import BackgroundTask
     from app.services.classifier import recategorize_topic_tweets
     return JSONResponse(
         content={"status": "recategorizing", "topic_id": topic_id},
@@ -168,8 +184,6 @@ async def recategorize_date(date: date = Query(...), db: AsyncSession = Depends(
     topics = result.scalars().all()
     if not topics:
         return {"status": "no topics with OG tweets", "count": 0}
-    from starlette.responses import JSONResponse
-    from starlette.background import BackgroundTask
     from app.services.classifier import recategorize_topic_tweets
 
     async def _recategorize_all():
