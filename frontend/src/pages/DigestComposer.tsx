@@ -1433,11 +1433,17 @@ export function DigestComposer() {
 
     const newBlocks: DigestBlock[] = []
 
-    // Intro
+    // Casual intro
+    if (templateData.intro) {
+      newBlocks.push({ id: nextBlockId(), type: 'text', content: templateData.intro })
+    }
+
+    // Header
+    const topicCount = featured.filter(t => !isKekTopic(t.title)).length
     newBlocks.push({
       id: nextBlockId(),
       type: 'text',
-      content: `# ${featured.filter(t => !isKekTopic(t.title)).length} topic${featured.filter(t => !isKekTopic(t.title)).length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
+      content: `# ${topicCount} topic${topicCount !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
     let isFirstTopic = true
