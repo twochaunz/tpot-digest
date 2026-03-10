@@ -84,6 +84,40 @@ Return ONLY the summary text, nothing else."""
         return None
 
 
+async def _generate_casual_intro(topic_titles: list[str]) -> str | None:
+    """Generate a casual, conversational one-liner previewing the day's topics."""
+    if not settings.anthropic_api_key or not topic_titles:
+        return None
+
+    titles_text = "\n".join(f"- {t}" for t in topic_titles)
+
+    prompt = f"""You are writing a casual one-liner intro for a daily tech digest email.
+
+Today's topics:
+{titles_text}
+
+Write a super casual, conversational preview of these topics — as if you're texting a friend about what happened today in tech. All lowercase, no periods at the end, keep it breezy and digestible. Can use emojis sparingly if it fits. Should feel like a friend catching you up, not a news anchor.
+
+Examples of the right vibe:
+- "andrej karpathy's new project, replit ceo's instigating words, and *cells* playing games.."
+- "gpt-5.4 is out, cluely drama, and updates on anthropic/pentagon's shaky relationship :o"
+- "not a lot yesterday, just an article of a fruit fly brain in a simulated body 😀"
+
+Return ONLY the intro text, nothing else."""
+
+    try:
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=100,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.content[0].text.strip()
+    except Exception:
+        logger.exception("Failed to generate casual intro")
+        return None
+
+
 async def _generate_category_transitions(
     topic_title: str,
     category_groups: list[dict],
@@ -324,7 +358,11 @@ async def generate_template(body: GenerateTemplateRequest, db: AsyncSession = De
             ],
         })
 
-    return {"topics": result_topics}
+    # Generate casual intro from topic titles
+    topic_titles = [t["title"] for t in result_topics]
+    intro = await _generate_casual_intro(topic_titles)
+
+    return {"topics": result_topics, "intro": intro}
 
 
 async def _fetch_quoted_tweet(tweet_id: str, db: "AsyncSession") -> "Tweet | None":
