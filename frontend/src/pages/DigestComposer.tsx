@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle, type TopicBundle } from '../api/dayBundle'
 import type { Tweet } from '../api/tweets'
-import { sortTopics } from '../utils/topics'
+import { sortTopics, isKekTopic } from '../utils/topics'
 import {
   type DigestBlock,
   type SubscriberInfo,
@@ -1412,6 +1412,14 @@ export function DigestComposer() {
   const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
     const orderedSet = new Set(orderedIds)
     const featured = orderedIds.map(id => topics.find(t => t.id === id)).filter((t): t is TopicBundle => t !== undefined)
+
+    // Auto-include kek topic if it exists and wasn't already selected
+    const kekTopic = topics.find(t => isKekTopic(t.title))
+    if (kekTopic && !orderedSet.has(kekTopic.id)) {
+      featured.push(kekTopic)
+      orderedSet.add(kekTopic.id)
+    }
+
     const rest = sortTopics(topics).filter(t => !orderedSet.has(t.id))
 
     const d = new Date(date + 'T00:00:00')
@@ -1429,7 +1437,7 @@ export function DigestComposer() {
     newBlocks.push({
       id: nextBlockId(),
       type: 'text',
-      content: `# ${featured.length} topic${featured.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
+      content: `# ${featured.filter(t => !isKekTopic(t.title)).length} topic${featured.filter(t => !isKekTopic(t.title)).length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     })
 
     // Sort template topics so kek-titled topics always come last
