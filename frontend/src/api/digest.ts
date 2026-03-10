@@ -13,6 +13,7 @@ export interface DigestBlock {
 }
 
 export interface GenerateTemplateResult {
+  intro: string | null
   topics: Array<{
     topic_id: number
     title: string
