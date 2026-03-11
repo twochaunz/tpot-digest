@@ -287,6 +287,23 @@
       renderTopicDropdown(topicState, topicInput, topicDropdown, topicInput.value, ogWarning, updateCategoryVisibility);
       updateCategoryVisibility();
     });
+    topicInput.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const q = topicInput.value.trim();
+      if (!q) return;
+      const exactMatch = topicState.topics.find((t) => t.title.toLowerCase() === q.toLowerCase());
+      if (exactMatch) {
+        topicState.selectedId = exactMatch.id;
+        topicState.selectedName = exactMatch.title;
+        topicInput.value = exactMatch.title;
+      } else {
+        topicState.selectedId = "__create__";
+        topicState.selectedName = q;
+      }
+      topicDropdown.style.display = "none";
+      updateCategoryVisibility();
+    });
     topicInput.addEventListener("blur", () => {
       setTimeout(() => { topicDropdown.style.display = "none"; }, 150);
     });
