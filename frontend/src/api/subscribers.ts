@@ -4,6 +4,7 @@ import { api } from './client'
 interface SubscribeResponse {
   message: string
   already_registered: boolean
+  re_subscribed: boolean
 }
 
 export function useSubscribe() {

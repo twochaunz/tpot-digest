@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useSubscribe } from '../api/subscribers'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -6,7 +6,8 @@ export function DigestSignupPopup() {
   const { isAdmin } = useAuth()
   const [visible, setVisible] = useState(true)
   const [email, setEmail] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [fading, setFading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   const subscribe = useSubscribe()
@@ -15,14 +16,28 @@ export function DigestSignupPopup() {
     setVisible(false)
   }, [])
 
+  // Fade out and hide after showing success message
+  useEffect(() => {
+    if (!successMessage) return
+    const fadeTimer = setTimeout(() => setFading(true), 2000)
+    const hideTimer = setTimeout(() => setVisible(false), 2500)
+    return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
+  }, [successMessage])
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg('')
     if (!email.trim()) return
 
     try {
-      await subscribe.mutateAsync({ email: email.trim() })
-      setSuccess(true)
+      const result = await subscribe.mutateAsync({ email: email.trim() })
+      if (result.re_subscribed) {
+        setSuccessMessage('welcome back 😀')
+      } else if (result.already_registered) {
+        setSuccessMessage("you're already on the list 😀")
+      } else {
+        setSuccessMessage('subscribed 😀')
+      }
     } catch (err) {
       if (err instanceof Error) {
         setErrorMsg(err.message || 'Something went wrong')
@@ -48,12 +63,14 @@ export function DigestSignupPopup() {
         padding: 24,
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         fontFamily: 'var(--font-body, system-ui, sans-serif)',
+        transition: 'opacity 0.5s ease',
+        opacity: fading ? 0 : 1,
       }}
     >
-      {success ? (
+      {successMessage ? (
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
-            You're subscribed 😀
+            {successMessage}
           </div>
         </div>
       ) : (
@@ -108,7 +125,7 @@ export function DigestSignupPopup() {
                 transition: 'opacity 0.15s ease',
               }}
             >
-              {subscribe.isPending ? 'Subscribing...' : 'Subscribe'}
+              {subscribe.isPending ? 'subscribing...' : 'subscribe'}
             </button>
           </form>
           <button
