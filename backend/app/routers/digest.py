@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from collections import OrderedDict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,6 +16,7 @@ from app.config import settings
 from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.digest_draft import DigestDraft
+from app.models.digest_settings import DigestSettings, DEFAULT_WELCOME_MESSAGE
 from app.models.digest_send_log import DigestSendLog
 from app.models.subscriber import Subscriber
 from app.models.topic import Topic
@@ -29,10 +30,12 @@ from app.schemas.digest import (
     DigestSendLogOut,
     DigestSendRequest,
     DigestSendTestRequest,
+    DigestSettingsOut,
+    DigestSettingsUpdate,
     GenerateTemplateRequest,
     SendStatusOut,
 )
-from app.services.email import render_digest_email, send_digest_batch, send_digest_email
+from app.services.email import render_digest_email, render_welcome_email, send_digest_batch, send_digest_email
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +53,23 @@ def _format_date(d) -> str:
 def _default_subject(d) -> str:
     """Generate default subject like '3/3/26 abridged tech'."""
     return f"{d.month}/{d.day}/{d.strftime('%y')} abridged tech"
+
+
+async def _get_or_create_settings(db: AsyncSession) -> DigestSettings:
+    """Get the single DigestSettings row, creating defaults if none exists."""
+    result = await db.execute(select(DigestSettings).where(DigestSettings.id == 1))
+    settings_row = result.scalar_one_or_none()
+    if not settings_row:
+        settings_row = DigestSettings(
+            id=1,
+            welcome_send_mode="off",
+            welcome_subject="no little piggies allowed",
+            welcome_message=DEFAULT_WELCOME_MESSAGE,
+        )
+        db.add(settings_row)
+        await db.commit()
+        await db.refresh(settings_row)
+    return settings_row
 
 
 async def _generate_topic_summary(topic_title: str, grok_contexts: list[str]) -> str | None:
@@ -478,6 +498,85 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
     return result_blocks
 
 
+async def _send_welcome_emails(subscribers: list, db: AsyncSession) -> list[dict]:
+    """Send welcome email to given subscribers using latest sent digest.
+
+    Skips subscribers who already received the latest draft (dedup via digest_send_logs).
+    """
+    settings_row = await _get_or_create_settings(db)
+    if settings_row.welcome_send_mode == "off":
+        return []
+
+    # Find latest sent draft
+    result = await db.execute(
+        select(DigestDraft)
+        .where(DigestDraft.status == "sent")
+        .order_by(DigestDraft.sent_at.desc())
+        .limit(1)
+    )
+    latest_draft = result.scalar_one_or_none()
+    if not latest_draft:
+        return []
+
+    # Filter out subscribers who already got this draft
+    sub_ids = [s.id for s in subscribers]
+    existing_logs = await db.execute(
+        select(DigestSendLog.subscriber_id)
+        .where(
+            DigestSendLog.draft_id == latest_draft.id,
+            DigestSendLog.subscriber_id.in_(sub_ids),
+        )
+    )
+    already_sent = set(existing_logs.scalars().all())
+    eligible = [s for s in subscribers if s.id not in already_sent]
+    if not eligible:
+        return []
+
+    # Build welcome email content
+    blocks = await _build_digest_content(latest_draft, db)
+    date_str = _format_date(latest_draft.date)
+    digest_subject = latest_draft.subject or _default_subject(latest_draft.date)
+
+    # Build batch
+    batch_emails = []
+    sub_by_email: dict[str, object] = {}
+    for sub in eligible:
+        unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
+        html = render_welcome_email(
+            welcome_message=settings_row.welcome_message,
+            welcome_subject=digest_subject,
+            digest_date_str=date_str,
+            digest_blocks=blocks,
+            unsubscribe_url=unsubscribe_url,
+        )
+        batch_emails.append({
+            "to_email": sub.email,
+            "subject": settings_row.welcome_subject,
+            "html_content": html,
+            "unsubscribe_url": unsubscribe_url,
+        })
+        sub_by_email[sub.email] = sub
+
+    # Send
+    results = send_digest_batch(batch_emails)
+
+    # Log results to digest_send_logs (for dedup)
+    for r in results:
+        sub = sub_by_email[r["to_email"]]
+        log = DigestSendLog(
+            draft_id=latest_draft.id,
+            subscriber_id=sub.id,
+            email=sub.email,
+            status="sent" if r["success"] else "failed",
+            error_message=r["error"],
+            resend_message_id=r["result"].get("id") if r["result"] and isinstance(r["result"], dict) else None,
+        )
+        db.add(log)
+
+    await db.commit()
+    return results
+
+
 @router.post("/drafts", response_model=DigestDraftOut, status_code=201)
 async def create_draft(body: DigestDraftCreate, db: AsyncSession = Depends(get_db)):
     """Create a new digest draft."""
@@ -870,3 +969,139 @@ async def get_all_send_logs(
     result = await db.execute(query)
     logs = result.scalars().all()
     return [DigestSendLogOut.model_validate(log) for log in logs]
+
+
+# ---- Welcome Email Settings ----
+
+@router.get("/settings", response_model=DigestSettingsOut)
+async def get_digest_settings(db: AsyncSession = Depends(get_db)):
+    """Get digest settings (upserts defaults if none exist)."""
+    return await _get_or_create_settings(db)
+
+
+@router.patch("/settings", response_model=DigestSettingsOut)
+async def update_digest_settings(body: DigestSettingsUpdate, db: AsyncSession = Depends(get_db)):
+    """Update digest settings."""
+    settings_row = await _get_or_create_settings(db)
+    if body.welcome_send_mode is not None:
+        if body.welcome_send_mode not in ("off", "hourly", "immediate"):
+            raise HTTPException(400, "welcome_send_mode must be 'off', 'hourly', or 'immediate'")
+        settings_row.welcome_send_mode = body.welcome_send_mode
+    if body.welcome_subject is not None:
+        settings_row.welcome_subject = body.welcome_subject
+    if body.welcome_message is not None:
+        settings_row.welcome_message = body.welcome_message
+    await db.commit()
+    await db.refresh(settings_row)
+    return settings_row
+
+
+@router.get("/settings/welcome-preview")
+async def welcome_preview(db: AsyncSession = Depends(get_db)):
+    """Render a preview of the welcome email using current settings + latest sent digest."""
+    settings_row = await _get_or_create_settings(db)
+
+    # Find latest sent draft
+    result = await db.execute(
+        select(DigestDraft)
+        .where(DigestDraft.status == "sent")
+        .order_by(DigestDraft.sent_at.desc())
+        .limit(1)
+    )
+    latest_draft = result.scalar_one_or_none()
+
+    if not latest_draft:
+        import markdown as md
+        resolved = settings_row.welcome_message
+        welcome_html = md.markdown(resolved, extensions=["extra"])
+        return {
+            "subject": settings_row.welcome_subject,
+            "html": f"<div style='padding:20px;font-family:sans-serif;'>{welcome_html}<hr style='margin:24px 0;border:none;border-top:1px solid #333;'/><p style='color:#71767b;font-style:italic;'>No digest sent yet — welcome email will begin sending after your first digest.</p></div>",
+            "has_digest": False,
+            "template_vars": {},
+        }
+
+    blocks = await _build_digest_content(latest_draft, db)
+    date_str = _format_date(latest_draft.date)
+    digest_subject = latest_draft.subject or _default_subject(latest_draft.date)
+
+    html = render_welcome_email(
+        welcome_message=settings_row.welcome_message,
+        welcome_subject=digest_subject,
+        digest_date_str=date_str,
+        digest_blocks=blocks,
+        unsubscribe_url="{{unsubscribe_url}}",
+    )
+
+    return {
+        "subject": settings_row.welcome_subject,
+        "html": html,
+        "has_digest": True,
+        "template_vars": {
+            "date": date_str,
+            "subject": digest_subject,
+        },
+    }
+
+
+@router.post("/settings/welcome-test")
+async def welcome_test(db: AsyncSession = Depends(get_db)):
+    """Send a test welcome email to the admin email."""
+    settings_row = await _get_or_create_settings(db)
+
+    if not settings.admin_email:
+        raise HTTPException(400, "No admin_email configured")
+
+    result = await db.execute(
+        select(DigestDraft)
+        .where(DigestDraft.status == "sent")
+        .order_by(DigestDraft.sent_at.desc())
+        .limit(1)
+    )
+    latest_draft = result.scalar_one_or_none()
+    if not latest_draft:
+        raise HTTPException(400, "No sent digest yet — cannot send welcome test")
+
+    blocks = await _build_digest_content(latest_draft, db)
+    date_str = _format_date(latest_draft.date)
+    digest_subject = latest_draft.subject or _default_subject(latest_draft.date)
+
+    html = render_welcome_email(
+        welcome_message=settings_row.welcome_message,
+        welcome_subject=digest_subject,
+        digest_date_str=date_str,
+        digest_blocks=blocks,
+        unsubscribe_url="#",
+    )
+
+    email_result = send_digest_email(
+        settings.admin_email,
+        f"[TEST] {settings_row.welcome_subject}",
+        html,
+    )
+    return {"sent_to": settings.admin_email, "result": email_result}
+
+
+@router.post("/process-welcome")
+async def process_welcome(db: AsyncSession = Depends(get_db)):
+    """Process welcome emails for recent subscribers. Designed for hourly cron."""
+    settings_row = await _get_or_create_settings(db)
+    if settings_row.welcome_send_mode != "hourly":
+        return {"processed": 0, "mode": settings_row.welcome_send_mode, "message": "Not in hourly mode"}
+
+    # Find subscribers from last 2 hours (overlap window for safety)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
+    result = await db.execute(
+        select(Subscriber).where(
+            Subscriber.subscribed_at >= cutoff,
+            Subscriber.unsubscribed_at.is_(None),
+        )
+    )
+    new_subscribers = result.scalars().all()
+
+    if not new_subscribers:
+        return {"processed": 0, "message": "No new subscribers"}
+
+    results = await _send_welcome_emails(new_subscribers, db)
+    sent = sum(1 for r in results if r["success"])
+    return {"processed": sent, "total_eligible": len(new_subscribers)}
