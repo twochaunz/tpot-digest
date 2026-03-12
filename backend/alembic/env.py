@@ -21,6 +21,7 @@ from app.db import Base  # noqa: E402
 from app.models import Tweet, Topic, TweetAssignment  # noqa: E402, F401
 from app.models.subscriber import Subscriber  # noqa: E402, F401
 from app.models.digest_draft import DigestDraft  # noqa: E402, F401
+from app.models.digest_settings import DigestSettings  # noqa: E402, F401
 
 target_metadata = Base.metadata
 
