@@ -29,7 +29,7 @@ export function WelcomeEmailPage() {
   const [testStatus, setTestStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [initialized, setInitialized] = useState(false)
 
-  const previewDebounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const previewDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Initialize form from settings
   useEffect(() => {
