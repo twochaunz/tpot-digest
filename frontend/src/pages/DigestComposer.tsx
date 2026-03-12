@@ -1827,6 +1827,22 @@ export function DigestComposer() {
             Analytics
           </button>
 
+          <button
+            onClick={() => navigate('/app/welcome-email')}
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-secondary)',
+              padding: '6px 12px',
+              fontSize: 13,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Welcome
+          </button>
+
           {saveStatus === 'saving' && (
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Saving...</span>
           )}

@@ -250,3 +250,51 @@ export function useSendStatus(draftId: number | null) {
     enabled: draftId !== null,
   })
 }
+
+// ---- Welcome Email Settings ----
+
+export interface DigestSettings {
+  welcome_send_mode: 'off' | 'hourly' | 'immediate'
+  welcome_subject: string
+  welcome_message: string
+  updated_at: string | null
+}
+
+export interface WelcomePreview {
+  subject: string
+  html: string
+  has_digest: boolean
+  template_vars: Record<string, string>
+}
+
+export function useDigestSettings() {
+  return useQuery<DigestSettings>({
+    queryKey: ['digest-settings'],
+    queryFn: () => api.get('/digest/settings').then(r => r.data),
+  })
+}
+
+export function useUpdateDigestSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<DigestSettings>) =>
+      api.patch('/digest/settings', data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['digest-settings'] })
+    },
+  })
+}
+
+export function useWelcomePreview(enabled: boolean) {
+  return useQuery<WelcomePreview>({
+    queryKey: ['welcome-preview'],
+    queryFn: () => api.get('/digest/settings/welcome-preview').then(r => r.data),
+    enabled,
+  })
+}
+
+export function useSendWelcomeTest() {
+  return useMutation({
+    mutationFn: () => api.post('/digest/settings/welcome-test').then(r => r.data),
+  })
+}
