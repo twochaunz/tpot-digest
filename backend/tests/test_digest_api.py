@@ -14,7 +14,7 @@ from app.db import Base, get_db
 from app.main import app
 
 # Import all models so Base.metadata knows about them
-from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft, DigestSendLog, EmailEvent  # noqa: F401
+from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft, DigestSendLog, EmailEvent, DigestSettings  # noqa: F401
 
 
 @compiles(JSONB, "sqlite")
@@ -499,3 +499,132 @@ async def test_webhook_deduplicates(client: AsyncClient):
         result = await session.execute(select(EmailEvent))
         events = result.scalars().all()
         assert len(events) == 1  # Only one stored despite two requests
+
+
+# ---- Welcome Email Settings Tests ----
+
+
+@pytest.mark.asyncio
+async def test_get_digest_settings_creates_defaults(client: AsyncClient):
+    """GET /api/digest/settings should return defaults if no row exists."""
+    resp = await client.get("/api/digest/settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["welcome_send_mode"] == "off"
+    assert data["welcome_subject"] == "no little piggies allowed"
+    assert "subscribing" in data["welcome_message"]
+
+
+@pytest.mark.asyncio
+async def test_update_digest_settings(client: AsyncClient):
+    """PATCH /api/digest/settings should update and persist."""
+    await client.get("/api/digest/settings")
+
+    resp = await client.patch("/api/digest/settings", json={
+        "welcome_send_mode": "hourly",
+        "welcome_subject": "hey there!",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["welcome_send_mode"] == "hourly"
+    assert data["welcome_subject"] == "hey there!"
+    assert "subscribing" in data["welcome_message"]
+
+    resp2 = await client.get("/api/digest/settings")
+    assert resp2.json()["welcome_send_mode"] == "hourly"
+
+
+@pytest.mark.asyncio
+async def test_update_digest_settings_invalid_mode(client: AsyncClient):
+    """PATCH with invalid send mode should return 400."""
+    await client.get("/api/digest/settings")
+    resp = await client.patch("/api/digest/settings", json={
+        "welcome_send_mode": "invalid",
+    })
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_welcome_preview_no_digest(client: AsyncClient):
+    """Preview should return placeholder when no digest has been sent."""
+    resp = await client.get("/api/digest/settings/welcome-preview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["has_digest"] is False
+    assert "No digest sent yet" in data["html"]
+
+
+@pytest.mark.asyncio
+async def test_welcome_preview_with_sent_digest(client: AsyncClient):
+    """Preview should render welcome message + digest content."""
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-03-10",
+        "content_blocks": [
+            {"id": "b1", "type": "text", "content": "Daily digest text"},
+        ],
+        "subject": "3/10/26 abridged tech",
+    })
+    draft_id = create_resp.json()["id"]
+    async with async_session() as session:
+        draft = await session.get(DigestDraft, draft_id)
+        draft.status = "sent"
+        draft.sent_at = datetime(2026, 3, 10, 8, 0, tzinfo=timezone.utc)
+        await session.commit()
+
+    resp = await client.get("/api/digest/settings/welcome-preview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["has_digest"] is True
+    assert "subscribing" in data["html"]
+    assert "Daily digest text" in data["html"]
+    assert data["template_vars"]["subject"] == "3/10/26 abridged tech"
+
+
+@pytest.mark.asyncio
+async def test_welcome_dedup_skips_already_sent(client: AsyncClient):
+    """Welcome email should not send to subscribers who already received the latest digest."""
+    import secrets
+
+    async with async_session() as session:
+        sub = Subscriber(email="dedup-welcome@test.com", unsubscribe_token=secrets.token_urlsafe(32))
+        session.add(sub)
+        await session.commit()
+        await session.refresh(sub)
+        sub_id = sub.id
+
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-03-10",
+        "content_blocks": [{"id": "b1", "type": "text", "content": "Hello"}],
+    })
+    draft_id = create_resp.json()["id"]
+    async with async_session() as session:
+        draft = await session.get(DigestDraft, draft_id)
+        draft.status = "sent"
+        draft.sent_at = datetime(2026, 3, 10, 8, 0, tzinfo=timezone.utc)
+        log = DigestSendLog(
+            draft_id=draft_id,
+            subscriber_id=sub_id,
+            email="dedup-welcome@test.com",
+            status="sent",
+        )
+        session.add(log)
+        await session.commit()
+
+    await client.patch("/api/digest/settings", json={"welcome_send_mode": "hourly"})
+
+    def mock_batch(emails):
+        return [{"to_email": e["to_email"], "success": True, "result": {"id": "msg"}, "error": None} for e in emails]
+
+    with patch("app.routers.digest.send_digest_batch", side_effect=mock_batch):
+        resp = await client.post("/api/digest/process-welcome")
+    assert resp.status_code == 200
+    assert resp.json()["processed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_process_welcome_off_mode(client: AsyncClient):
+    """Process-welcome should return early when mode is off."""
+    resp = await client.post("/api/digest/process-welcome")
+    assert resp.status_code == 200
+    assert resp.json()["processed"] == 0
+    assert resp.json()["mode"] == "off"
