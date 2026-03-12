@@ -1589,18 +1589,22 @@ export function DigestComposer() {
       }
     }
 
-    // "More on the timeline" section
-    if (rest.length > 0) {
+    // "More on the timeline" section — always includes kek as final bullet
+    const sorted2 = sortTopics(topics)
+    const kekTimelineLink = kekTopic
+      ? `- [more kek](https://abridged.tech/app/${date}/${sorted2.indexOf(kekTopic) + 1})`
+      : null
+    if (rest.length > 0 || kekTimelineLink) {
       newBlocks.push({ id: nextBlockId(), type: 'divider' })
-      const sorted2 = sortTopics(topics)
       const links = rest.map(t => {
         const topicNum = sorted2.indexOf(t) + 1
         return `- [${t.title}](https://abridged.tech/app/${date}/${topicNum})`
-      }).join('\n')
+      })
+      if (kekTimelineLink) links.push(kekTimelineLink)
       newBlocks.push({
         id: nextBlockId(),
         type: 'text',
-        content: `**More on the timeline**\n\n${links}`,
+        content: `**More on the timeline**\n\n${links.join('\n')}`,
       })
     }
 

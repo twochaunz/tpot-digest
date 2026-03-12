@@ -82,7 +82,35 @@ async def subscribe(body: SubscribeRequest, db: AsyncSession = Depends(get_db)):
 
 @router.get("/unsubscribe", response_class=HTMLResponse)
 async def unsubscribe(token: str, digest: int | None = None, db: AsyncSession = Depends(get_db)):
-    """Unsubscribe via token link. Optional digest param tracks which email triggered it."""
+    """Show unsubscribe confirmation page. Actual unsubscribe happens via POST."""
+    result = await db.execute(select(Subscriber).where(Subscriber.unsubscribe_token == token))
+    subscriber = result.scalar_one_or_none()
+    if not subscriber:
+        raise HTTPException(404, "Invalid unsubscribe link")
+
+    # Already unsubscribed — show final state directly
+    if subscriber.unsubscribed_at is not None:
+        return _unsubscribed_html()
+
+    digest_param = f"&digest={digest}" if digest else ""
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Unsubscribe</title></head>
+<body style="background:#000;color:#e7e9ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;">
+<div style="text-align:center;max-width:400px;">
+  <h1 style="font-size:24px;margin-bottom:8px;">Unsubscribe?</h1>
+  <p style="color:#71767b;margin-bottom:24px;">Are you sure you want to unsubscribe from abridged tech?</p>
+  <form method="POST" action="/api/subscribers/unsubscribe?token={token}{digest_param}">
+    <button type="submit" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;">
+      Confirm Unsubscribe
+    </button>
+  </form>
+</div>
+</body></html>""")
+
+
+@router.post("/unsubscribe", response_class=HTMLResponse)
+async def unsubscribe_confirm(token: str, digest: int | None = None, db: AsyncSession = Depends(get_db)):
+    """Actually unsubscribe after user confirms."""
     result = await db.execute(select(Subscriber).where(Subscriber.unsubscribe_token == token))
     subscriber = result.scalar_one_or_none()
     if not subscriber:
@@ -99,12 +127,16 @@ async def unsubscribe(token: str, digest: int | None = None, db: AsyncSession = 
         db.add(event)
         await db.commit()
 
+    return _unsubscribed_html()
+
+
+def _unsubscribed_html() -> HTMLResponse:
     return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Unsubscribed</title></head>
 <body style="background:#000;color:#e7e9ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;">
 <div style="text-align:center;max-width:400px;">
   <h1 style="font-size:24px;margin-bottom:8px;">Unsubscribed</h1>
-  <p style="color:#71767b;">You've been unsubscribed from the digest. You can close this page.</p>
+  <p style="color:#71767b;">You've been unsubscribed from abridged tech. You can close this page.</p>
 </div>
 </body></html>""")
 

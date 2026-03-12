@@ -81,9 +81,16 @@ async def test_unsubscribe(client: AsyncClient):
         session.add(sub)
         await session.commit()
 
+    # GET shows confirmation page
     resp = await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}")
     assert resp.status_code == 200
+    assert "Confirm Unsubscribe" in resp.text
+
+    # POST actually unsubscribes
+    resp = await client.post(f"/api/subscribers/unsubscribe?token={unsub_token}")
+    assert resp.status_code == 200
     assert "Unsubscribed" in resp.text
+    assert "abridged tech" in resp.text
 
     # Verify unsubscribed_at is set
     async with async_session() as session:
@@ -108,7 +115,7 @@ async def test_unsubscribe_with_digest_param(client: AsyncClient):
         await session.commit()
         sub_id = sub.id
 
-    resp = await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=42")
+    resp = await client.post(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=42")
     assert resp.status_code == 200
     assert "Unsubscribed" in resp.text
 
@@ -139,7 +146,7 @@ async def test_unsubscribe_without_digest_param(client: AsyncClient):
         await session.commit()
         sub_id = sub.id
 
-    resp = await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}")
+    resp = await client.post(f"/api/subscribers/unsubscribe?token={unsub_token}")
     assert resp.status_code == 200
 
     async with async_session() as session:
@@ -165,8 +172,8 @@ async def test_unsubscribe_idempotent(client: AsyncClient):
         await session.commit()
         sub_id = sub.id
 
-    await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=10")
-    await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=10")
+    await client.post(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=10")
+    await client.post(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=10")
 
     async with async_session() as session:
         count = await session.execute(
