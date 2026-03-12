@@ -10,6 +10,7 @@ class SubscribeRequest(BaseModel):
 class SubscribeResponse(BaseModel):
     message: str
     already_registered: bool = False
+    re_subscribed: bool = False
 
 
 class SubscriberOut(BaseModel):
