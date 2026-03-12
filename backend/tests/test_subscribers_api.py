@@ -9,7 +9,7 @@ from app.db import Base, get_db
 from app.main import app
 
 # Import all models so Base.metadata knows about them
-from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft  # noqa: F401
+from app.models import Tweet, Topic, TweetAssignment, Subscriber, DigestDraft, UnsubscribeEvent  # noqa: F401
 
 
 @compiles(JSONB, "sqlite")
@@ -93,6 +93,88 @@ async def test_unsubscribe(client: AsyncClient):
         )
         sub = result.scalar_one()
         assert sub.unsubscribed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_unsubscribe_with_digest_param(client: AsyncClient):
+    """Unsubscribing with digest param creates an UnsubscribeEvent with draft_id."""
+    import secrets
+    from app.models.unsubscribe_event import UnsubscribeEvent
+
+    unsub_token = secrets.token_hex(32)
+    async with async_session() as session:
+        sub = Subscriber(email="unsub-digest@example.com", unsubscribe_token=unsub_token)
+        session.add(sub)
+        await session.commit()
+        sub_id = sub.id
+
+    resp = await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=42")
+    assert resp.status_code == 200
+    assert "Unsubscribed" in resp.text
+
+    async with async_session() as session:
+        from sqlalchemy import select
+        result = await session.execute(select(Subscriber).where(Subscriber.id == sub_id))
+        sub = result.scalar_one()
+        assert sub.unsubscribed_at is not None
+
+        events = await session.execute(
+            select(UnsubscribeEvent).where(UnsubscribeEvent.subscriber_id == sub_id)
+        )
+        event = events.scalar_one()
+        assert event.draft_id == 42
+        assert event.unsubscribed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_unsubscribe_without_digest_param(client: AsyncClient):
+    """Unsubscribing without digest param creates an event with draft_id=None."""
+    import secrets
+    from app.models.unsubscribe_event import UnsubscribeEvent
+
+    unsub_token = secrets.token_hex(32)
+    async with async_session() as session:
+        sub = Subscriber(email="unsub-nodigest@example.com", unsubscribe_token=unsub_token)
+        session.add(sub)
+        await session.commit()
+        sub_id = sub.id
+
+    resp = await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}")
+    assert resp.status_code == 200
+
+    async with async_session() as session:
+        from sqlalchemy import select
+        events = await session.execute(
+            select(UnsubscribeEvent).where(UnsubscribeEvent.subscriber_id == sub_id)
+        )
+        event = events.scalar_one()
+        assert event.draft_id is None
+
+
+@pytest.mark.asyncio
+async def test_unsubscribe_idempotent(client: AsyncClient):
+    """Clicking unsubscribe twice does not create a duplicate event."""
+    import secrets
+    from sqlalchemy import select, func
+    from app.models.unsubscribe_event import UnsubscribeEvent
+
+    unsub_token = secrets.token_hex(32)
+    async with async_session() as session:
+        sub = Subscriber(email="unsub-idem@example.com", unsubscribe_token=unsub_token)
+        session.add(sub)
+        await session.commit()
+        sub_id = sub.id
+
+    await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=10")
+    await client.get(f"/api/subscribers/unsubscribe?token={unsub_token}&digest=10")
+
+    async with async_session() as session:
+        count = await session.execute(
+            select(func.count()).select_from(UnsubscribeEvent).where(
+                UnsubscribeEvent.subscriber_id == sub_id
+            )
+        )
+        assert count.scalar() == 1
 
 
 @pytest.mark.asyncio
