@@ -82,3 +82,18 @@ class SendStatusOut(BaseModel):
 
 class DigestRetryRequest(BaseModel):
     subscriber_ids: list[int] | None = None
+
+
+class DigestSettingsOut(BaseModel):
+    welcome_send_mode: str
+    welcome_subject: str
+    welcome_message: str
+    updated_at: _dt.datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class DigestSettingsUpdate(BaseModel):
+    welcome_send_mode: str | None = None
+    welcome_subject: str | None = None
+    welcome_message: str | None = None
