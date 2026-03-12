@@ -73,5 +73,12 @@ class DigestSendLogOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SendStatusOut(BaseModel):
+    previously_sent: bool
+    sent_count: int
+    sent_at: _dt.datetime | None
+    sent_subscriber_ids: list[int]
+
+
 class DigestRetryRequest(BaseModel):
     subscriber_ids: list[int] | None = None

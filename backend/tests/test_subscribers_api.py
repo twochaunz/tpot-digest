@@ -247,3 +247,59 @@ async def test_email_service_renders_template():
     assert "https://example.com/unsubscribe" in html
     assert "March 1, 2026" in html
     assert "Welcome to today" in html
+
+
+@pytest.mark.asyncio
+async def test_send_status_not_previously_sent(client: AsyncClient):
+    """send-status returns previously_sent=False when draft has no send logs."""
+    from app.models.digest_draft import DigestDraft
+    import datetime as dt
+
+    async with async_session() as session:
+        draft = DigestDraft(date=dt.date(2026, 3, 10), content_blocks=[], status="draft")
+        session.add(draft)
+        await session.commit()
+        draft_id = draft.id
+
+    resp = await client.get(f"/api/digest/drafts/{draft_id}/send-status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["previously_sent"] is False
+    assert data["sent_count"] == 0
+    assert data["sent_subscriber_ids"] == []
+
+
+@pytest.mark.asyncio
+async def test_send_status_previously_sent(client: AsyncClient):
+    """send-status returns correct data when draft has been sent."""
+    from app.models.digest_draft import DigestDraft
+    from app.models.digest_send_log import DigestSendLog
+    import datetime as dt
+    import secrets
+
+    async with async_session() as session:
+        draft = DigestDraft(date=dt.date(2026, 3, 10), content_blocks=[], status="sent")
+        session.add(draft)
+        await session.flush()
+
+        sub1 = Subscriber(email="ss1@example.com", unsubscribe_token=secrets.token_hex(32))
+        sub2 = Subscriber(email="ss2@example.com", unsubscribe_token=secrets.token_hex(32))
+        session.add_all([sub1, sub2])
+        await session.flush()
+
+        log1 = DigestSendLog(draft_id=draft.id, subscriber_id=sub1.id, email=sub1.email, status="sent")
+        log2 = DigestSendLog(draft_id=draft.id, subscriber_id=sub2.id, email=sub2.email, status="sent")
+        log3 = DigestSendLog(draft_id=draft.id, subscriber_id=sub1.id, email=sub1.email, status="failed")
+        session.add_all([log1, log2, log3])
+        await session.commit()
+        draft_id = draft.id
+        sub1_id = sub1.id
+        sub2_id = sub2.id
+
+    resp = await client.get(f"/api/digest/drafts/{draft_id}/send-status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["previously_sent"] is True
+    assert data["sent_count"] == 2  # deduplicated
+    assert set(data["sent_subscriber_ids"]) == {sub1_id, sub2_id}
+    assert data["sent_at"] is not None
