@@ -303,3 +303,29 @@ async def test_send_status_previously_sent(client: AsyncClient):
     assert data["sent_count"] == 2  # deduplicated
     assert set(data["sent_subscriber_ids"]) == {sub1_id, sub2_id}
     assert data["sent_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_render_welcome_email():
+    from app.services.email import render_welcome_email
+
+    digest_blocks = [
+        {"type": "text", "content": "Daily digest content", "html": "<p>Daily digest content</p>"},
+        {"type": "topic-header", "title": "AI News", "topic_number": 1},
+    ]
+
+    html = render_welcome_email(
+        welcome_message="Welcome! Latest from {{date}} — {{subject}}",
+        welcome_subject="3/10/26 abridged tech",
+        digest_date_str="March 10, 2026",
+        digest_blocks=digest_blocks,
+        unsubscribe_url="https://example.com/unsub",
+    )
+
+    assert "Welcome!" in html
+    assert "March 10, 2026" in html
+    assert "3/10/26 abridged tech" in html
+    assert "Daily digest content" in html
+    assert "AI News" in html
+    assert "<hr" in html  # divider between welcome and digest
+    assert "https://example.com/unsub" in html
