@@ -291,12 +291,12 @@ async def test_editing_sent_draft_resets_to_draft(client: AsyncClient):
         draft.sent_at = datetime.now(timezone.utc)
         await session.commit()
 
-    # Editing a sent draft should succeed and reset status to draft
+    # Editing a sent draft should be rejected (sent drafts are immutable)
     resp = await client.patch(f"/api/digest/drafts/{draft_id}", json={
         "content_blocks": [{"id": "b1", "type": "text", "content": "Updated"}],
     })
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "draft"
+    assert resp.status_code == 400
+    assert "Cannot edit a sent draft" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
