@@ -628,7 +628,7 @@ async def send_digest(draft_id: int, body: DigestSendRequest | None = None, db: 
     batch_emails = []
     sub_by_email: dict[str, "Subscriber"] = {}
     for sub in subscribers:
-        unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
+        unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}&digest={draft_id}"
         html = render_digest_email(
             date_str=date_str,
             blocks=blocks,
@@ -697,7 +697,7 @@ async def process_scheduled(db: AsyncSession = Depends(get_db)):
         batch_emails = []
         sub_by_email: dict[str, "Subscriber"] = {}
         for sub in subscribers:
-            unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
+            unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}&digest={draft.id}"
             html = render_digest_email(
                 date_str=date_str,
                 blocks=blocks,
@@ -784,7 +784,7 @@ async def retry_failed_sends(draft_id: int, body: DigestRetryRequest | None = No
         sub = subscribers.get(sub_id)
         if not sub:
             continue
-        unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}"
+        unsubscribe_url = f"https://abridged.tech/api/subscribers/unsubscribe?token={sub.unsubscribe_token}&digest={draft_id}"
         html = render_digest_email(date_str=date_str, blocks=blocks, unsubscribe_url=unsubscribe_url)
         batch_emails.append({
             "to_email": sub.email,
