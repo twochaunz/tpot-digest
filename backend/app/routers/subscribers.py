@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_admin
 from app.db import get_db
 from app.models.subscriber import Subscriber
+from app.models.unsubscribe_event import UnsubscribeEvent
 from app.schemas.subscriber import (
     SubscribeRequest,
     SubscribeResponse,
@@ -48,15 +49,23 @@ async def subscribe(body: SubscribeRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/unsubscribe", response_class=HTMLResponse)
-async def unsubscribe(token: str, db: AsyncSession = Depends(get_db)):
-    """Unsubscribe via token link."""
+async def unsubscribe(token: str, digest: int | None = None, db: AsyncSession = Depends(get_db)):
+    """Unsubscribe via token link. Optional digest param tracks which email triggered it."""
     result = await db.execute(select(Subscriber).where(Subscriber.unsubscribe_token == token))
     subscriber = result.scalar_one_or_none()
     if not subscriber:
         raise HTTPException(404, "Invalid unsubscribe link")
 
-    subscriber.unsubscribed_at = datetime.now(timezone.utc)
-    await db.commit()
+    # Idempotency: only create event when transitioning from subscribed → unsubscribed
+    if subscriber.unsubscribed_at is None:
+        subscriber.unsubscribed_at = datetime.now(timezone.utc)
+        event = UnsubscribeEvent(
+            subscriber_id=subscriber.id,
+            draft_id=digest,
+            unsubscribed_at=subscriber.unsubscribed_at,
+        )
+        db.add(event)
+        await db.commit()
 
     return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Unsubscribed</title></head>
