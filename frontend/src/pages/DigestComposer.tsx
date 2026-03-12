@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle, type TopicBundle } from '../api/dayBundle'
 import type { Tweet } from '../api/tweets'
@@ -1296,11 +1296,15 @@ function SendConfirmModal({
 /* ---- Main DigestComposer ---- */
 export function DigestComposer() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isAdmin } = useAuth()
 
   const [date, setDate] = useState(defaultDateStr())
   const datePickerRef = useRef<HTMLInputElement>(null)
-  const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null)
+  const [selectedDraftId, setSelectedDraftId] = useState<number | null>(() => {
+    const draftParam = searchParams.get('draft')
+    return draftParam ? Number(draftParam) : null
+  })
   const [blocks, setBlocks] = useState<DigestBlock[]>([])
   const [scheduledFor, setScheduledFor] = useState('')
   const [subject, setSubject] = useState('')
@@ -1410,6 +1414,13 @@ export function DigestComposer() {
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
+
+  // Clear ?draft= URL param after consuming it
+  useEffect(() => {
+    if (searchParams.has('draft')) {
+      setSearchParams({}, { replace: true })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load draft data when a *different* draft is selected (not on every auto-save update)
   const loadedDraftIdRef = useRef<number | null>(null)
