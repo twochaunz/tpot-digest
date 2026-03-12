@@ -6,5 +6,6 @@ from app.models.subscriber import Subscriber
 from app.models.topic import Topic
 from app.models.topic_script import TopicScript
 from app.models.tweet import Tweet
+from app.models.unsubscribe_event import UnsubscribeEvent
 
-__all__ = ["Tweet", "Topic", "TopicScript", "TweetAssignment", "Subscriber", "DigestDraft", "DigestSendLog", "EmailEvent"]
+__all__ = ["Tweet", "Topic", "TopicScript", "TweetAssignment", "Subscriber", "DigestDraft", "DigestSendLog", "EmailEvent", "UnsubscribeEvent"]
