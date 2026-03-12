@@ -11,6 +11,7 @@ class SubscribeResponse(BaseModel):
     message: str
     already_registered: bool = False
     re_subscribed: bool = False
+    sent_immediately: bool = False
 
 
 class SubscriberOut(BaseModel):
