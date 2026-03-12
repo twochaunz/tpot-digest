@@ -30,6 +30,7 @@ from app.schemas.digest import (
     DigestSendRequest,
     DigestSendTestRequest,
     GenerateTemplateRequest,
+    SendStatusOut,
 )
 from app.services.email import render_digest_email, send_digest_batch, send_digest_email
 
@@ -747,6 +748,35 @@ async def get_draft_send_log(draft_id: int, db: AsyncSession = Depends(get_db)):
     )
     logs = result.scalars().all()
     return [DigestSendLogOut.model_validate(log) for log in logs]
+
+
+@router.get("/drafts/{draft_id}/send-status", response_model=SendStatusOut)
+async def get_send_status(draft_id: int, db: AsyncSession = Depends(get_db)):
+    """Check if a draft has been previously sent and to whom."""
+    result = await db.execute(
+        select(DigestSendLog)
+        .where(DigestSendLog.draft_id == draft_id, DigestSendLog.status == "sent")
+    )
+    sent_logs = result.scalars().all()
+
+    if not sent_logs:
+        return SendStatusOut(
+            previously_sent=False,
+            sent_count=0,
+            sent_at=None,
+            sent_subscriber_ids=[],
+        )
+
+    # Deduplicate subscriber IDs (in case of retries)
+    subscriber_ids = list({log.subscriber_id for log in sent_logs})
+    earliest = min(log.attempted_at for log in sent_logs)
+
+    return SendStatusOut(
+        previously_sent=True,
+        sent_count=len(subscriber_ids),
+        sent_at=earliest,
+        sent_subscriber_ids=subscriber_ids,
+    )
 
 
 @router.post("/drafts/{draft_id}/retry")
