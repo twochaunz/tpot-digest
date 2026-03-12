@@ -105,6 +105,19 @@ export function useDeleteDigestDraft() {
   })
 }
 
+export function useDuplicateDraft() {
+  const qc = useQueryClient()
+  return useMutation<DigestDraft, Error, number>({
+    mutationFn: async (id) => {
+      const { data } = await api.post(`/digest/drafts/${id}/duplicate`)
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['digest-drafts'] })
+    },
+  })
+}
+
 export function useDigestPreview(draftId: number | null) {
   return useQuery<DigestPreview>({
     queryKey: ['digest-preview', draftId],

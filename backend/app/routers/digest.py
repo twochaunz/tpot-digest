@@ -510,7 +510,7 @@ async def _send_welcome_emails(subscribers: list, db: AsyncSession) -> list[dict
     # Find latest sent draft
     result = await db.execute(
         select(DigestDraft)
-        .where(DigestDraft.status == "sent")
+        .where(DigestDraft.sent_at.is_not(None))
         .order_by(DigestDraft.sent_at.desc())
         .limit(1)
     )
@@ -616,9 +616,8 @@ async def update_draft(draft_id: int, body: DigestDraftUpdate, db: AsyncSession 
     draft = await db.get(DigestDraft, draft_id)
     if not draft:
         raise HTTPException(404, "Draft not found")
-    # Reset status to 'draft' if editing a previously-sent draft
     if draft.status == "sent":
-        draft.status = "draft"
+        raise HTTPException(400, "Cannot edit a sent draft. Duplicate it first.")
 
     data = body.model_dump(exclude_unset=True)
 
@@ -638,6 +637,24 @@ async def update_draft(draft_id: int, body: DigestDraftUpdate, db: AsyncSession 
     await db.commit()
     await db.refresh(draft)
     return draft
+
+
+@router.post("/drafts/{draft_id}/duplicate", response_model=DigestDraftOut, status_code=201)
+async def duplicate_draft(draft_id: int, db: AsyncSession = Depends(get_db)):
+    """Clone a draft as a new editable draft. Primary use: iterate on sent editions."""
+    source = await db.get(DigestDraft, draft_id)
+    if not source:
+        raise HTTPException(404, "Draft not found")
+
+    new_draft = DigestDraft(
+        date=source.date,
+        content_blocks=[dict(b) for b in source.content_blocks] if source.content_blocks else [],
+        subject=source.subject,
+    )
+    db.add(new_draft)
+    await db.commit()
+    await db.refresh(new_draft)
+    return new_draft
 
 
 @router.delete("/drafts/{draft_id}", status_code=204)
@@ -1004,7 +1021,7 @@ async def welcome_preview(db: AsyncSession = Depends(get_db)):
     # Find latest sent draft
     result = await db.execute(
         select(DigestDraft)
-        .where(DigestDraft.status == "sent")
+        .where(DigestDraft.sent_at.is_not(None))
         .order_by(DigestDraft.sent_at.desc())
         .limit(1)
     )
@@ -1054,7 +1071,7 @@ async def welcome_test(db: AsyncSession = Depends(get_db)):
 
     result = await db.execute(
         select(DigestDraft)
-        .where(DigestDraft.status == "sent")
+        .where(DigestDraft.sent_at.is_not(None))
         .order_by(DigestDraft.sent_at.desc())
         .limit(1)
     )

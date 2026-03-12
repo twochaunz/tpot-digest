@@ -21,6 +21,7 @@ import {
   useDraftSendLog,
   useRetryFailedSends,
   useSendStatus,
+  useDuplicateDraft,
 } from '../api/digest'
 import {
   DndContext,
@@ -1321,6 +1322,7 @@ export function DigestComposer() {
   const createDraft = useCreateDigestDraft()
   const updateDraft = useUpdateDigestDraft()
   const deleteDraft = useDeleteDigestDraft()
+  const duplicateDraft = useDuplicateDraft()
   const sendTest = useSendTestDigest()
   const sendDigest = useSendDigest()
   const sendLog = useDraftSendLog(draft?.status === 'sent' ? selectedDraftId : null)
@@ -2050,8 +2052,40 @@ export function DigestComposer() {
         </div>
 
         {isSent && (
-          <div style={{ fontSize: 12, color: '#4ade80', fontWeight: 500, marginTop: -8 }}>
-            Last sent {draft!.sent_at ? new Date(draft!.sent_at).toLocaleString() : ''} ({draft!.recipient_count} recipients)
+          <div style={{
+            background: 'rgba(74, 222, 128, 0.08)',
+            border: '1px solid rgba(74, 222, 128, 0.2)',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <span style={{ fontSize: 13, color: '#4ade80' }}>
+              Sent on {draft!.sent_at ? new Date(draft!.sent_at).toLocaleDateString() : '—'} to {draft!.recipient_count ?? 0} recipients
+            </span>
+            <button
+              onClick={async () => {
+                const newDraft = await duplicateDraft.mutateAsync(selectedDraftId!)
+                setSelectedDraftId(newDraft.id)
+              }}
+              disabled={duplicateDraft.isPending}
+              style={{
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                padding: '6px 14px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                whiteSpace: 'nowrap' as const,
+              }}
+            >
+              {duplicateDraft.isPending ? 'Duplicating...' : 'Duplicate as draft'}
+            </button>
           </div>
         )}
 
@@ -2159,25 +2193,22 @@ export function DigestComposer() {
               </div>
 
               {sentDrafts.length > 0 && (
-                <details style={{ marginTop: 12 }}>
-                  <summary style={{
-                    cursor: 'pointer', fontSize: 13, color: 'var(--text-tertiary)',
-                    padding: '8px 0', userSelect: 'none' as const,
-                  }}>
-                    Sent ({sentDrafts.length})
-                  </summary>
-                  <div
-                    style={{
-                      background: 'var(--bg-raised)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-lg)',
-                      overflow: 'hidden',
-                      marginTop: 4,
-                    }}
-                  >
-                    {sentDrafts.map(draftRow)}
+                <div
+                  style={{
+                    background: 'var(--bg-raised)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-lg)',
+                    overflow: 'hidden',
+                    marginTop: 12,
+                  }}
+                >
+                  <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#4ade80' }}>
+                      Sent ({sentDrafts.length})
+                    </h3>
                   </div>
-                </details>
+                  {sentDrafts.map(draftRow)}
+                </div>
               )}
             </>
           )
@@ -2229,6 +2260,7 @@ export function DigestComposer() {
                 <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
                   {blocks.map((block, idx) => (
                     <React.Fragment key={block.id}>
+                      {!isSent && (
                       <BlockInsertRow
                         index={idx}
                         topics={topics}
@@ -2239,10 +2271,11 @@ export function DigestComposer() {
                         onAddTweet={addTweetBlock}
                         onAddDivider={addDividerBlock}
                       />
+                      )}
                       <SortableBlock
                         block={block}
                         topics={topics}
-                        isSent={false}
+                        isSent={isSent}
                         onUpdateBlock={updateBlock}
                         onDeleteBlock={deleteBlock}
                         onAutoSave={triggerAutoSave}
@@ -2255,6 +2288,7 @@ export function DigestComposer() {
             )}
 
             {/* Add block buttons */}
+            {!isSent && (
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <button onClick={() => addTextBlock()} style={addBtnStyle}>
                   + Text
@@ -2273,12 +2307,13 @@ export function DigestComposer() {
                   + Divider
                 </button>
               </div>
+            )}
           </div>
         </div>
         )}
 
         {/* Schedule */}
-        {selectedDraftId && (
+        {selectedDraftId && !isSent && (
           <div
             style={{
               background: 'var(--bg-raised)',
@@ -2348,7 +2383,7 @@ export function DigestComposer() {
         )}
 
         {/* Action Buttons */}
-        {selectedDraftId && (
+        {selectedDraftId && !isSent && (
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
               onClick={handleSendTest}
@@ -2560,11 +2595,13 @@ export function DigestComposer() {
                     triggerAutoSave()
                   }}
                   placeholder={defaultSubject(date)}
+                  disabled={isSent}
                   style={{
                     ...inputStyle,
                     fontSize: 12,
                     padding: '4px 8px',
                     flex: 1,
+                    opacity: isSent ? 0.6 : 1,
                   }}
                 />
               </div>
