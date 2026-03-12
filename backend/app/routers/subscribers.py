@@ -28,6 +28,14 @@ async def subscribe(body: SubscribeRequest, db: AsyncSession = Depends(get_db)):
     existing = result.scalar_one_or_none()
 
     if existing:
+        # Re-subscribe: clear unsubscribed_at if previously unsubscribed
+        if existing.unsubscribed_at is not None:
+            existing.unsubscribed_at = None
+            await db.commit()
+            return JSONResponse(
+                content=SubscribeResponse(message="Re-subscribed", re_subscribed=True).model_dump(),
+                status_code=200,
+            )
         return JSONResponse(
             content=SubscribeResponse(message="Already subscribed", already_registered=True).model_dump(),
             status_code=200,

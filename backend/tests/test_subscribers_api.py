@@ -178,6 +178,39 @@ async def test_unsubscribe_idempotent(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_resubscribe(client: AsyncClient):
+    """A previously unsubscribed user can re-subscribe by signing up again."""
+    import secrets
+    from datetime import datetime, timezone
+
+    unsub_token = secrets.token_hex(32)
+    async with async_session() as session:
+        sub = Subscriber(
+            email="resub@example.com",
+            unsubscribe_token=unsub_token,
+            unsubscribed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+        session.add(sub)
+        await session.commit()
+        original_token = sub.unsubscribe_token
+
+    resp = await client.post("/api/subscribers", json={"email": "resub@example.com"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["message"] == "Re-subscribed"
+    assert data["re_subscribed"] is True
+
+    async with async_session() as session:
+        from sqlalchemy import select
+        result = await session.execute(
+            select(Subscriber).where(Subscriber.email == "resub@example.com")
+        )
+        sub = result.scalar_one()
+        assert sub.unsubscribed_at is None
+        assert sub.unsubscribe_token == original_token
+
+
+@pytest.mark.asyncio
 async def test_email_service_renders_template():
     from app.services.email import render_digest_email
 
