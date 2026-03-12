@@ -63,17 +63,19 @@ async def subscribe(body: SubscribeRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     # Send welcome email if immediate mode
+    sent_immediately = False
     try:
         from app.routers.digest import _get_or_create_settings, _send_welcome_emails
         digest_settings = await _get_or_create_settings(db)
         if digest_settings.welcome_send_mode == "immediate":
             await db.refresh(subscriber)
             await _send_welcome_emails([subscriber], db)
+            sent_immediately = True
     except Exception:
         logger.exception("Failed to send welcome email")
 
     return JSONResponse(
-        content=SubscribeResponse(message="Subscribed").model_dump(),
+        content=SubscribeResponse(message="Subscribed", sent_immediately=sent_immediately).model_dump(),
         status_code=201,
     )
 

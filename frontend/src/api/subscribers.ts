@@ -5,6 +5,7 @@ interface SubscribeResponse {
   message: string
   already_registered: boolean
   re_subscribed: boolean
+  sent_immediately: boolean
 }
 
 export function useSubscribe() {

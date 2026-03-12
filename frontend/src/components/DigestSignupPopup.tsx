@@ -19,8 +19,10 @@ export function DigestSignupPopup() {
   // Fade out and hide after showing success message
   useEffect(() => {
     if (!successMessage) return
-    const fadeTimer = setTimeout(() => setFading(true), 2000)
-    const hideTimer = setTimeout(() => setVisible(false), 2500)
+    const isLong = successMessage.length > 40
+    const delay = isLong ? 4000 : 2000
+    const fadeTimer = setTimeout(() => setFading(true), delay)
+    const hideTimer = setTimeout(() => setVisible(false), delay + 500)
     return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
   }, [successMessage])
 
@@ -35,8 +37,10 @@ export function DigestSignupPopup() {
         setSuccessMessage('welcome back 😀')
       } else if (result.already_registered) {
         setSuccessMessage("you're already on the list 😀")
+      } else if (result.sent_immediately) {
+        setSuccessMessage('just sent you the latest tech discourse 😀')
       } else {
-        setSuccessMessage('subscribed 😀')
+        setSuccessMessage("you're subscribed 😀 we'll send the most recent abridged tech discourse shortly!")
       }
     } catch (err) {
       if (err instanceof Error) {
