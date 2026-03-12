@@ -137,7 +137,10 @@ export function useSendDigest() {
       const { data } = await api.post(`/digest/drafts/${draftId}/send`, body)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['digest-drafts'] })
+      qc.invalidateQueries({ queryKey: ['send-status', vars.draftId] })
+    },
   })
 }
 
@@ -227,5 +230,23 @@ export function useRetryFailedSends() {
       qc.invalidateQueries({ queryKey: ['digest-drafts'] })
       qc.invalidateQueries({ queryKey: ['all-send-logs'] })
     },
+  })
+}
+
+export interface SendStatus {
+  previously_sent: boolean
+  sent_count: number
+  sent_at: string | null
+  sent_subscriber_ids: number[]
+}
+
+export function useSendStatus(draftId: number | null) {
+  return useQuery<SendStatus>({
+    queryKey: ['send-status', draftId],
+    queryFn: async () => {
+      const { data } = await api.get(`/digest/drafts/${draftId}/send-status`)
+      return data
+    },
+    enabled: draftId !== null,
   })
 }
