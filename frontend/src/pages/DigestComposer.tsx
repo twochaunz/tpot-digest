@@ -20,6 +20,7 @@ import {
   useGenerateTemplate,
   useDraftSendLog,
   useRetryFailedSends,
+  useSendStatus,
 } from '../api/digest'
 import {
   DndContext,
@@ -1074,6 +1075,96 @@ function TopicSelectorModal({
   )
 }
 
+/* ---- Re-send warning dialog ---- */
+function ResendWarningDialog({
+  sentCount,
+  sentAt,
+  overlapCount,
+  selectedCount,
+  onSendAnyway,
+  onNewOnly,
+  onCancel,
+}: {
+  sentCount: number
+  sentAt: string
+  overlapCount: number
+  selectedCount: number
+  onSendAnyway: () => void
+  onNewOnly: () => void
+  onCancel: () => void
+}) {
+  const dateStr = new Date(sentAt).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  })
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10001,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onCancel}
+    >
+      <div
+        style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)', width: 420, padding: '24px',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+          Draft already sent
+        </h3>
+        <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          This draft was already sent to {sentCount} subscriber{sentCount !== 1 ? 's' : ''} on {dateStr}.
+          {overlapCount > 0 && (
+            <> {overlapCount} of your {selectedCount} selected subscriber{selectedCount !== 1 ? 's' : ''} {overlapCount === 1 ? 'has' : 'have'} already received it.</>
+          )}
+        </p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              background: 'transparent', color: 'var(--text-secondary)',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+              padding: '8px 16px', fontSize: 13, cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onNewOnly}
+            disabled={overlapCount === selectedCount}
+            style={{
+              background: overlapCount === selectedCount ? 'var(--text-tertiary)' : 'var(--bg-elevated)',
+              color: overlapCount === selectedCount ? 'var(--text-tertiary)' : 'var(--text-primary)',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+              padding: '8px 16px', fontSize: 13,
+              cursor: overlapCount === selectedCount ? 'default' : 'pointer',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            New only ({selectedCount - overlapCount})
+          </button>
+          <button
+            onClick={onSendAnyway}
+            style={{
+              background: '#ef4444', color: '#fff', border: 'none',
+              borderRadius: 'var(--radius-md)', padding: '8px 16px', fontSize: 13,
+              fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}
+          >
+            Send anyway
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---- Send confirmation modal with subscriber selection ---- */
 function SendConfirmModal({
   subscribers,
@@ -1212,7 +1303,7 @@ export function DigestComposer() {
   const [blocks, setBlocks] = useState<DigestBlock[]>([])
   const [scheduledFor, setScheduledFor] = useState('')
   const [subject, setSubject] = useState('')
-  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   const { data: bundle } = useDayBundle(date)
   const { data: drafts } = useDigestDrafts()
@@ -1233,6 +1324,13 @@ export function DigestComposer() {
   const sendTest = useSendTestDigest()
   const sendDigest = useSendDigest()
   const sendLog = useDraftSendLog(draft?.status === 'sent' ? selectedDraftId : null)
+  const sendStatus = useSendStatus(selectedDraftId)
+  const [resendWarning, setResendWarning] = useState<{
+    sentCount: number
+    sentAt: string
+    sentSubscriberIds: number[]
+    selectedSubscriberIds: number[]
+  } | null>(null)
   const retryFailed = useRetryFailedSends()
   const [retrySelection, setRetrySelection] = useState<Set<number>>(new Set())
   const [showFailedDetail, setShowFailedDetail] = useState(false)
@@ -1523,7 +1621,7 @@ export function DigestComposer() {
     }
   }, [generateTemplateBlocks, triggerAutoSave])
 
-  const showStatus = (text: string, type: 'success' | 'error') => {
+  const showStatus = (text: string, type: 'success' | 'error' | 'info') => {
     setStatusMessage({ text, type })
     setTimeout(() => setStatusMessage(null), 4000)
   }
@@ -1546,6 +1644,29 @@ export function DigestComposer() {
   const handleSendConfirm = async (subscriberIds: number[]) => {
     if (!selectedDraftId) return
     setShowSendConfirm(false)
+
+    // Check if draft was previously sent
+    if (sendStatus.data?.previously_sent && sendStatus.data.sent_at) {
+      const overlapIds = subscriberIds.filter(id =>
+        sendStatus.data!.sent_subscriber_ids.includes(id)
+      )
+      if (overlapIds.length > 0) {
+        setResendWarning({
+          sentCount: sendStatus.data.sent_count,
+          sentAt: sendStatus.data.sent_at,
+          sentSubscriberIds: sendStatus.data.sent_subscriber_ids,
+          selectedSubscriberIds: subscriberIds,
+        })
+        return
+      }
+    }
+
+    // No overlap or not previously sent — send directly
+    await executeSend(subscriberIds)
+  }
+
+  const executeSend = async (subscriberIds: number[]) => {
+    if (!selectedDraftId) return
     try {
       const result = await sendDigest.mutateAsync({ draftId: selectedDraftId, subscriberIds })
       showStatus(`Sent to ${result.sent_count} of ${result.total_subscribers} subscribers`, 'success')
@@ -1747,9 +1868,9 @@ export function DigestComposer() {
               padding: '10px 14px',
               borderRadius: 'var(--radius-md)',
               fontSize: 13,
-              background: statusMessage.type === 'success' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)',
-              color: statusMessage.type === 'success' ? '#4ade80' : 'var(--error)',
-              border: `1px solid ${statusMessage.type === 'success' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`,
+              background: statusMessage.type === 'success' ? 'rgba(74, 222, 128, 0.1)' : statusMessage.type === 'info' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(248, 113, 113, 0.1)',
+              color: statusMessage.type === 'success' ? '#4ade80' : statusMessage.type === 'info' ? '#60a5fa' : 'var(--error)',
+              border: `1px solid ${statusMessage.type === 'success' ? 'rgba(74, 222, 128, 0.2)' : statusMessage.type === 'info' ? 'rgba(96, 165, 250, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`,
             }}
           >
             {statusMessage.text}
@@ -2626,6 +2747,34 @@ export function DigestComposer() {
           subscribers={subscribers}
           onConfirm={handleSendConfirm}
           onClose={() => setShowSendConfirm(false)}
+        />
+      )}
+
+      {resendWarning && (
+        <ResendWarningDialog
+          sentCount={resendWarning.sentCount}
+          sentAt={resendWarning.sentAt}
+          overlapCount={resendWarning.selectedSubscriberIds.filter(id =>
+            resendWarning.sentSubscriberIds.includes(id)
+          ).length}
+          selectedCount={resendWarning.selectedSubscriberIds.length}
+          onSendAnyway={() => {
+            const ids = resendWarning.selectedSubscriberIds
+            setResendWarning(null)
+            executeSend(ids)
+          }}
+          onNewOnly={() => {
+            const newOnly = resendWarning.selectedSubscriberIds.filter(
+              id => !resendWarning.sentSubscriberIds.includes(id)
+            )
+            setResendWarning(null)
+            if (newOnly.length > 0) {
+              executeSend(newOnly)
+            } else {
+              showStatus('All selected subscribers already received this draft', 'info')
+            }
+          }}
+          onCancel={() => setResendWarning(null)}
         />
       )}
 
