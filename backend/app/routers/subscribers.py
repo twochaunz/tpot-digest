@@ -1,5 +1,6 @@
 """Subscriber endpoints: subscribe, unsubscribe, admin list/count."""
 
+import logging
 import secrets
 from datetime import datetime, timezone
 
@@ -18,6 +19,8 @@ from app.schemas.subscriber import (
     SubscriberOut,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/subscribers", tags=["subscribers"])
 
 
@@ -32,6 +35,15 @@ async def subscribe(body: SubscribeRequest, db: AsyncSession = Depends(get_db)):
         if existing.unsubscribed_at is not None:
             existing.unsubscribed_at = None
             await db.commit()
+            # Send welcome email to re-subscriber if immediate mode
+            try:
+                from app.routers.digest import _get_or_create_settings, _send_welcome_emails
+                digest_settings = await _get_or_create_settings(db)
+                if digest_settings.welcome_send_mode == "immediate":
+                    await db.refresh(existing)
+                    await _send_welcome_emails([existing], db)
+            except Exception:
+                logger.exception("Failed to send welcome email to re-subscriber")
             return JSONResponse(
                 content=SubscribeResponse(message="Re-subscribed", re_subscribed=True).model_dump(),
                 status_code=200,
@@ -49,6 +61,16 @@ async def subscribe(body: SubscribeRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(subscriber)
     await db.commit()
+
+    # Send welcome email if immediate mode
+    try:
+        from app.routers.digest import _get_or_create_settings, _send_welcome_emails
+        digest_settings = await _get_or_create_settings(db)
+        if digest_settings.welcome_send_mode == "immediate":
+            await db.refresh(subscriber)
+            await _send_welcome_emails([subscriber], db)
+    except Exception:
+        logger.exception("Failed to send welcome email")
 
     return JSONResponse(
         content=SubscribeResponse(message="Subscribed").model_dump(),
