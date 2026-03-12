@@ -27,6 +27,38 @@ def render_digest_email(
     )
 
 
+def render_welcome_email(
+    welcome_message: str,
+    welcome_subject: str,
+    digest_date_str: str,
+    digest_blocks: list[dict],
+    unsubscribe_url: str,
+) -> str:
+    """Render welcome email: welcome text + divider + full digest content."""
+    import markdown as md
+
+    # Resolve template variables in welcome message
+    resolved_message = welcome_message.replace(
+        "{{date}}", digest_date_str
+    ).replace(
+        "{{subject}}", welcome_subject
+    )
+
+    # Build combined blocks: welcome text + divider + original digest blocks
+    welcome_html = md.markdown(resolved_message, extensions=["extra"])
+    combined_blocks = [
+        {"type": "text", "content": resolved_message, "html": welcome_html},
+        {"type": "divider"},
+        *digest_blocks,
+    ]
+
+    return render_digest_email(
+        date_str=digest_date_str,
+        blocks=combined_blocks,
+        unsubscribe_url=unsubscribe_url,
+    )
+
+
 def send_digest_email(
     to_email: str,
     subject: str,
