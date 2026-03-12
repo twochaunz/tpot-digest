@@ -7,6 +7,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { DigestComposer } from './pages/DigestComposer'
 import { SendLogPage } from './pages/SendLogPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
+import { WelcomeEmailPage } from './pages/WelcomeEmailPage'
 import { DigestSignupPopup } from './components/DigestSignupPopup'
 
 const queryClient = new QueryClient({
@@ -33,6 +34,7 @@ export function App() {
             <Route path="/app/digest" element={<DigestComposer />} />
             <Route path="/app/send-log" element={<SendLogPage />} />
             <Route path="/app/analytics" element={<AnalyticsPage />} />
+            <Route path="/app/welcome-email" element={<WelcomeEmailPage />} />
           </Routes>
           <DigestSignupPopup />
         </BrowserRouter>
