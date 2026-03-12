@@ -38,9 +38,9 @@ export function DigestSignupPopup() {
       } else if (result.already_registered) {
         setSuccessMessage("you're already on the list 😀")
       } else if (result.sent_immediately) {
-        setSuccessMessage('done — just sent you the latest edition! 😀')
+        setSuccessMessage('done — just sent you the latest edition!')
       } else {
-        setSuccessMessage("you're in — we'll send you the latest edition shortly! 😀")
+        setSuccessMessage("you're in — we'll send you the latest edition shortly!")
       }
     } catch (err) {
       if (err instanceof Error) {
