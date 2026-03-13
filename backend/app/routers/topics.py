@@ -109,17 +109,8 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
         if not existing:
             db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id))
 
-        # Auto-fetch Grok context if empty
-        if not tweet.grok_context and tweet.url:
-            try:
-                tweet.grok_context = await fetch_grok_context(tweet.url)
-            except GrokAPIError:
-                pass  # Non-blocking: OG is set even if Grok fails
-
-        # Generate topic embedding for similarity search
-        from app.services.embeddings import embed_text
-        embed_source = f"{topic.title} {tweet.text or ''} {tweet.grok_context or ''}"
-        topic.embedding = embed_text(embed_source)
+        # Grok fetch + embedding + recategorization all happen in background
+        # (see _process_og_tweet below)
 
     # When date changes, move all assigned tweets to the new date
     if "date" in data and data["date"] != topic.date:
@@ -150,16 +141,45 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
     await db.commit()
     await db.refresh(topic)
 
-    # When OG tweet is set/changed, auto-categorize all uncategorized tweets in the topic
+    # When OG tweet is set/changed, run Grok + embedding + recategorization in background
     if og_newly_set:
-        from app.services.classifier import recategorize_topic_tweets
-        logger.info("OG tweet set for topic %d, triggering auto-categorization", topic_id)
+        logger.info("OG tweet set for topic %d, triggering background processing", topic_id)
         return JSONResponse(
             content=TopicOut.model_validate(topic).model_dump(mode="json"),
-            background=BackgroundTask(recategorize_topic_tweets, topic_id),
+            background=BackgroundTask(_process_og_tweet, topic_id),
         )
 
     return topic
+
+
+async def _process_og_tweet(topic_id: int) -> None:
+    """Background: fetch Grok context, compute embedding, recategorize."""
+    import app.db as db_module
+    from app.services.embeddings import embed_text
+    from app.services.classifier import recategorize_topic_tweets
+
+    async with db_module.async_session() as db:
+        topic = await db.get(Topic, topic_id)
+        if not topic or not topic.og_tweet_id:
+            return
+        tweet = await db.get(Tweet, topic.og_tweet_id)
+        if not tweet:
+            return
+
+        # Fetch Grok context if not already cached
+        if not tweet.grok_context and tweet.url:
+            try:
+                tweet.grok_context = await fetch_grok_context(tweet.url)
+            except GrokAPIError:
+                pass
+
+        # Compute topic embedding
+        embed_source = f"{topic.title} {tweet.text or ''} {tweet.grok_context or ''}"
+        topic.embedding = embed_text(embed_source)
+        await db.commit()
+
+    # Recategorize tweets (uses its own session)
+    await recategorize_topic_tweets(topic_id)
 
 
 @router.post("/{topic_id}/recategorize", status_code=200)
