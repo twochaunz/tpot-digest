@@ -1930,8 +1930,15 @@ export function DigestComposer() {
             const isToday = d === formatDateStr(new Date())
             const dayAbbr = dateObj.toLocaleDateString('en-US', { weekday: 'narrow' })
             const dayNum = dateObj.getDate()
-            // Check if this date has an existing draft
-            const hasDraft = drafts?.some(dr => dr.date === d)
+            // Determine draft status for this date
+            const dateDrafts = drafts?.filter(dr => dr.date === d)
+            const hasSent = dateDrafts?.some(dr => dr.status === 'sent')
+            const hasDraft = dateDrafts?.some(dr => dr.status === 'draft' || dr.status === 'scheduled')
+            // Day number color: green if sent, yellow if draft exists, red if no draft
+            const dayNumColor = isSelected ? '#fff'
+              : hasSent ? '#22c55e'
+              : hasDraft ? '#eab308'
+              : '#ef4444'
 
             return (
               <button
@@ -1971,21 +1978,16 @@ export function DigestComposer() {
                   fontSize: 15,
                   fontWeight: isSelected || isToday ? 700 : 400,
                   lineHeight: 1,
+                  color: dayNumColor,
                 }}>
                   {dayNum}
                 </span>
-                {/* Dot indicators */}
+                {/* Today dot */}
                 <div style={{ height: 4, display: 'flex', gap: 3, marginTop: 1 }}>
                   {isToday && !isSelected && (
                     <span style={{
                       width: 4, height: 4, borderRadius: '50%',
-                      background: 'var(--accent)',
-                    }} />
-                  )}
-                  {hasDraft && !isSelected && (
-                    <span style={{
-                      width: 4, height: 4, borderRadius: '50%',
-                      background: 'var(--text-tertiary)',
+                      background: 'var(--text-secondary)',
                     }} />
                   )}
                 </div>
