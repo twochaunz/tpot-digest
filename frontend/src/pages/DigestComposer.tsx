@@ -47,14 +47,9 @@ function formatDateStr(d: Date): string {
 }
 
 function defaultDateStr(): string {
-  const now = new Date()
-  // Default to yesterday unless it's past 4pm
-  if (now.getHours() < 16) {
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    return formatDateStr(yesterday)
-  }
-  return formatDateStr(now)
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  return formatDateStr(yesterday)
 }
 
 function recentDates(count: number): string[] {
@@ -1762,12 +1757,11 @@ export function DigestComposer() {
       >
         <div
           style={{
-            maxWidth: 800,
-            margin: '0 auto',
-            padding: '16px 24px',
+            padding: '12px 24px',
             display: 'flex',
             alignItems: 'center',
-            gap: 16,
+            gap: 12,
+            whiteSpace: 'nowrap',
           }}
         >
           <button
