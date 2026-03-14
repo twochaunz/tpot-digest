@@ -1,7 +1,11 @@
 (function () {
   "use strict";
-  if (window.__tpotDigestV2) return;
+  // Allow re-injection if previous instance's extension context died
+  if (window.__tpotDigestV2 && chrome.runtime?.id) return;
   window.__tpotDigestV2 = true;
+
+  // Clean up stale buttons from previous (dead) injection so fresh ones get created
+  document.querySelectorAll(".tpot-save-wrapper").forEach((el) => el.remove());
 
   // ── Utilities ──────────────────────────────────────────────────────
 
@@ -15,9 +19,20 @@
   }
 
   function sendMessage(msg) {
+    // Fail fast if extension context is dead (extension was reloaded/updated)
+    if (!chrome.runtime?.id) {
+      showToast("Extension was updated — please refresh this page", true);
+      return Promise.reject(new Error("Extension context invalidated"));
+    }
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(msg, (resp) => {
-        if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+        if (chrome.runtime.lastError) {
+          const errMsg = chrome.runtime.lastError.message;
+          if (errMsg.includes("Extension context invalidated")) {
+            showToast("Extension was updated — please refresh this page", true);
+          }
+          return reject(new Error(errMsg));
+        }
         resolve(resp);
       });
     });
@@ -26,8 +41,20 @@
   // ── Tweet Data Extraction ──────────────────────────────────────────
 
   function extractTweetData(article) {
-    const timeLink = article.querySelector('a[href*="/status/"]');
-    const href = timeLink ? timeLink.getAttribute("href") : "";
+    // Use the time element to find the tweet's own status link.
+    // querySelector('a[href*="/status/"]') can match a quoted tweet's link
+    // that appears earlier in DOM order, giving us the wrong tweet ID.
+    const timeEl = article.querySelector('time[datetime]');
+    const timeLink = timeEl ? timeEl.closest('a[href*="/status/"]') : null;
+    let href = timeLink ? timeLink.getAttribute("href") : "";
+
+    // Fallback for detail pages: the main tweet's timestamp is plain text
+    // (not wrapped in a link), so closest() returns null. Extract from URL.
+    if (!href && timeEl) {
+      const urlMatch = window.location.pathname.match(/^\/[^/]+\/status\/(\d+)/);
+      if (urlMatch) href = window.location.pathname;
+    }
+
     const idMatch = href.match(/status\/(\d+)/);
     const tweetId = idMatch ? idMatch[1] : "";
 
@@ -500,9 +527,15 @@
     articles.forEach((article) => {
       const btn = article.querySelector(".tpot-save-btn");
       if (btn && btn.dataset.tpotChecked) return;
-      const link = article.querySelector('a[href*="/status/"]');
-      if (!link) return;
-      const m = link.getAttribute("href").match(/status\/(\d+)/);
+      const timeEl2 = article.querySelector('time[datetime]');
+      const link2 = timeEl2 ? timeEl2.closest('a[href*="/status/"]') : null;
+      let href2 = link2 ? link2.getAttribute("href") : "";
+      if (!href2 && timeEl2) {
+        const urlMatch2 = window.location.pathname.match(/^\/[^/]+\/status\/(\d+)/);
+        if (urlMatch2) href2 = window.location.pathname;
+      }
+      if (!href2) return;
+      const m = href2.match(/status\/(\d+)/);
       if (m && !savedTweets.has(m[1])) unchecked.push(m[1]);
     });
     if (unchecked.length === 0) return;
@@ -521,9 +554,15 @@
         const btn = article.querySelector(".tpot-save-btn");
         if (!btn) return;
         btn.dataset.tpotChecked = "1";
-        const link = article.querySelector('a[href*="/status/"]');
-        if (!link) return;
-        const m = link.getAttribute("href").match(/status\/(\d+)/);
+        const timeEl3 = article.querySelector('time[datetime]');
+        const link3 = timeEl3 ? timeEl3.closest('a[href*="/status/"]') : null;
+        let href3 = link3 ? link3.getAttribute("href") : "";
+        if (!href3 && timeEl3) {
+          const urlMatch3 = window.location.pathname.match(/^\/[^/]+\/status\/(\d+)/);
+          if (urlMatch3) href3 = window.location.pathname;
+        }
+        if (!href3) return;
+        const m = href3.match(/status\/(\d+)/);
         if (m && savedTweets.has(m[1])) {
           btn.classList.add("saved");
           btn.dataset.tpotDbId = savedTweets.get(m[1]);
