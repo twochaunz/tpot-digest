@@ -950,17 +950,16 @@ function DraftsModal({
 
 /* ---- Topic selector for new draft template ---- */
 function TopicSelectorModal({
-  topics,
-  date: _date,
+  topicGroups,
   onConfirm,
   onClose,
 }: {
-  topics: TopicBundle[]
-  date: string
+  topicGroups: { label: string; topics: TopicBundle[] }[]
   onConfirm: (orderedIds: number[]) => void
   onClose: () => void
 }) {
   const [ordered, setOrdered] = useState<number[]>([])
+  const allTopics = topicGroups.flatMap(g => g.topics)
 
   const toggle = (id: number) => {
     setOrdered(prev =>
@@ -969,7 +968,7 @@ function TopicSelectorModal({
   }
 
   const selectTop3 = () => {
-    setOrdered(topics.slice(0, 3).map(t => t.id))
+    setOrdered(allTopics.slice(0, 3).map(t => t.id))
   }
 
   return (
@@ -1003,7 +1002,7 @@ function TopicSelectorModal({
           <button onClick={selectTop3} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
             Top 3
           </button>
-          <button onClick={() => setOrdered(topics.map(t => t.id))} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
+          <button onClick={() => setOrdered(allTopics.map(t => t.id))} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
             All
           </button>
           <button onClick={() => setOrdered([])} style={{ ...addBtnStyle, fontSize: 12, padding: '4px 10px' }}>
@@ -1012,41 +1011,54 @@ function TopicSelectorModal({
         </div>
 
         <div style={{ overflowY: 'auto', flex: 1, padding: '8px 12px' }}>
-          {topics.map(t => (
-            <label
-              key={t.id}
-              onClick={() => toggle(t.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px',
-                cursor: 'pointer', borderRadius: 'var(--radius-sm)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-            >
-              {(() => {
-                const pos = ordered.indexOf(t.id)
-                const isSelected = pos !== -1
-                return (
-                  <span
-                    style={{
-                      width: 22, height: 22, borderRadius: '50%',
-                      border: isSelected ? 'none' : '2px solid var(--border)',
-                      background: isSelected ? 'var(--accent)' : 'transparent',
-                      color: '#fff', fontSize: 11, fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {isSelected ? pos + 1 : ''}
+          {topicGroups.map(group => (
+            <div key={group.label}>
+              {topicGroups.length > 1 && (
+                <div style={{
+                  fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                  padding: '10px 8px 4px',
+                }}>
+                  {group.label}
+                </div>
+              )}
+              {group.topics.map(t => (
+                <label
+                  key={t.id}
+                  onClick={() => toggle(t.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px',
+                    cursor: 'pointer', borderRadius: 'var(--radius-sm)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  {(() => {
+                    const pos = ordered.indexOf(t.id)
+                    const isSelected = pos !== -1
+                    return (
+                      <span
+                        style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          border: isSelected ? 'none' : '2px solid var(--border)',
+                          background: isSelected ? 'var(--accent)' : 'transparent',
+                          color: '#fff', fontSize: 11, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isSelected ? pos + 1 : ''}
+                      </span>
+                    )
+                  })()}
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.color || 'var(--accent)', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{t.title}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    {t.tweet_count} tweet{t.tweet_count !== 1 ? 's' : ''}
                   </span>
-                )
-              })()}
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.color || 'var(--accent)', flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{t.title}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                {t.tweet_count} tweet{t.tweet_count !== 1 ? 's' : ''}
-              </span>
-            </label>
+                </label>
+              ))}
+            </div>
           ))}
         </div>
 
@@ -1305,7 +1317,17 @@ export function DigestComposer() {
   const [subject, setSubject] = useState('')
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null)
 
+  // On Sundays, also fetch Saturday's topics for weekend digest
+  const isSunday = new Date(date + 'T00:00:00').getDay() === 0
+  const saturdayDate = useMemo(() => {
+    if (!isSunday) return ''
+    const sat = new Date(date + 'T00:00:00')
+    sat.setDate(sat.getDate() - 1)
+    return sat.toISOString().slice(0, 10)
+  }, [date, isSunday])
+
   const { data: bundle } = useDayBundle(date)
+  const { data: saturdayBundle } = useDayBundle(saturdayDate || date, { enabled: isSunday })
   const { data: drafts } = useDigestDrafts()
   const { data: draft } = useDigestDraft(selectedDraftId)
   const { data: preview } = useDigestPreview(selectedDraftId)
@@ -1439,6 +1461,9 @@ export function DigestComposer() {
   }, [drafts, date])
 
   const topics = sortTopics(bundle?.topics || [])
+  const saturdayTopics = sortTopics(saturdayBundle?.topics || [])
+  // Combined topics for template generation (Sunday includes Saturday)
+  const allTopics = isSunday ? [...saturdayTopics, ...topics] : topics
 
   // Set of topic IDs already used in blocks
   const usedTopicIds = new Set(
@@ -1517,21 +1542,23 @@ export function DigestComposer() {
 
   const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
     const orderedSet = new Set(orderedIds)
-    const featured = orderedIds.map(id => topics.find(t => t.id === id)).filter((t): t is TopicBundle => t !== undefined)
+    const featured = orderedIds.map(id => allTopics.find(t => t.id === id)).filter((t): t is TopicBundle => t !== undefined)
 
-    // Auto-include kek topic if it exists and wasn't already selected
-    const kekTopic = topics.find(t => isKekTopic(t.title))
-    if (kekTopic && !orderedSet.has(kekTopic.id)) {
-      featured.push(kekTopic)
-      orderedSet.add(kekTopic.id)
+    // Auto-include kek topics from all available days if not already selected
+    const kekTopics = allTopics.filter(t => isKekTopic(t.title) && !orderedSet.has(t.id))
+    for (const kek of kekTopics) {
+      featured.push(kek)
+      orderedSet.add(kek.id)
     }
 
-    const rest = sortTopics(topics).filter(t => !orderedSet.has(t.id))
+    const rest = sortTopics(allTopics).filter(t => !orderedSet.has(t.id))
 
     const d = new Date(date + 'T00:00:00')
-    const formattedDate = `${d.getMonth() + 1}/${d.getDate()}`
+    const formattedDate = isSunday
+      ? `${d.getMonth() + 1}/${d.getDate() - 1}\u2013${d.getDate()}`
+      : `${d.getMonth() + 1}/${d.getDate()}`
 
-    // Call backend for AI content (exclude kek topic — no summary/transitions needed)
+    // Call backend for AI content (exclude kek topics — no summary/transitions needed)
     const templateData = await generateTemplate.mutateAsync({
       date,
       topic_ids: featured.filter(t => !isKekTopic(t.title)).map(t => t.id),
@@ -1586,8 +1613,9 @@ export function DigestComposer() {
       }
     }
 
-    // Kek topic: just header + tweets, no summary/transitions
-    if (kekTopic && kekTopic.tweets.length > 0) {
+    // Kek topics: just header + tweets, no summary/transitions (may have kek from both days)
+    const allKekTopics = allTopics.filter(t => isKekTopic(t.title) && t.tweets.length > 0)
+    for (const kekTopic of allKekTopics) {
       newBlocks.push({ id: nextBlockId(), type: 'divider' })
       newBlocks.push({ id: nextBlockId(), type: 'topic-header', topic_id: kekTopic.id })
       for (const tw of kekTopic.tweets) {
@@ -1595,27 +1623,37 @@ export function DigestComposer() {
       }
     }
 
-    // "More on the timeline" section — always includes kek as final bullet
-    const sorted2 = sortTopics(topics)
-    const kekTimelineLink = kekTopic
-      ? `- [more kek](https://abridged.tech/app/${date}/${sorted2.indexOf(kekTopic) + 1})`
-      : null
-    if (rest.length > 0 || kekTimelineLink) {
+    // "More on the timeline" section
+    // Build links using each topic's own date for correct URL
+    const topicDateMap = new Map<number, string>()
+    for (const t of topics) topicDateMap.set(t.id, date)
+    if (isSunday) {
+      for (const t of saturdayTopics) topicDateMap.set(t.id, saturdayDate)
+    }
+    const restLinks = rest.map(t => {
+      const tDate = topicDateMap.get(t.id) || date
+      const dayTopics = sortTopics(tDate === date ? topics : saturdayTopics)
+      const topicNum = dayTopics.indexOf(t) + 1
+      return `- [${t.title}](https://abridged.tech/app/${tDate}/${topicNum})`
+    })
+    const kekLinks = allKekTopics.map(kekTopic => {
+      const tDate = topicDateMap.get(kekTopic.id) || date
+      const dayTopics = sortTopics(tDate === date ? topics : saturdayTopics)
+      const topicNum = dayTopics.indexOf(kekTopic) + 1
+      return `- [more kek](https://abridged.tech/app/${tDate}/${topicNum})`
+    })
+    const allLinks = [...restLinks, ...kekLinks]
+    if (allLinks.length > 0) {
       newBlocks.push({ id: nextBlockId(), type: 'divider' })
-      const links = rest.map(t => {
-        const topicNum = sorted2.indexOf(t) + 1
-        return `- [${t.title}](https://abridged.tech/app/${date}/${topicNum})`
-      })
-      if (kekTimelineLink) links.push(kekTimelineLink)
       newBlocks.push({
         id: nextBlockId(),
         type: 'text',
-        content: `**More on the timeline**\n\n${links.join('\n')}`,
+        content: `**More on the timeline**\n\n${allLinks.join('\n')}`,
       })
     }
 
     return newBlocks
-  }, [topics, date, generateTemplate])
+  }, [allTopics, topics, saturdayTopics, date, saturdayDate, isSunday, generateTemplate])
 
   const [isGenerating, setIsGenerating] = useState(false)
 
@@ -1709,7 +1747,7 @@ export function DigestComposer() {
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]
       if (b.type === 'topic-header' && b.topic_id) {
-        const t = topics.find(tp => tp.id === b.topic_id)
+        const t = allTopics.find(tp => tp.id === b.topic_id)
         const isKek = t?.title?.trim().toLowerCase() === 'kek'
         if (!isKek) topicNum++
         items.push({
@@ -1726,7 +1764,7 @@ export function DigestComposer() {
       }
     }
     return items
-  }, [blocks, topics])
+  }, [blocks, allTopics])
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -2101,7 +2139,7 @@ export function DigestComposer() {
         )}
 
         {/* New Draft from Topics button */}
-        {blocks.length === 0 && !selectedDraftId && topics.length > 0 && (
+        {blocks.length === 0 && !selectedDraftId && allTopics.length > 0 && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <button
               onClick={() => setShowTopicSelector(true)}
@@ -2274,7 +2312,7 @@ export function DigestComposer() {
                       {!isSent && (
                       <BlockInsertRow
                         index={idx}
-                        topics={topics}
+                        topics={allTopics}
                         usedTopicIds={usedTopicIds}
                         usedTweetIds={usedTweetIds}
                         onAddText={addTextBlock}
@@ -2285,7 +2323,7 @@ export function DigestComposer() {
                       )}
                       <SortableBlock
                         block={block}
-                        topics={topics}
+                        topics={allTopics}
                         isSent={isSent}
                         onUpdateBlock={updateBlock}
                         onDeleteBlock={deleteBlock}
@@ -2305,12 +2343,12 @@ export function DigestComposer() {
                   + Text
                 </button>
                 <TopicPicker
-                  topics={topics}
+                  topics={allTopics}
                   usedTopicIds={usedTopicIds}
                   onSelect={(topicId) => addTopicHeaderBlock(topicId)}
                 />
                 <TweetPicker
-                  topics={topics}
+                  topics={allTopics}
                   usedTweetIds={usedTweetIds}
                   onSelect={(tweetId) => addTweetBlock(tweetId)}
                 />
@@ -2735,8 +2773,12 @@ export function DigestComposer() {
       {/* Topic selector modal */}
       {showTopicSelector && (
         <TopicSelectorModal
-          topics={topics}
-          date={date}
+          topicGroups={isSunday ? [
+            { label: 'Saturday', topics: saturdayTopics },
+            { label: 'Sunday', topics: topics },
+          ] : [
+            { label: '', topics: topics },
+          ]}
           onConfirm={handleCreateFromTemplate}
           onClose={() => setShowTopicSelector(false)}
         />
@@ -2744,7 +2786,7 @@ export function DigestComposer() {
 
       {/* Tweet selector side panel */}
       {tweetSelectorTopicId && (() => {
-        const topic = topics.find(t => t.id === tweetSelectorTopicId)
+        const topic = allTopics.find(t => t.id === tweetSelectorTopicId)
         if (!topic) return null
         const includedTweetIds = new Set(
           blocks

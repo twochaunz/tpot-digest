@@ -24,7 +24,7 @@ export function useLatestDate() {
   })
 }
 
-export function useDayBundle(date: string) {
+export function useDayBundle(date: string, opts?: { enabled?: boolean }) {
   return useQuery<DayBundle>({
     queryKey: ['day-bundle', date],
     queryFn: async () => {
@@ -33,6 +33,7 @@ export function useDayBundle(date: string) {
     },
     staleTime: 30_000, // 30s — refetch picks up extension-saved tweets on focus
     refetchOnWindowFocus: true, // respects staleTime instead of always refetching
+    enabled: opts?.enabled,
   })
 }
 
