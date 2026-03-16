@@ -16,7 +16,7 @@ _jinja_env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape
 def render_digest_email(
     date_str: str,
     blocks: list[dict],
-    unsubscribe_url: str,
+    unsubscribe_url: str | None = None,
 ) -> str:
     """Render digest email HTML from template."""
     template = _jinja_env.get_template("digest_email.html")

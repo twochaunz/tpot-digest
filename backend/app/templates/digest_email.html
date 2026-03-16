@@ -223,7 +223,7 @@
     <!-- Footer -->
     <div style="text-align:center;padding-top:24px;border-top:1px solid #e5e7eb;">
       <p style="font-size:12px;color:#9ca3af;margin:0;">
-        <a href="{{ unsubscribe_url }}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
+        {% if unsubscribe_url %}<a href="{{ unsubscribe_url }}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>{% else %}Test email{% endif %}
       </p>
     </div>
 
