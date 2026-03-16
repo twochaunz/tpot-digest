@@ -717,7 +717,7 @@ async def send_test(draft_id: int, body: DigestSendTestRequest | None = None, db
     html = render_digest_email(
         date_str=date_str,
         blocks=blocks,
-        unsubscribe_url="#",
+        unsubscribe_url=None,
     )
 
     result = send_digest_email(to_email, subject, html)
