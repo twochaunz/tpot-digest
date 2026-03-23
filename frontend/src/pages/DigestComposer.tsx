@@ -1741,13 +1741,22 @@ export function DigestComposer() {
   }
 
   // Build topic nav items from blocks (must be before early returns — Rules of Hooks)
+  // Also look up topics from the draft's own date bundle if it differs from current
+  const draftDateTopics = useDayBundle(draft?.date || date, { enabled: !!draft && draft.date !== date })
+  const navTopicPool = useMemo(() => {
+    if (draft && draft.date !== date && draftDateTopics.data) {
+      return [...allTopics, ...draftDateTopics.data.topics]
+    }
+    return allTopics
+  }, [allTopics, draft, date, draftDateTopics.data])
+
   const topicNavItems = useMemo(() => {
     const items: { id: string; topicId: number | null; label: string; title: string; color: string; tweetCount: number; blockId: string }[] = []
     let topicNum = 0
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]
       if (b.type === 'topic-header' && b.topic_id) {
-        const t = allTopics.find(tp => tp.id === b.topic_id)
+        const t = navTopicPool.find(tp => tp.id === b.topic_id)
         const isKek = t?.title?.trim().toLowerCase() === 'kek'
         if (!isKek) topicNum++
         items.push({
@@ -1764,7 +1773,7 @@ export function DigestComposer() {
       }
     }
     return items
-  }, [blocks, allTopics])
+  }, [blocks, navTopicPool])
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -2323,7 +2332,7 @@ export function DigestComposer() {
                       )}
                       <SortableBlock
                         block={block}
-                        topics={allTopics}
+                        topics={navTopicPool}
                         isSent={isSent}
                         onUpdateBlock={updateBlock}
                         onDeleteBlock={deleteBlock}
