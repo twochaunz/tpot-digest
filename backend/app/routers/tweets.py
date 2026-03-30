@@ -21,13 +21,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 
 
-async def _persist_quoted_tweet(db, quoted_tweet_id: str, depth: int = 0):
-    """Fetch a quoted tweet from X API and persist it if not already in DB.
+async def _persist_quoted_tweet(db, quoted_tweet_id: str, included_tweets: list[dict] | None = None):
+    """Persist a quoted tweet if not already in DB.
 
-    Recurses one level deep for nested quotes.
+    Uses pre-fetched data from included_tweets (already returned by the X API
+    in the parent tweet's response) to avoid redundant API calls.
     """
-    from app.services.x_api import fetch_tweet, XAPIError
-
     # Already in DB?
     existing = (await db.execute(
         select(Tweet).where(Tweet.tweet_id == quoted_tweet_id)
@@ -35,11 +34,22 @@ async def _persist_quoted_tweet(db, quoted_tweet_id: str, depth: int = 0):
     if existing:
         return
 
-    try:
-        qt_data = await fetch_tweet(quoted_tweet_id)
-    except XAPIError as e:
-        logger.warning("Could not fetch quoted tweet %s: %s", quoted_tweet_id, e)
-        return
+    # Look for the quoted tweet in the included data from the parent response
+    qt_data = None
+    if included_tweets:
+        for inc in included_tweets:
+            if inc.get("tweet_id") == quoted_tweet_id:
+                qt_data = inc
+                break
+
+    if not qt_data:
+        # Fallback: fetch from API if not in includes (shouldn't normally happen)
+        from app.services.x_api import fetch_tweet, XAPIError
+        try:
+            qt_data = await fetch_tweet(quoted_tweet_id)
+        except XAPIError as e:
+            logger.warning("Could not fetch quoted tweet %s: %s", quoted_tweet_id, e)
+            return
 
     qt = Tweet(
         tweet_id=quoted_tweet_id,
@@ -63,10 +73,6 @@ async def _persist_quoted_tweet(db, quoted_tweet_id: str, depth: int = 0):
     if qt_data.get("created_at"):
         qt.created_at = datetime.fromisoformat(qt_data["created_at"].replace("Z", "+00:00"))
     db.add(qt)
-
-    # One level of nesting
-    if depth < 1 and qt_data.get("quoted_tweet_id"):
-        await _persist_quoted_tweet(db, qt_data["quoted_tweet_id"], depth + 1)
 
 
 async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, category: str | None):
@@ -98,6 +104,7 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
         tweet.reply_to_handle = api_data.get("reply_to_handle")
         tweet.url_entities = api_data.get("url_entities")
         tweet.article_title = api_data.get("article_title")
+        tweet.lang = api_data.get("lang")
         tweet.url = api_data["url"]
         if api_data.get("created_at"):
             tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
@@ -113,8 +120,9 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
                 db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id, category=category))
 
         # Also persist quoted tweet(s) so digest preview never needs X API
+        # Use included_tweets from the parent response to avoid extra API calls
         if api_data.get("quoted_tweet_id"):
-            await _persist_quoted_tweet(db, api_data["quoted_tweet_id"])
+            await _persist_quoted_tweet(db, api_data["quoted_tweet_id"], api_data.get("included_tweets"))
 
         await db.commit()
 
@@ -250,6 +258,31 @@ async def update_tweet(tweet_id: int, body: TweetUpdate, db: AsyncSession = Depe
     return tweet
 
 
+@router.post("/{tweet_id}/translate", response_model=TweetOut)
+async def translate_tweet(
+    tweet_id: int,
+    force: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    tweet = await db.get(Tweet, tweet_id)
+    if not tweet:
+        raise HTTPException(404, "Tweet not found")
+
+    if tweet.translated_text and not force:
+        return tweet
+
+    from app.services.translate import translate_text, TranslationError
+    try:
+        tweet.translated_text = await translate_text(tweet.text)
+    except TranslationError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    await db.commit()
+    await db.refresh(tweet)
+    return tweet
+
+
 @router.post("/{tweet_id}/grok", response_model=TweetOut)
 async def fetch_grok(
     tweet_id: int,
@@ -304,6 +337,7 @@ async def refetch_tweet(tweet_id: int, db: AsyncSession = Depends(get_db), _admi
     tweet.reply_to_handle = api_data.get("reply_to_handle")
     tweet.url_entities = api_data.get("url_entities")
     tweet.article_title = api_data.get("article_title")
+    tweet.lang = api_data.get("lang")
     if api_data.get("created_at"):
         tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
 

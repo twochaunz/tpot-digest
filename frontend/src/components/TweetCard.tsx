@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { toPng } from 'html-to-image'
 import { Tweet as ReactTweet } from 'react-tweet'
 import type { Tweet } from '../api/tweets'
+import { useTranslateTweet } from '../api/tweets'
 import { useIsMobile } from '../hooks/useMediaQuery'
 
 interface TweetCardProps {
@@ -602,6 +603,74 @@ function LinkPreviewCards({ urlEntities }: { urlEntities: Tweet['url_entities'] 
   )
 }
 
+/* Non-English tweet languages worth showing a translate button for */
+const ENGLISH_LANGS = new Set(['en', 'und', null, undefined, ''])
+
+function TranslateButton({ tweet }: { tweet: Tweet }) {
+  const translate = useTranslateTweet()
+  const [showTranslation, setShowTranslation] = useState(!!tweet.translated_text)
+
+  if (ENGLISH_LANGS.has(tweet.lang) && !tweet.translated_text) return null
+
+  if (tweet.translated_text) {
+    return (
+      <div style={{ marginTop: 6 }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowTranslation(v => !v) }}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            color: 'var(--accent)',
+            fontSize: 13,
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          {showTranslation ? 'Hide translation' : 'Show translation'}
+        </button>
+        {showTranslation && (
+          <div style={{
+            marginTop: 6,
+            padding: '8px 10px',
+            background: 'var(--bg-elevated)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 15,
+            color: 'var(--text-secondary)',
+            lineHeight: 1.45,
+            whiteSpace: 'pre-wrap',
+          }}>
+            {tweet.translated_text}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        translate.mutate({ tweetId: tweet.id })
+      }}
+      disabled={translate.isPending}
+      style={{
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        marginTop: 6,
+        color: 'var(--accent)',
+        fontSize: 13,
+        cursor: translate.isPending ? 'wait' : 'pointer',
+        fontFamily: 'var(--font-body)',
+        opacity: translate.isPending ? 0.6 : 1,
+      }}
+    >
+      {translate.isPending ? 'Translating...' : 'Translate post'}
+    </button>
+  )
+}
+
 /* Native card: X.com-style two-column layout (avatar | content) */
 function NativeCard({ tweet }: { tweet: Tweet }) {
   return (
@@ -687,6 +756,9 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
         >
           <TweetText text={tweet.text} hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)} hasQuotedTweet={!!tweet.quoted_tweet_id} hasArticleTitle={!!tweet.article_title} urlEntities={tweet.url_entities} />
         </div>
+
+        {/* Translate button for non-English tweets */}
+        <TranslateButton tweet={tweet} />
 
         {/* Article title link */}
         {tweet.article_title && (() => {

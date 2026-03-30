@@ -24,6 +24,8 @@ export interface Tweet {
   memo: string | null
   grok_context: string | null
   article_title: string | null
+  lang: string | null
+  translated_text: string | null
   created_at: string | null
   saved_at: string
   category?: string | null
@@ -50,6 +52,17 @@ export function useTweets(params: {
       return data
     },
     enabled: options?.enabled,
+  })
+}
+
+export function useTranslateTweet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ tweetId, force = false }: { tweetId: number; force?: boolean }) => {
+      const { data } = await api.post(`/tweets/${tweetId}/translate?force=${force}`)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['day-bundle'] }),
   })
 }
 

@@ -230,6 +230,7 @@ def _build_quoted_tweet_dict(quoted_tweet: "Tweet", nested_qt: "Tweet | None" = 
         "author_display_name": quoted_tweet.author_display_name,
         "author_avatar_url": _proxy_avatar_url(quoted_tweet.author_avatar_url),
         "text": text,
+        "translated_text": quoted_tweet.translated_text if hasattr(quoted_tweet, 'translated_text') else None,
         "url": quoted_tweet.url,
         "media_images": _collect_media(quoted_tweet.media_urls),
         "link_cards": _build_link_cards(quoted_tweet.url_entities),
@@ -268,14 +269,18 @@ def _build_link_cards(url_entities: list[dict] | None) -> list[dict]:
 
 
 def _collect_media(media_urls: list[dict] | None) -> list[dict]:
-    """Extract photo media as structured dicts with URL and dimensions."""
+    """Extract media as structured dicts with URL and dimensions.
+
+    Includes photos and video/gif thumbnails (preview_image_url).
+    """
     images = []
     for m in (media_urls or []):
-        if m.get("type") == "photo" and m.get("url"):
+        if m.get("type") in ("photo", "video", "animated_gif") and m.get("url"):
             images.append({
                 "url": _proxy_avatar_url(m["url"]),
                 "width": m.get("width", 0),
                 "height": m.get("height", 0),
+                "is_video": m.get("type") == "video",
             })
     return images
 
@@ -300,6 +305,8 @@ def _build_tweet_dict(tw: Tweet, show_engagement: bool, quoted_tweet: "Tweet | d
         "author_display_name": tw.author_display_name,
         "author_avatar_url": _proxy_avatar_url(tw.author_avatar_url),
         "text": text,
+        "translated_text": tw.translated_text,
+        "tweet_url": tw.url,
         "url": tw.url,
         "show_engagement": show_engagement,
         "link_cards": _build_link_cards(tw.url_entities) if show_media else [],
