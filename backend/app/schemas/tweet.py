@@ -40,6 +40,8 @@ class TweetOut(BaseModel):
     memo: str | None
     grok_context: str | None
     article_title: str | None = None
+    lang: str | None = None
+    translated_text: str | None = None
     saved_at: datetime
     category: str | None = None
     status: str = "saved"
@@ -61,6 +63,7 @@ class TweetOut(BaseModel):
 class TweetUpdate(BaseModel):
     memo: str | None = None
     saved_at: datetime | None = None
+    translated_text: str | None = None
 
 
 class TweetCheckRequest(BaseModel):
