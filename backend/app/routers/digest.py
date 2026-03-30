@@ -167,16 +167,18 @@ The tweets are grouped by category. For each category EXCEPT the first one (whic
 Use simple past tense — keep it quippy and punchy, not progressive/continuous tense.
 
 Examples of good transitions:
-- "some pushed back on the pricing model:"
-- "others drew parallels:"
-- "a few sharp takes:"
-- "the community had thoughts:"
+- "some pushed back on the pricing model"
+- "others drew parallels"
+- "a few sharp takes"
+- "the community had thoughts"
+
+IMPORTANT: Do NOT end transitions with colons. Just end the sentence naturally.
 
 Category groups:
 {groups_text}
 
 Return ONLY valid JSON mapping category name to transition text. Skip the first category (it needs no transition).
-Example: {{"pushback": "some pushback on the pricing model:", "kek": "and of course, the memes:"}}"""
+Example: {{"pushback": "some pushback on the pricing model", "kek": "and of course, the memes"}}"""
 
     try:
         client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)

@@ -66,6 +66,12 @@ function recentDates(count: number): string[] {
 function defaultSubject(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
   const yy = String(d.getFullYear()).slice(2)
+  if (d.getDay() === 0) {
+    // Sunday: use Saturday's date for "weekend" title
+    const sat = new Date(d)
+    sat.setDate(sat.getDate() - 1)
+    return `${sat.getMonth() + 1}/${sat.getDate()}/${yy} weekend abridged tech`
+  }
   return `${d.getMonth() + 1}/${d.getDate()}/${yy} abridged tech`
 }
 
@@ -1608,7 +1614,14 @@ export function DigestComposer() {
 
         // Individual tweet blocks
         for (const tweetId of group.tweet_ids) {
-          newBlocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tweetId })
+          // If this tweet quotes the OG post, default to hiding the quoted tweet
+          const topicBundle = allTopics.find(t => t.id === topicData.topic_id)
+          const ogTweet = topicBundle?.tweets.find(t => t.id === topicBundle?.og_tweet_id)
+          const thisTweet = topicBundle?.tweets.find(t => t.id === tweetId)
+          const quotesOg = !!(ogTweet && thisTweet?.quoted_tweet_id && thisTweet.quoted_tweet_id === ogTweet.tweet_id)
+          const block: DigestBlock = { id: nextBlockId(), type: 'tweet', tweet_id: tweetId }
+          if (quotesOg) block.show_quoted_tweet = false
+          newBlocks.push(block)
         }
       }
     }
