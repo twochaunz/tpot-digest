@@ -18,6 +18,7 @@ from app.models.assignment import TweetAssignment
 from app.models.digest_draft import DigestDraft
 from app.models.digest_settings import DigestSettings, DEFAULT_WELCOME_MESSAGE
 from app.models.digest_send_log import DigestSendLog
+from app.services.translate import translate_text, TranslationError
 from app.models.subscriber import Subscriber
 from app.models.topic import Topic
 from app.models.tweet import Tweet
@@ -194,6 +195,34 @@ Example: {{"pushback": "some pushback on the pricing model", "kek": "and of cour
     except Exception:
         logger.exception("Failed to generate category transitions for '%s'", topic_title)
         return {}
+
+
+_ENGLISH_LANGS = {"en", "und", "", None}
+
+
+def _needs_translation(tw: "Tweet") -> bool:
+    """Check if a tweet has non-English text that needs translation."""
+    if tw.translated_text:
+        return False
+    if tw.lang and tw.lang not in _ENGLISH_LANGS:
+        return True
+    # Fallback: detect CJK/Japanese/Korean characters for tweets without lang
+    if tw.text:
+        for c in tw.text:
+            if '\u3040' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff' or '\uac00' <= c <= '\ud7af':
+                return True
+    return False
+
+
+async def _auto_translate(tw: "Tweet", db: "AsyncSession") -> None:
+    """Translate a tweet in-place and persist to DB."""
+    if not _needs_translation(tw):
+        return
+    try:
+        tw.translated_text = await translate_text(tw.text)
+        await db.commit()
+    except TranslationError:
+        logger.warning("Auto-translate failed for tweet %d", tw.id)
 
 
 def _proxy_avatar_url(avatar_url: str | None) -> str | None:
@@ -461,10 +490,17 @@ async def _build_digest_content(draft: DigestDraft, db: AsyncSession) -> list[di
             if not tw:
                 continue
 
+            # Auto-translate non-English tweets and their quoted tweets
+            await _auto_translate(tw, db)
+
             show_engagement = block.get("show_engagement", False)
             show_media = block.get("show_media", True)
             show_quoted = block.get("show_quoted_tweet", True)
             quoted, nested_qt = (await _fetch_quoted_chain(tw, db)) if show_quoted else (None, None)
+            if quoted:
+                await _auto_translate(quoted, db)
+            if nested_qt:
+                await _auto_translate(nested_qt, db)
 
             tweet_block = _build_tweet_dict(tw, show_engagement, quoted, nested_qt, show_media=show_media)
             tweet_block["type"] = "tweet"
