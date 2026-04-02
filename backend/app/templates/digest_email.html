@@ -66,14 +66,32 @@
       {% endif %}
       {% if tweet.media_images %}
       {% if tweet.media_images|length == 1 %}
+      {% if tweet.media_images[0].is_video %}
+      <a href="{{ tweet.url }}" style="display:block;position:relative;text-decoration:none;margin-bottom:10px;">
+        <img src="{{ tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:10px;max-height:400px;width:auto;max-width:100%;">
+        <div style="position:absolute;top:50%;left:50%;margin-top:-26px;margin-left:-26px;width:52px;height:52px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:52px;">
+          <span style="color:#ffffff;font-size:22px;margin-left:3px;">&#9654;</span>
+        </div>
+      </a>
+      {% else %}
       <img src="{{ tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:10px;margin-bottom:10px;max-height:400px;width:auto;max-width:100%;">
+      {% endif %}
       {% else %}
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
         {% for pair in tweet.media_images|batch(2) %}
         <tr>
           {% for img in pair %}
           <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
+            {% if img.is_video %}
+            <a href="{{ tweet.url }}" style="display:block;position:relative;text-decoration:none;">
+              <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:8px;max-height:240px;width:auto;max-width:100%;">
+              <div style="position:absolute;top:50%;left:50%;margin-top:-20px;margin-left:-20px;width:40px;height:40px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:40px;">
+                <span style="color:#ffffff;font-size:16px;margin-left:2px;">&#9654;</span>
+              </div>
+            </a>
+            {% else %}
             <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:8px;max-height:240px;width:auto;max-width:100%;">
+            {% endif %}
           </td>
           {% endfor %}
           {% if pair|length == 1 %}
@@ -135,14 +153,32 @@
         {% endif %}
         {% if tweet.quoted_tweet.media_images %}
         {% if tweet.quoted_tweet.media_images|length == 1 %}
+        {% if tweet.quoted_tweet.media_images[0].is_video %}
+        <a href="{{ tweet.quoted_tweet.url }}" style="display:block;position:relative;text-decoration:none;margin-bottom:8px;">
+          <img src="{{ tweet.quoted_tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:8px;max-height:300px;width:auto;max-width:100%;">
+          <div style="position:absolute;top:50%;left:50%;margin-top:-22px;margin-left:-22px;width:44px;height:44px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:44px;">
+            <span style="color:#ffffff;font-size:18px;margin-left:2px;">&#9654;</span>
+          </div>
+        </a>
+        {% else %}
         <img src="{{ tweet.quoted_tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:8px;margin-bottom:8px;max-height:300px;width:auto;max-width:100%;">
+        {% endif %}
         {% else %}
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
           {% for pair in tweet.quoted_tweet.media_images|batch(2) %}
           <tr>
             {% for img in pair %}
             <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
+              {% if img.is_video %}
+              <a href="{{ tweet.quoted_tweet.url }}" style="display:block;position:relative;text-decoration:none;">
+                <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:6px;max-height:180px;width:auto;max-width:100%;">
+                <div style="position:absolute;top:50%;left:50%;margin-top:-18px;margin-left:-18px;width:36px;height:36px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:36px;">
+                  <span style="color:#ffffff;font-size:14px;margin-left:2px;">&#9654;</span>
+                </div>
+              </a>
+              {% else %}
               <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:6px;max-height:180px;width:auto;max-width:100%;">
+              {% endif %}
             </td>
             {% endfor %}
             {% if pair|length == 1 %}
