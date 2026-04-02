@@ -40,11 +40,24 @@
 
   // ── Tweet Data Extraction ──────────────────────────────────────────
 
+  // Find the main tweet's <time> element, skipping any inside quoted tweet cards.
+  // On detail pages the quoted tweet card (div[role="link"]) renders its <time>
+  // before the main tweet's full timestamp, so querySelector alone picks the wrong one.
+  function getMainTweetTimeEl(article) {
+    const times = article.querySelectorAll('time[datetime]');
+    for (const t of times) {
+      const quotedCard = t.closest('div[role="link"]');
+      // Accept if no div[role="link"] ancestor, or if it's outside the article
+      if (!quotedCard || !article.contains(quotedCard)) return t;
+    }
+    return times[0] || null;
+  }
+
   function extractTweetData(article) {
     // Use the time element to find the tweet's own status link.
     // querySelector('a[href*="/status/"]') can match a quoted tweet's link
     // that appears earlier in DOM order, giving us the wrong tweet ID.
-    const timeEl = article.querySelector('time[datetime]');
+    const timeEl = getMainTweetTimeEl(article);
     const timeLink = timeEl ? timeEl.closest('a[href*="/status/"]') : null;
     let href = timeLink ? timeLink.getAttribute("href") : "";
 
@@ -93,7 +106,7 @@
   // ── Action Card ────────────────────────────────────────────────────
 
   function extractPostedDate(article) {
-    const timeEl = article ? article.querySelector("time[datetime]") : null;
+    const timeEl = article ? getMainTweetTimeEl(article) : null;
     if (!timeEl) return null;
     const dt = new Date(timeEl.getAttribute("datetime"));
     if (isNaN(dt.getTime())) return null;
@@ -527,7 +540,7 @@
     articles.forEach((article) => {
       const btn = article.querySelector(".tpot-save-btn");
       if (btn && btn.dataset.tpotChecked) return;
-      const timeEl2 = article.querySelector('time[datetime]');
+      const timeEl2 = getMainTweetTimeEl(article);
       const link2 = timeEl2 ? timeEl2.closest('a[href*="/status/"]') : null;
       let href2 = link2 ? link2.getAttribute("href") : "";
       if (!href2 && timeEl2) {
@@ -554,7 +567,7 @@
         const btn = article.querySelector(".tpot-save-btn");
         if (!btn) return;
         btn.dataset.tpotChecked = "1";
-        const timeEl3 = article.querySelector('time[datetime]');
+        const timeEl3 = getMainTweetTimeEl(article);
         const link3 = timeEl3 ? timeEl3.closest('a[href*="/status/"]') : null;
         let href3 = link3 ? link3.getAttribute("href") : "";
         if (!href3 && timeEl3) {

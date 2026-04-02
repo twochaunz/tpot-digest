@@ -272,9 +272,14 @@ async def translate_tweet(
     if tweet.translated_text and not force:
         return tweet
 
+    import re
     from app.services.translate import translate_text, TranslationError
+    # Strip t.co links before translating — they're not translatable content
+    text = re.sub(r'\s*https://t\.co/\w+', '', tweet.text or '').strip()
+    if not text:
+        raise HTTPException(400, "Tweet has no translatable text")
     try:
-        tweet.translated_text = await translate_text(tweet.text)
+        tweet.translated_text = await translate_text(text)
     except TranslationError as e:
         raise HTTPException(status_code=502, detail=str(e))
 

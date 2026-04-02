@@ -197,14 +197,14 @@ Example: {{"pushback": "some pushback on the pricing model", "kek": "and of cour
         return {}
 
 
-_ENGLISH_LANGS = {"en", "und", "", None}
+_SKIP_TRANSLATE_LANGS = {"en", "und", "zxx", "qme", "qht", "art", "", None}
 
 
 def _needs_translation(tw: "Tweet") -> bool:
     """Check if a tweet has non-English text that needs translation."""
     if tw.translated_text:
         return False
-    if tw.lang and tw.lang not in _ENGLISH_LANGS:
+    if tw.lang and tw.lang not in _SKIP_TRANSLATE_LANGS:
         return True
     # Fallback: detect CJK/Japanese/Korean characters for tweets without lang
     if tw.text:
@@ -218,8 +218,12 @@ async def _auto_translate(tw: "Tweet", db: "AsyncSession") -> None:
     """Translate a tweet in-place and persist to DB."""
     if not _needs_translation(tw):
         return
+    # Strip t.co links before translating — they're not translatable content
+    text_to_translate = _strip_tco_links(tw.text) if tw.text else ""
+    if not text_to_translate:
+        return
     try:
-        tw.translated_text = await translate_text(tw.text)
+        tw.translated_text = await translate_text(text_to_translate)
         await db.commit()
     except TranslationError:
         logger.warning("Auto-translate failed for tweet %d", tw.id)
