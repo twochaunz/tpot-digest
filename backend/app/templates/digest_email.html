@@ -24,7 +24,7 @@
 
     {# ---- Tweet card macro ---- #}
     {% macro tweet_card(tweet) %}
-    <div style="background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:10px;">
+    <div style="background:#f5f7fa;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:10px;">
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
         <tr>
           {% if tweet.author_avatar_url %}
@@ -116,7 +116,7 @@
       {% endif %}
       {% endif %}
       {% if tweet.quoted_tweet %}
-      <div style="border:1px solid #e1e8ed;border-radius:12px;padding:12px;margin-bottom:10px;background:#f7f9fa;">
+      <div style="border:1px solid #e1e8ed;border-radius:12px;padding:12px;margin-bottom:10px;background:#ffffff;">
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
           <tr>
             {% if tweet.quoted_tweet.author_avatar_url %}
