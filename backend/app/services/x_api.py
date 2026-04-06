@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import html
+import logging
 
 import httpx
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 X_API_BASE = "https://api.x.com/2"
 
@@ -48,6 +51,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "Authorization": f"Bearer {settings.x_api_bearer_token}",
     }
 
+    logger.info("X API call: GET /tweets/%s", tweet_id)
     response = await _client.get(
         f"{X_API_BASE}/tweets/{tweet_id}",
         params=params,
