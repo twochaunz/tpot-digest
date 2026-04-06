@@ -14,6 +14,14 @@
       <p style="font-size:14px;color:#6b7280;margin:0;">{{ date_str }}</p>
     </div>
 
+    {# ---- Play button macro (CSS border-triangle, no Unicode emoji) ---- #}
+    {% macro play_btn(size=52, arrow=12) %}
+    <div style="display:inline-block;width:{{ size }}px;height:{{ size }}px;background:#1d9bf0;border-radius:50%;text-align:center;vertical-align:middle;">
+      <!--[if mso]><br style="line-height:{{ ((size - arrow * 2) / 2)|int }}px;"><![endif]-->
+      <div style="display:inline-block;width:0;height:0;border-top:{{ arrow }}px solid transparent;border-bottom:{{ arrow }}px solid transparent;border-left:{{ (arrow * 1.5)|int }}px solid #ffffff;margin-left:{{ (arrow * 0.3)|int }}px;margin-top:{{ ((size - arrow * 2) / 2)|int }}px;"></div>
+    </div>
+    {% endmacro %}
+
     {# ---- Tweet card macro ---- #}
     {% macro tweet_card(tweet) %}
     <div style="background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;padding:16px;margin-bottom:10px;">
@@ -67,11 +75,15 @@
       {% if tweet.media_images %}
       {% if tweet.media_images|length == 1 %}
       {% if tweet.media_images[0].is_video %}
-      <a href="{{ tweet.url }}" style="display:inline-block;position:relative;text-decoration:none;margin-bottom:10px;">
-        <img src="{{ tweet.media_images[0].url }}" alt="" style="display:block;border-radius:10px;max-height:400px;max-width:100%;">
-        <div style="position:absolute;top:50%;left:50%;margin-top:-26px;margin-left:-26px;width:52px;height:52px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:52px;">
-          <span style="color:#ffffff;font-size:22px;margin-left:3px;">&#9654;</span>
-        </div>
+      {% set _vw = tweet.media_images[0].width or 1920 %}
+      {% set _vh = tweet.media_images[0].height or 1080 %}
+      {% set _dh = [(_vh * 528 / _vw)|int, 400]|min %}
+      <a href="{{ tweet.url }}" style="display:block;text-decoration:none;margin-bottom:10px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+          <td background="{{ tweet.media_images[0].url }}" bgcolor="#1a1a1a" width="100%" height="{{ _dh }}" valign="middle" style="background-size:cover;background-position:center;background-repeat:no-repeat;text-align:center;vertical-align:middle;border-radius:10px;">
+            {{ play_btn(52, 12) }}
+          </td>
+        </tr></table>
       </a>
       {% else %}
       <img src="{{ tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:10px;margin-bottom:10px;max-height:400px;width:auto;max-width:100%;">
@@ -83,11 +95,12 @@
           {% for img in pair %}
           <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
             {% if img.is_video %}
-            <a href="{{ tweet.url }}" style="display:inline-block;position:relative;text-decoration:none;">
-              <img src="{{ img.url }}" alt="" style="display:block;border-radius:8px;max-height:240px;max-width:100%;">
-              <div style="position:absolute;top:50%;left:50%;margin-top:-20px;margin-left:-20px;width:40px;height:40px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:40px;">
-                <span style="color:#ffffff;font-size:16px;margin-left:2px;">&#9654;</span>
-              </div>
+            <a href="{{ tweet.url }}" style="display:block;text-decoration:none;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+                <td background="{{ img.url }}" bgcolor="#1a1a1a" width="100%" height="160" valign="middle" style="background-size:cover;background-position:center;background-repeat:no-repeat;text-align:center;vertical-align:middle;border-radius:8px;">
+                  {{ play_btn(40, 9) }}
+                </td>
+              </tr></table>
             </a>
             {% else %}
             <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:8px;max-height:240px;width:auto;max-width:100%;">
@@ -154,11 +167,15 @@
         {% if tweet.quoted_tweet.media_images %}
         {% if tweet.quoted_tweet.media_images|length == 1 %}
         {% if tweet.quoted_tweet.media_images[0].is_video %}
-        <a href="{{ tweet.quoted_tweet.url }}" style="display:inline-block;position:relative;text-decoration:none;margin-bottom:8px;">
-          <img src="{{ tweet.quoted_tweet.media_images[0].url }}" alt="" style="display:block;border-radius:8px;max-height:300px;max-width:100%;">
-          <div style="position:absolute;top:50%;left:50%;margin-top:-22px;margin-left:-22px;width:44px;height:44px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:44px;">
-            <span style="color:#ffffff;font-size:18px;margin-left:2px;">&#9654;</span>
-          </div>
+        {% set _qvw = tweet.quoted_tweet.media_images[0].width or 1920 %}
+        {% set _qvh = tweet.quoted_tweet.media_images[0].height or 1080 %}
+        {% set _qdh = [(_qvh * 500 / _qvw)|int, 300]|min %}
+        <a href="{{ tweet.quoted_tweet.url }}" style="display:block;text-decoration:none;margin-bottom:8px;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+            <td background="{{ tweet.quoted_tweet.media_images[0].url }}" bgcolor="#1a1a1a" width="100%" height="{{ _qdh }}" valign="middle" style="background-size:cover;background-position:center;background-repeat:no-repeat;text-align:center;vertical-align:middle;border-radius:8px;">
+              {{ play_btn(44, 10) }}
+            </td>
+          </tr></table>
         </a>
         {% else %}
         <img src="{{ tweet.quoted_tweet.media_images[0].url }}" alt="" width="100%" style="display:block;border-radius:8px;margin-bottom:8px;max-height:300px;width:auto;max-width:100%;">
@@ -170,11 +187,12 @@
             {% for img in pair %}
             <td style="width:50%;padding:{% if loop.index == 1 %}0 2px 4px 0{% else %}0 0 4px 2px{% endif %};vertical-align:top;">
               {% if img.is_video %}
-              <a href="{{ tweet.quoted_tweet.url }}" style="display:inline-block;position:relative;text-decoration:none;">
-                <img src="{{ img.url }}" alt="" style="display:block;border-radius:6px;max-height:180px;max-width:100%;">
-                <div style="position:absolute;top:50%;left:50%;margin-top:-18px;margin-left:-18px;width:36px;height:36px;background:rgba(0,0,0,0.6);border-radius:50%;text-align:center;line-height:36px;">
-                  <span style="color:#ffffff;font-size:14px;margin-left:2px;">&#9654;</span>
-                </div>
+              <a href="{{ tweet.quoted_tweet.url }}" style="display:block;text-decoration:none;">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+                  <td background="{{ img.url }}" bgcolor="#1a1a1a" width="100%" height="140" valign="middle" style="background-size:cover;background-position:center;background-repeat:no-repeat;text-align:center;vertical-align:middle;border-radius:6px;">
+                    {{ play_btn(36, 8) }}
+                  </td>
+                </tr></table>
               </a>
               {% else %}
               <img src="{{ img.url }}" alt="" width="100%" style="display:block;border-radius:6px;max-height:180px;width:auto;max-width:100%;">
