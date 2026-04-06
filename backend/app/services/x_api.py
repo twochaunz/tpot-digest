@@ -51,7 +51,7 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "Authorization": f"Bearer {settings.x_api_bearer_token}",
     }
 
-    logger.info("X API call: GET /tweets/%s", tweet_id)
+    print(f"[X API] GET /tweets/{tweet_id}", flush=True)
     response = await _client.get(
         f"{X_API_BASE}/tweets/{tweet_id}",
         params=params,
