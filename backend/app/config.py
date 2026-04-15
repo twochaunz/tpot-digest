@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://tpot:tpot_dev@localhost:5432/tpot_digest"
     data_dir: str = "./data"
     x_api_bearer_token: str = ""
+    twitter_api_io_key: str = ""
     xai_api_key: str = ""
     anthropic_api_key: str = ""
     admin_secret: str = ""

@@ -1,9 +1,10 @@
-"""X API v2 client for fetching tweet data."""
+"""Twitter API client for fetching tweet data via twitterapi.io."""
 
 from __future__ import annotations
 
 import html
 import logging
+from datetime import datetime, timezone
 
 import httpx
 
@@ -11,24 +12,19 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-X_API_BASE = "https://api.x.com/2"
+API_BASE = "https://api.twitterapi.io/twitter"
 
-_client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
-
-TWEET_FIELDS = "text,note_tweet,created_at,public_metrics,entities,referenced_tweets,lang"
-EXPANSIONS = "author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.author_id"
-USER_FIELDS = "profile_image_url,verified,verified_type,name,username"
-MEDIA_FIELDS = "url,preview_image_url,type,width,height"
+_client = httpx.AsyncClient(timeout=httpx.Timeout(15.0))
 
 
 class XAPIError(Exception):
-    """Raised when the X API returns an error or is misconfigured."""
+    """Raised when the Twitter API returns an error or is misconfigured."""
 
     pass
 
 
 async def fetch_tweet(tweet_id: str) -> dict:
-    """Fetch a tweet by ID from the X API v2 and return normalized data.
+    """Fetch a tweet by ID from twitterapi.io and return normalized data.
 
     Returns a dict with keys:
         author_handle, author_display_name, author_avatar_url, author_verified,
@@ -38,155 +34,91 @@ async def fetch_tweet(tweet_id: str) -> dict:
     Raises:
         XAPIError: on missing token, rate limiting, auth failure, or tweet not found.
     """
-    if not settings.x_api_bearer_token:
-        raise XAPIError("X API bearer token is not configured")
+    if not settings.twitter_api_io_key:
+        raise XAPIError("TWITTER_API_IO_KEY is not configured")
 
-    params = {
-        "tweet.fields": TWEET_FIELDS,
-        "expansions": EXPANSIONS,
-        "user.fields": USER_FIELDS,
-        "media.fields": MEDIA_FIELDS,
-    }
-    headers = {
-        "Authorization": f"Bearer {settings.x_api_bearer_token}",
-    }
+    headers = {"X-API-Key": settings.twitter_api_io_key}
 
-    print(f"[X API] GET /tweets/{tweet_id}", flush=True)
+    print(f"[TwitterAPI.io] GET /tweets?tweet_ids={tweet_id}", flush=True)
     response = await _client.get(
-        f"{X_API_BASE}/tweets/{tweet_id}",
-        params=params,
+        f"{API_BASE}/tweets",
+        params={"tweet_ids": tweet_id},
         headers=headers,
     )
 
-    # Handle HTTP-level errors
     if response.status_code == 429:
-        raise XAPIError("X API rate limit exceeded")
+        raise XAPIError("Twitter API rate limit exceeded")
     if response.status_code == 401:
-        raise XAPIError("X API authentication failed")
+        raise XAPIError("Twitter API authentication failed")
     if response.status_code not in (200, 201):
-        raise XAPIError(f"X API error: HTTP {response.status_code}")
+        raise XAPIError(f"Twitter API error: HTTP {response.status_code}")
 
     body = response.json()
+    tweets = body.get("tweets", [])
 
-    # Handle missing data (tweet not found or deleted)
-    if "data" not in body:
+    if not tweets:
         raise XAPIError(f"Tweet {tweet_id} not found")
 
-    data = body["data"]
-    includes = body.get("includes", {})
+    data = tweets[0]
+    return _normalize_tweet(data)
 
-    # Extract author from includes.users
-    author = _find_author(data.get("author_id"), includes.get("users", []))
 
-    # Extract media URLs from includes.media
-    media_urls = _extract_media_urls(
-        data.get("attachments", {}).get("media_keys", []),
-        includes.get("media", []),
+def _normalize_tweet(data: dict) -> dict:
+    """Convert a twitterapi.io tweet object to our normalized format."""
+    author = data.get("author") or {}
+    author_handle = author.get("userName", "")
+
+    # Media from extendedEntities
+    media_urls = _extract_media(data.get("extendedEntities") or {})
+
+    # Quote tweet
+    quoted_tweet = data.get("quoted_tweet")
+    is_quote_tweet = bool(quoted_tweet)
+    quoted_tweet_id = quoted_tweet.get("id") if quoted_tweet else None
+
+    # Reply info
+    is_reply = bool(data.get("isReply"))
+    reply_to_tweet_id = data.get("inReplyToId") or None
+    reply_to_handle = data.get("inReplyToUsername") or None
+
+    # URL entities
+    url_entities = _extract_url_entities(
+        (data.get("entities") or {}).get("urls", [])
     )
 
-    # Extract referenced tweet info
-    referenced = data.get("referenced_tweets", [])
-    quoted_tweet_id = None
-    reply_to_tweet_id = None
-    is_quote_tweet = False
-    is_reply = False
-
-    for ref in referenced:
-        if ref["type"] == "quoted":
-            is_quote_tweet = True
-            quoted_tweet_id = ref["id"]
-        elif ref["type"] == "replied_to":
-            is_reply = True
-            reply_to_tweet_id = ref["id"]
-
-    # Extract reply-to handle from included tweets + users
-    reply_to_handle = None
-    if reply_to_tweet_id:
-        included_tweets = includes.get("tweets", [])
-        for t in included_tweets:
-            if t.get("id") == reply_to_tweet_id:
-                reply_author = _find_author(t.get("author_id"), includes.get("users", []))
-                if reply_author:
-                    reply_to_handle = reply_author.get("username")
-                break
-
-    # Extract URL entities (from note_tweet for long tweets, else from regular entities)
-    note_tweet = data.get("note_tweet", {})
-    entities = note_tweet.get("entities", {}) if note_tweet.get("text") else data.get("entities", {})
-    url_entities = _extract_url_entities(entities.get("urls", []))
-
-    author_handle = author.get("username", "") if author else ""
-
-    metrics = data.get("public_metrics", {})
-
-    # Extract article title (X Articles / long-form posts)
+    # Article title (X Articles)
     article_title = None
     article_data = data.get("article")
     if article_data and isinstance(article_data, dict):
         article_title = article_data.get("title")
 
-    # Build normalized data for included/quoted tweets (avoids redundant API calls)
-    included_tweets_data: list[dict] = []
-    for inc_tweet in includes.get("tweets", []):
-        inc_id = inc_tweet.get("id", "")
-        # Skip the reply-to tweet, we only want quoted tweets
-        if inc_id == reply_to_tweet_id:
-            continue
-        inc_author = _find_author(inc_tweet.get("author_id"), includes.get("users", []))
-        inc_handle = inc_author.get("username", "") if inc_author else ""
-        inc_metrics = inc_tweet.get("public_metrics", {})
-        inc_media_urls = _extract_media_urls(
-            inc_tweet.get("attachments", {}).get("media_keys", []),
-            includes.get("media", []),
-        )
-        inc_note = inc_tweet.get("note_tweet", {})
-        inc_entities = inc_note.get("entities", {}) if inc_note.get("text") else inc_tweet.get("entities", {})
-        inc_ref = inc_tweet.get("referenced_tweets", [])
-        inc_quoted_id = None
-        inc_is_quote = False
-        inc_is_reply = False
-        inc_reply_to = None
-        for r in inc_ref:
-            if r["type"] == "quoted":
-                inc_is_quote = True
-                inc_quoted_id = r["id"]
-            elif r["type"] == "replied_to":
-                inc_is_reply = True
-                inc_reply_to = r["id"]
-        included_tweets_data.append({
-            "tweet_id": inc_id,
-            "author_handle": inc_handle,
-            "author_display_name": inc_author.get("name", "") if inc_author else "",
-            "author_avatar_url": inc_author.get("profile_image_url", "") if inc_author else "",
-            "author_verified": (inc_author.get("verified", False) or bool(inc_author.get("verified_type"))) if inc_author else False,
-            "text": html.unescape(inc_note.get("text") or inc_tweet.get("text", "")),
-            "url": f"https://x.com/{inc_handle}/status/{inc_id}" if inc_handle else f"https://x.com/i/status/{inc_id}",
-            "media_urls": inc_media_urls,
-            "engagement": {
-                "likes": inc_metrics.get("like_count", 0),
-                "retweets": inc_metrics.get("retweet_count", 0),
-                "replies": inc_metrics.get("reply_count", 0),
-            },
-            "is_quote_tweet": inc_is_quote,
-            "is_reply": inc_is_reply,
-            "quoted_tweet_id": inc_quoted_id,
-            "reply_to_tweet_id": inc_reply_to,
-            "url_entities": _extract_url_entities(inc_entities.get("urls", [])),
-            "created_at": inc_tweet.get("created_at", ""),
-        })
+    # Parse created_at from Twitter format to ISO
+    created_at = _parse_twitter_date(data.get("createdAt", ""))
+
+    # Build included_tweets from quoted tweet
+    included_tweets: list[dict] = []
+    if quoted_tweet:
+        included_tweets.append(_normalize_tweet(quoted_tweet))
+        # Set the tweet_id field expected by _persist_quoted_tweet
+        included_tweets[-1]["tweet_id"] = quoted_tweet.get("id", "")
+
+    tweet_id = data.get("id", "")
 
     return {
         "author_handle": author_handle,
-        "author_display_name": author.get("name", "") if author else "",
-        "author_avatar_url": author.get("profile_image_url", "") if author else "",
-        "author_verified": (author.get("verified", False) or bool(author.get("verified_type"))) if author else False,
-        "text": html.unescape(data.get("note_tweet", {}).get("text") or data.get("text", "")),
-        "url": f"https://x.com/{author_handle}/status/{tweet_id}" if author_handle else f"https://x.com/i/status/{tweet_id}",
+        "author_display_name": author.get("name", ""),
+        "author_avatar_url": author.get("profilePicture", ""),
+        "author_verified": (
+            author.get("isBlueVerified", False)
+            or bool(author.get("verifiedType"))
+        ),
+        "text": html.unescape(data.get("text", "")),
+        "url": data.get("url") or f"https://x.com/{author_handle}/status/{tweet_id}",
         "media_urls": media_urls,
         "engagement": {
-            "likes": metrics.get("like_count", 0),
-            "retweets": metrics.get("retweet_count", 0),
-            "replies": metrics.get("reply_count", 0),
+            "likes": data.get("likeCount", 0),
+            "retweets": data.get("retweetCount", 0),
+            "replies": data.get("replyCount", 0),
         },
         "is_quote_tweet": is_quote_tweet,
         "is_reply": is_reply,
@@ -196,19 +128,38 @@ async def fetch_tweet(tweet_id: str) -> dict:
         "url_entities": url_entities,
         "article_title": article_title,
         "lang": data.get("lang"),
-        "created_at": data.get("created_at", ""),
-        "included_tweets": included_tweets_data,
+        "created_at": created_at,
+        "included_tweets": included_tweets,
     }
 
 
-def _find_author(author_id: str | None, users: list[dict]) -> dict | None:
-    """Find the author user object from the includes.users list."""
-    if not author_id or not users:
+def _extract_media(extended_entities: dict) -> list[dict] | None:
+    """Extract structured media objects from extendedEntities.media."""
+    media_list = extended_entities.get("media")
+    if not media_list:
         return None
-    for user in users:
-        if user.get("id") == author_id:
-            return user
-    return None
+
+    result = []
+    for media in media_list:
+        media_type = media.get("type", "photo")
+        url = media.get("media_url_https", "")
+
+        # For video, use the preview image as the URL
+        # (video_info.variants has the actual video URLs)
+        if media_type == "video" or media_type == "animated_gif":
+            url = media.get("media_url_https", "")
+
+        if not url:
+            continue
+
+        info = media.get("original_info", {})
+        result.append({
+            "type": media_type,
+            "url": url,
+            "width": info.get("width") or media.get("sizes", {}).get("large", {}).get("w"),
+            "height": info.get("height") or media.get("sizes", {}).get("large", {}).get("h"),
+        })
+    return result if result else None
 
 
 def _extract_url_entities(urls: list[dict]) -> list[dict] | None:
@@ -222,7 +173,6 @@ def _extract_url_entities(urls: list[dict]) -> list[dict] | None:
             "expanded_url": u.get("expanded_url", ""),
             "display_url": u.get("display_url", ""),
         }
-        # Link card metadata (title, description, image)
         if u.get("title"):
             entry["title"] = u["title"]
         if u.get("description"):
@@ -235,22 +185,17 @@ def _extract_url_entities(urls: list[dict]) -> list[dict] | None:
     return result if result else None
 
 
-def _extract_media_urls(media_keys: list[str], media_list: list[dict]) -> list[dict] | None:
-    """Extract structured media objects matching the given media keys."""
-    if not media_keys or not media_list:
-        return None
+def _parse_twitter_date(date_str: str) -> str:
+    """Parse Twitter's date format to ISO 8601.
 
-    media_by_key = {m["media_key"]: m for m in media_list}
-    result = []
-    for key in media_keys:
-        media = media_by_key.get(key)
-        if media:
-            url = media.get("url") or media.get("preview_image_url", "")
-            if url:
-                result.append({
-                    "type": media.get("type", "photo"),
-                    "url": url,
-                    "width": media.get("width"),
-                    "height": media.get("height"),
-                })
-    return result if result else None
+    Input: 'Thu Apr 28 00:56:58 +0000 2022'
+    Output: '2022-04-28T00:56:58+00:00'
+    """
+    if not date_str:
+        return ""
+    try:
+        dt = datetime.strptime(date_str, "%a %b %d %H:%M:%S %z %Y")
+        return dt.isoformat()
+    except ValueError:
+        # Already ISO or unknown format, return as-is
+        return date_str
