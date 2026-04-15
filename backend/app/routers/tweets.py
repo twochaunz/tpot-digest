@@ -126,12 +126,13 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
 
         await db.commit()
 
-    # Embed tweet + fetch Grok context in background
-    from app.services.classifier import prepare_tweet
-    try:
-        await prepare_tweet(tweet_id)
-    except Exception as e:
-        logger.warning("Tweet preparation failed for tweet %d: %s", tweet_id, e)
+    # Embedding disabled — SentenceTransformer model (~400MB) causes OOM on CX23 (4GB)
+    # Re-enable when server is upgraded or embeddings are needed for search
+    # from app.services.classifier import prepare_tweet
+    # try:
+    #     await prepare_tweet(tweet_id)
+    # except Exception as e:
+    #     logger.warning("Tweet preparation failed for tweet %d: %s", tweet_id, e)
 
     # If assigned to a topic without explicit category, auto-categorize
     if topic_id and not category:
@@ -383,8 +384,8 @@ async def refetch_all_tweets(db: AsyncSession = Depends(get_db), _admin=Depends(
             updated += 1
         except (XAPIError, Exception):
             failed += 1
-        # Rate limit: small delay between requests
-        await asyncio.sleep(0.5)
+        # Rate limit: twitterapi.io free tier allows 1 req per 5 seconds
+        await asyncio.sleep(5.5)
 
     await db.commit()
     return {"updated": updated, "failed": failed, "total": len(tweets)}
@@ -395,7 +396,10 @@ async def check_saved(body: TweetCheckRequest, db: AsyncSession = Depends(get_db
     if not body.tweet_ids:
         return {"saved": {}}
     result = await db.execute(
-        select(Tweet.tweet_id, Tweet.id).where(Tweet.tweet_id.in_(body.tweet_ids))
+        select(Tweet.tweet_id, Tweet.id).where(
+            Tweet.tweet_id.in_(body.tweet_ids),
+            (Tweet.feed_source.is_(None)) | (Tweet.feed_source != "quoted_fetch"),
+        )
     )
     saved = {row[0]: row[1] for row in result.all()}
     return {"saved": saved}
