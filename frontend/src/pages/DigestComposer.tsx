@@ -1741,6 +1741,11 @@ export function DigestComposer() {
   const handleDelete = async () => {
     if (!selectedDraftId) return
     if (!window.confirm('Delete this draft?')) return
+    // Cancel any pending auto-save so it doesn't race with delete
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
     try {
       await deleteDraft.mutateAsync(selectedDraftId)
       setSelectedDraftId(null)
@@ -2304,19 +2309,19 @@ export function DigestComposer() {
             {selectedDraftId && !isSent && (
               <button
                 onClick={handleDelete}
-                disabled={isBusy}
+                disabled={deleteDraft.isPending || sendDigest.isPending}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-tertiary)',
+                  color: deleteDraft.isPending ? 'var(--text-quaternary)' : 'var(--text-tertiary)',
                   fontSize: 12,
-                  cursor: 'pointer',
+                  cursor: deleteDraft.isPending || sendDigest.isPending ? 'not-allowed' : 'pointer',
                   textDecoration: 'underline',
                   fontFamily: 'var(--font-body)',
                   padding: '4px 0',
                 }}
               >
-                Delete draft
+                {deleteDraft.isPending ? 'Deleting...' : 'Delete draft'}
               </button>
             )}
           </div>
