@@ -111,6 +111,16 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin
         select(Tweet).where(Tweet.tweet_id == body.tweet_id)
     )).scalar_one_or_none()
     if existing:
+        # Promote quoted_fetch tweets to real saved tweets when user saves directly
+        if existing.feed_source == "quoted_fetch":
+            existing.feed_source = body.feed_source
+            if body.saved_at:
+                existing.saved_at = body.saved_at
+            await db.commit()
+            await db.refresh(existing)
+            out = TweetOut.model_validate(existing)
+            out.status = "saved"
+            return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
         out = TweetOut.model_validate(existing)
         out.status = "duplicate"
         return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
