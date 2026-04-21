@@ -75,40 +75,9 @@ async def _persist_quoted_tweet(db, quoted_tweet_id: str, included_tweets: list[
     db.add(qt)
 
 
-async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, category: str | None):
-    """Background task: fetch X API data and update the placeholder tweet."""
-    from app.services.x_api import fetch_tweet, XAPIError
-
-    try:
-        api_data = await fetch_tweet(tweet_x_id)
-    except XAPIError as e:
-        logger.warning("X API backfill failed for %s: %s", tweet_x_id, e)
-        return
-
+async def _post_save_tasks(tweet_id: int, tweet_x_id: str, topic_id: int | None, category: str | None, api_data: dict | None):
+    """Background task: persist quoted tweets, handle topic assignment, auto-categorize."""
     async with db_module.async_session() as db:
-        tweet = await db.get(Tweet, tweet_id)
-        if not tweet:
-            return
-
-        tweet.author_handle = api_data["author_handle"]
-        tweet.author_display_name = api_data["author_display_name"]
-        tweet.author_avatar_url = api_data["author_avatar_url"]
-        tweet.author_verified = api_data["author_verified"]
-        tweet.text = api_data["text"]
-        tweet.media_urls = api_data["media_urls"]
-        tweet.engagement = api_data["engagement"]
-        tweet.is_quote_tweet = api_data["is_quote_tweet"]
-        tweet.is_reply = api_data["is_reply"]
-        tweet.quoted_tweet_id = api_data["quoted_tweet_id"]
-        tweet.reply_to_tweet_id = api_data.get("reply_to_tweet_id")
-        tweet.reply_to_handle = api_data.get("reply_to_handle")
-        tweet.url_entities = api_data.get("url_entities")
-        tweet.article_title = api_data.get("article_title")
-        tweet.lang = api_data.get("lang")
-        tweet.url = api_data["url"]
-        if api_data.get("created_at"):
-            tweet.created_at = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
-
         if topic_id:
             existing = (await db.execute(
                 select(TweetAssignment).where(
@@ -119,20 +88,11 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
             if not existing:
                 db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id, category=category))
 
-        # Also persist quoted tweet(s) so digest preview never needs X API
-        # Use included_tweets from the parent response to avoid extra API calls
-        if api_data.get("quoted_tweet_id"):
+        # Persist quoted tweet(s) so digest preview never needs X API
+        if api_data and api_data.get("quoted_tweet_id"):
             await _persist_quoted_tweet(db, api_data["quoted_tweet_id"], api_data.get("included_tweets"))
 
         await db.commit()
-
-    # Embedding disabled — SentenceTransformer model (~400MB) causes OOM on CX23 (4GB)
-    # Re-enable when server is upgraded or embeddings are needed for search
-    # from app.services.classifier import prepare_tweet
-    # try:
-    #     await prepare_tweet(tweet_id)
-    # except Exception as e:
-    #     logger.warning("Tweet preparation failed for tweet %d: %s", tweet_id, e)
 
     # If assigned to a topic without explicit category, auto-categorize
     if topic_id and not category:
@@ -145,6 +105,8 @@ async def _backfill_tweet(tweet_id: int, tweet_x_id: str, topic_id: int | None, 
 
 @router.post("", status_code=201)
 async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)):
+    from app.services.x_api import fetch_tweet, XAPIError
+
     existing = (await db.execute(
         select(Tweet).where(Tweet.tweet_id == body.tweet_id)
     )).scalar_one_or_none()
@@ -153,25 +115,64 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin
         out.status = "duplicate"
         return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
 
-    # Create placeholder immediately, backfill from X API in background
-    kwargs: dict = dict(
-        tweet_id=body.tweet_id,
-        author_handle="",
-        text="",
-        feed_source=body.feed_source,
-        thread_id=body.thread_id,
-        thread_position=body.thread_position,
-    )
+    # Fetch tweet data from X API synchronously so we never save blank placeholders
+    api_data = None
+    try:
+        api_data = await fetch_tweet(body.tweet_id)
+    except XAPIError as e:
+        print(f"[save_tweet] X API fetch failed for {body.tweet_id}: {e}", flush=True)
+
+    if api_data:
+        kwargs: dict = dict(
+            tweet_id=body.tweet_id,
+            author_handle=api_data["author_handle"],
+            author_display_name=api_data["author_display_name"],
+            author_avatar_url=api_data["author_avatar_url"],
+            author_verified=api_data["author_verified"],
+            text=api_data["text"],
+            media_urls=api_data["media_urls"],
+            engagement=api_data["engagement"],
+            url=api_data["url"],
+            is_quote_tweet=api_data["is_quote_tweet"],
+            is_reply=api_data["is_reply"],
+            quoted_tweet_id=api_data.get("quoted_tweet_id"),
+            reply_to_tweet_id=api_data.get("reply_to_tweet_id"),
+            reply_to_handle=api_data.get("reply_to_handle"),
+            url_entities=api_data.get("url_entities"),
+            article_title=api_data.get("article_title"),
+            lang=api_data.get("lang"),
+            feed_source=body.feed_source,
+            thread_id=body.thread_id,
+            thread_position=body.thread_position,
+        )
+        if api_data.get("created_at"):
+            kwargs["created_at"] = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
+    else:
+        # Fallback placeholder if X API is down
+        kwargs = dict(
+            tweet_id=body.tweet_id,
+            author_handle="",
+            text="",
+            feed_source=body.feed_source,
+            thread_id=body.thread_id,
+            thread_position=body.thread_position,
+        )
+
     if body.saved_at:
         kwargs["saved_at"] = body.saved_at
     tweet = Tweet(**kwargs)
     db.add(tweet)
     await db.commit()
 
+    status = "saved" if api_data else "pending"
+
+    # Background: persist quoted tweet, topic assignment, auto-categorization
+    bg = BackgroundTask(_post_save_tasks, tweet.id, body.tweet_id, body.topic_id, body.category, api_data)
+
     return JSONResponse(
-        content={"id": tweet.id, "tweet_id": body.tweet_id, "status": "saved"},
+        content={"id": tweet.id, "tweet_id": body.tweet_id, "status": status},
         status_code=201,
-        background=BackgroundTask(_backfill_tweet, tweet.id, body.tweet_id, body.topic_id, body.category),
+        background=bg,
     )
 
 
