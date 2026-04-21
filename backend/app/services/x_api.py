@@ -92,6 +92,14 @@ def _normalize_tweet(data: dict) -> dict:
     if article_data and isinstance(article_data, dict):
         article_title = article_data.get("title")
 
+    # Fallback: twitterapi.io doesn't return article data, detect from URL entities
+    if not article_title and url_entities:
+        for ue in url_entities:
+            target = ue.get("unwound_url") or ue.get("expanded_url") or ""
+            if "/i/article/" in target:
+                article_title = "Article"
+                break
+
     # Parse created_at from Twitter format to ISO
     created_at = _parse_twitter_date(data.get("createdAt", ""))
 

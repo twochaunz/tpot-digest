@@ -200,18 +200,31 @@ Example: {{"pushback": "some pushback on the pricing model", "kek": "and of cour
 _SKIP_TRANSLATE_LANGS = {"en", "und", "zxx", "qme", "qht", "art", "", None}
 
 
+def _has_non_latin_text(text: str) -> bool:
+    """Check if text contains non-Latin script characters that indicate non-English."""
+    for c in text:
+        cp = ord(c)
+        # CJK, Japanese, Korean
+        if '\u3040' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff' or '\uac00' <= c <= '\ud7af':
+            return True
+        # Arabic, Hebrew, Thai, Devanagari, Cyrillic, etc.
+        if 0x0600 <= cp <= 0x06FF or 0x0590 <= cp <= 0x05FF or 0x0E00 <= cp <= 0x0E7F:
+            return True
+        if 0x0900 <= cp <= 0x097F or 0x0400 <= cp <= 0x04FF:
+            return True
+    return False
+
+
 def _needs_translation(tw: "Tweet") -> bool:
     """Check if a tweet has non-English text that needs translation."""
     if tw.translated_text:
         return False
-    if tw.lang and tw.lang not in _SKIP_TRANSLATE_LANGS:
-        return True
-    # Fallback: detect CJK/Japanese/Korean characters for tweets without lang
-    if tw.text:
-        for c in tw.text:
-            if '\u3040' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff' or '\uac00' <= c <= '\ud7af':
-                return True
-    return False
+    if not tw.text:
+        return False
+    # Always require actual non-Latin characters. The X API lang field is unreliable
+    # for short texts (e.g. "WAT" gets lang="qst"). Only translate when the text
+    # actually contains non-Latin script.
+    return _has_non_latin_text(tw.text)
 
 
 async def _auto_translate(tw: "Tweet", db: "AsyncSession") -> None:
