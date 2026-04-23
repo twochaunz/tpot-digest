@@ -493,17 +493,23 @@
             assignment: { tweet_ids: [tweetDbId], topic_id: Number(topicId), category: selectedCategory || null },
           });
 
-          // Set as OG if checked
+          // Set as OG if checked — retry up to 3 times
           if (ogCheckbox.checked) {
-            const ogResp = await sendMessage({
-              type: "SET_OG",
-              topicId: Number(topicId),
-              tweetDbId: tweetDbId,
-            });
-            if (ogResp && ogResp.error) {
-              console.error("[tpot] SET_OG failed:", ogResp.error);
-              throw new Error("Assigned but OG failed: " + ogResp.error);
+            let ogOk = false;
+            for (let attempt = 0; attempt < 3 && !ogOk; attempt++) {
+              if (attempt > 0) await new Promise((r) => setTimeout(r, 1000));
+              const ogResp = await sendMessage({
+                type: "SET_OG",
+                topicId: Number(topicId),
+                tweetDbId: tweetDbId,
+              });
+              if (ogResp && !ogResp.error) {
+                ogOk = true;
+              } else {
+                console.error("[tpot] SET_OG attempt", attempt + 1, "failed:", ogResp?.error);
+              }
             }
+            if (!ogOk) throw new Error("Assigned but failed to set OG after 3 attempts");
           }
         }
 
@@ -511,9 +517,9 @@
         document.removeEventListener("mousedown", onClickOutside, true);
         setTimeout(() => { if (card.parentNode) card.remove(); }, 800);
       } catch (err) {
-        assignBtn.textContent = "Error";
+        assignBtn.textContent = err.message.includes("OG") ? "OG failed" : "Error";
         assignBtn.disabled = false;
-        setTimeout(() => { assignBtn.textContent = "Assign"; }, 1500);
+        setTimeout(() => { assignBtn.textContent = "Assign"; }, 2500);
       }
     });
     actions.appendChild(assignBtn);
