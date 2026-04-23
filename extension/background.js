@@ -173,15 +173,23 @@ async function handleSetOg(message) {
   const config = await getConfig();
   const url = config.backendUrl.replace(/\/+$/, "") + "/api/topics/" + message.topicId;
   const headers = { "Content-Type": "application/json", ...authHeaders(config) };
+  console.log("[tpot] SET_OG:", url, "tweet:", message.tweetDbId);
   try {
     const resp = await fetch(url, {
       method: "PATCH",
       headers,
       body: JSON.stringify({ og_tweet_id: message.tweetDbId }),
     });
-    if (!resp.ok) return { error: "HTTP " + resp.status };
-    return await resp.json();
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error("[tpot] SET_OG failed:", resp.status, text.slice(0, 200));
+      return { error: "HTTP " + resp.status + ": " + text.slice(0, 200) };
+    }
+    const data = await resp.json();
+    console.log("[tpot] SET_OG success, og_tweet_id:", data.og_tweet_id);
+    return data;
   } catch (err) {
+    console.error("[tpot] SET_OG error:", err.message);
     return { error: err.message };
   }
 }

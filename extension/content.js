@@ -495,15 +495,19 @@
 
           // Set as OG if checked
           if (ogCheckbox.checked) {
-            await sendMessage({
+            const ogResp = await sendMessage({
               type: "SET_OG",
               topicId: Number(topicId),
               tweetDbId: tweetDbId,
             });
+            if (ogResp && ogResp.error) {
+              console.error("[tpot] SET_OG failed:", ogResp.error);
+              throw new Error("Assigned but OG failed: " + ogResp.error);
+            }
           }
         }
 
-        header.textContent = "\u2713 Assigned!";
+        header.textContent = ogCheckbox.checked ? "\u2713 Assigned as OG!" : "\u2713 Assigned!";
         document.removeEventListener("mousedown", onClickOutside, true);
         setTimeout(() => { if (card.parentNode) card.remove(); }, 800);
       } catch (err) {
