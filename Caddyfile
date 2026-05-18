@@ -11,6 +11,14 @@
 		}
 	}
 
+	@socialPreview {
+		path_regexp ^/app/(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2})/[0-9]+$
+		header_regexp User-Agent (?i)(Twitterbot|facebookexternalhit|Facebot|Slackbot|Discordbot|LinkedInBot|WhatsApp|TelegramBot|Applebot|Googlebot|bingbot)
+	}
+	handle @socialPreview {
+		reverse_proxy backend:8000
+	}
+
 	# Frontend (catch-all)
 	handle {
 		reverse_proxy frontend:3000
