@@ -3,7 +3,7 @@
 
 	@socialPreview {
 		path /app/*/*
-		header User-Agent *Twitterbot* *facebookexternalhit* *Facebot* *Slackbot* *Discordbot* *LinkedInBot* *WhatsApp* *TelegramBot* *Applebot* *Googlebot* *bingbot*
+		header_regexp User-Agent (?i).*(Twitterbot|facebookexternalhit|Facebot|Slackbot|Discordbot|LinkedInBot|WhatsApp|TelegramBot|Applebot|Googlebot|bingbot).*
 	}
 
 	route {
