@@ -1,6 +1,11 @@
 {$DOMAIN:localhost} {
 	encode gzip
 
+	@socialPreview {
+		path /app/*/*
+		header User-Agent *Twitterbot* *facebookexternalhit* *Facebot* *Slackbot* *Discordbot* *LinkedInBot* *WhatsApp* *TelegramBot* *Applebot* *Googlebot* *bingbot*
+	}
+
 	# API routes (must be before frontend catch-all)
 	handle /api/* {
 		reverse_proxy backend:8000 {
@@ -11,10 +16,6 @@
 		}
 	}
 
-	@socialPreview {
-		path /app/*/*
-		header User-Agent *Twitterbot* *facebookexternalhit* *Facebot* *Slackbot* *Discordbot* *LinkedInBot* *WhatsApp* *TelegramBot* *Applebot* *Googlebot* *bingbot*
-	}
 	handle @socialPreview {
 		reverse_proxy backend:8000
 	}
