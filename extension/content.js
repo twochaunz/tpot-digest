@@ -40,11 +40,23 @@
 
   // ── Tweet Data Extraction ──────────────────────────────────────────
 
-  // Find the main tweet's <time> element, skipping any inside quoted tweet cards.
-  // On detail pages the quoted tweet card (div[role="link"]) renders its <time>
-  // before the main tweet's full timestamp, so querySelector alone picks the wrong one.
+  function isOwnedByTweetArticle(article, el) {
+    return el.closest('article[data-testid="tweet"]') === article;
+  }
+
+  function queryOwned(article, selector) {
+    return Array.from(article.querySelectorAll(selector)).find((el) => isOwnedByTweetArticle(article, el)) || null;
+  }
+
+  function queryOwnedAll(article, selector) {
+    return Array.from(article.querySelectorAll(selector)).filter((el) => isOwnedByTweetArticle(article, el));
+  }
+
+  // Find the main tweet's <time> element, skipping nested/quoted tweet cards.
+  // X can render embedded tweets as nested articles inside a parent tweet; broad
+  // selectors must not let those nested status links replace the clicked tweet.
   function getMainTweetTimeEl(article) {
-    const times = article.querySelectorAll('time[datetime]');
+    const times = queryOwnedAll(article, 'time[datetime]');
     for (const t of times) {
       const quotedCard = t.closest('div[role="link"]');
       // Accept if no div[role="link"] ancestor, or if it's outside the article
@@ -72,7 +84,7 @@
     const tweetId = idMatch ? idMatch[1] : "";
 
     // Extract author handle from DOM for action card display only (not sent to backend)
-    const handleEl = article.querySelector('div[data-testid="User-Name"] a[href^="/"]');
+    const handleEl = queryOwned(article, 'div[data-testid="User-Name"] a[href^="/"]');
     const authorHandle = handleEl ? handleEl.getAttribute("href").replace("/", "") : "";
 
     // Thread detection: check if viewing a thread page
@@ -569,7 +581,7 @@
     const articles = document.querySelectorAll('article[data-testid="tweet"]');
     const unchecked = [];
     articles.forEach((article) => {
-      const btn = article.querySelector(".tpot-save-btn");
+      const btn = queryOwned(article, ".tpot-save-btn");
       if (btn && btn.dataset.tpotChecked) return;
       const timeEl2 = getMainTweetTimeEl(article);
       const link2 = timeEl2 ? timeEl2.closest('a[href*="/status/"]') : null;
@@ -595,7 +607,7 @@
       }
       // Update buttons that are now known to be saved
       articles.forEach((article) => {
-        const btn = article.querySelector(".tpot-save-btn");
+        const btn = queryOwned(article, ".tpot-save-btn");
         if (!btn) return;
         btn.dataset.tpotChecked = "1";
         const timeEl3 = getMainTweetTimeEl(article);
@@ -684,10 +696,10 @@
   // ── Button Injection ───────────────────────────────────────────────
 
   function injectSaveButton(article) {
-    if (article.querySelector(".tpot-save-btn")) return;
+    if (queryOwned(article, ".tpot-save-btn")) return;
 
     // Find the action bar (reply, retweet, like, bookmark, share)
-    const actionBar = article.querySelector('div[role="group"]');
+    const actionBar = queryOwned(article, 'div[role="group"]');
     if (!actionBar) return;
 
     // Find bookmark button to insert our save button before it
