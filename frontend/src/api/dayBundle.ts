@@ -24,14 +24,15 @@ export function useLatestDate() {
   })
 }
 
-export function useDayBundle(date: string, opts?: { enabled?: boolean }) {
+export function useDayBundle(date: string, opts?: { enabled?: boolean; live?: boolean }) {
   return useQuery<DayBundle>({
     queryKey: ['day-bundle', date],
     queryFn: async () => {
       const { data } = await api.get(`/days/${date}/bundle`)
       return data
     },
-    staleTime: 30_000, // 30s — refetch picks up extension-saved tweets on focus
+    staleTime: opts?.live ? 0 : 30_000,
+    refetchInterval: opts?.live ? 10_000 : false,
     refetchOnWindowFocus: true, // respects staleTime instead of always refetching
     enabled: opts?.enabled,
   })
@@ -178,4 +179,3 @@ export function useOptimisticPatchTweet() {
     },
   })
 }
-

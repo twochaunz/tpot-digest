@@ -55,7 +55,7 @@ export function DayFeedPanel({
   const [topicContextMenu, setTopicContextMenu] = useState<{ x: number; y: number; topicId: number; title: string } | null>(null)
 
   // Data fetching — single bundle query replaces N+1 queries
-  const bundleQuery = useDayBundle(date)
+  const bundleQuery = useDayBundle(date, { live: isActive })
   const bundle = bundleQuery.data
 
   // Derive topics and unsorted from bundle, with client-side search filtering
