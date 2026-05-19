@@ -127,6 +127,22 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
+  function defaultCurationDateStr() {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date()).reduce((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+    const dateStr = parts.year + "-" + parts.month + "-" + parts.day;
+    return Number(parts.hour) < 12 ? shiftDateStr(dateStr, -1) : dateStr;
+  }
+
   async function loadTopicsForDate(dateStr, topicState, topicInput, topicDropdown, ogWarning, onSelect) {
     const resp = await sendMessage({ type: "GET_TOPICS", date: dateStr });
     topicState.topics = (resp && resp.topics) || [];
@@ -195,10 +211,9 @@
     const existingToast = document.querySelector(".tpot-toast");
     if (existingToast) existingToast.remove();
 
-    const today = toLocalDateStr(new Date());
     const postedDate = extractPostedDate(article);
-    let usePostedDate = !!postedDate && postedDate !== today;
-    const activeDate = usePostedDate ? postedDate : today;
+    const today = toLocalDateStr(new Date());
+    const activeDate = defaultCurationDateStr();
 
     const CATEGORIES = [
       { key: '', label: 'No category' },
@@ -240,13 +255,19 @@
     dateInput.value = activeDate;
     dateInput.style.flex = "1";
 
-    // Rotating preset button: posted -> post-1 -> post+1 -> posted ...
+    // Rotating preset button: default -> posted -> post-1 -> post+1 -> today -> default ...
     const datePresets = [];
-    if (postedDate) {
-      datePresets.push({ label: "Posted", date: postedDate });
-      datePresets.push({ label: "\u22121 day", date: shiftDateStr(postedDate, -1) });
-      datePresets.push({ label: "+1 day", date: shiftDateStr(postedDate, 1) });
+    function addDatePreset(label, presetDate) {
+      if (!presetDate || datePresets.some((p) => p.date === presetDate)) return;
+      datePresets.push({ label, date: presetDate });
     }
+    addDatePreset("Default", activeDate);
+    if (postedDate) {
+      addDatePreset("Posted", postedDate);
+      addDatePreset("\u22121 day", shiftDateStr(postedDate, -1));
+      addDatePreset("+1 day", shiftDateStr(postedDate, 1));
+    }
+    addDatePreset("Today", today);
     let presetIndex = 0;
 
     const dateToggle = document.createElement("button");
@@ -630,12 +651,9 @@
       thread_id: tweetData.thread_id,
       feed_source: tweetData.feed_source,
     };
-    const postedDate = extractPostedDate(article);
-    if (postedDate) tweetPayload.saved_at = postedDate + "T12:00:00";
-
-    // Determine date for topics fetch
-    const today = toLocalDateStr(new Date());
-    const activeDate = (postedDate && postedDate !== today) ? postedDate : today;
+    // Default saves to the same curation date the dashboard opens to.
+    const activeDate = defaultCurationDateStr();
+    tweetPayload.saved_at = activeDate + "T12:00:00";
 
     // Fire save + topics fetch in parallel
     const savePromise = sendMessage({ type: "SAVE_TWEET", tweet: tweetPayload });
