@@ -179,6 +179,35 @@ async def test_save_tweet_url_from_api(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_legacy_save_payload_cannot_precede_tweet_created_date(client: AsyncClient):
+    resp = await client.post("/api/tweets", json={
+        "tweet_id": "legacy_date",
+        "saved_at": "2026-02-19T12:00:00Z",
+    })
+    assert resp.status_code == 201
+
+    tweets = (await client.get("/api/tweets")).json()
+    saved = next(t for t in tweets if t["tweet_id"] == "legacy_date")
+    assert saved["created_at"].startswith("2026-02-20")
+    assert saved["saved_at"].startswith("2026-02-20T12:00:00")
+
+
+@pytest.mark.asyncio
+async def test_current_extension_payload_can_choose_earlier_date(client: AsyncClient):
+    resp = await client.post("/api/tweets", json={
+        "tweet_id": "versioned_date",
+        "saved_at": "2026-02-19T12:00:00Z",
+        "client_version": 2,
+    })
+    assert resp.status_code == 201
+
+    tweets = (await client.get("/api/tweets")).json()
+    saved = next(t for t in tweets if t["tweet_id"] == "versioned_date")
+    assert saved["created_at"].startswith("2026-02-20")
+    assert saved["saved_at"].startswith("2026-02-19T12:00:00")
+
+
+@pytest.mark.asyncio
 async def test_check_saved_tweets(client: AsyncClient):
     for i in range(3):
         await client.post("/api/tweets", json={"tweet_id": f"check_{i}"})

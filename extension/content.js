@@ -1,5 +1,7 @@
 (function () {
   "use strict";
+  const TPOT_CLIENT_VERSION = 2;
+
   // Allow re-injection if previous instance's extension context died
   if (window.__tpotDigestV2 && chrome.runtime?.id) return;
   window.__tpotDigestV2 = true;
@@ -640,6 +642,7 @@
       tweet_id: tweetData.tweet_id,
       thread_id: tweetData.thread_id,
       feed_source: tweetData.feed_source,
+      client_version: TPOT_CLIENT_VERSION,
     };
     const postedDate = extractPostedDate(article);
     const today = toLocalDateStr(new Date());

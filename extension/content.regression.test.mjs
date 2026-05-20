@@ -74,6 +74,7 @@ try {
 
   assert.equal(saveMessage.tweet.tweet_id, '2056757837951574355')
   assert.equal(saveMessage.tweet.saved_at, '2026-05-19T12:00:00')
+  assert.equal(saveMessage.tweet.client_version, 2)
 } finally {
   await browser.close()
 }

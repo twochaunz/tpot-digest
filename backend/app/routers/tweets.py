@@ -21,6 +21,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 
 
+def _parse_api_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _legacy_safe_saved_at(saved_at: datetime | None, created_at: datetime | None, client_version: int | None) -> datetime | None:
+    if not saved_at or not created_at or client_version is not None:
+        return saved_at
+
+    la = ZoneInfo("America/Los_Angeles")
+    saved = saved_at if saved_at.tzinfo else saved_at.replace(tzinfo=timezone.utc)
+    created = created_at if created_at.tzinfo else created_at.replace(tzinfo=timezone.utc)
+    saved_date = saved.astimezone(la).date()
+    created_date = created.astimezone(la).date()
+    if saved_date < created_date:
+        return datetime(created_date.year, created_date.month, created_date.day, 12, 0, 0, tzinfo=timezone.utc)
+    return saved_at
+
+
 async def _persist_quoted_tweet(db, quoted_tweet_id: str, included_tweets: list[dict] | None = None):
     """Persist a quoted tweet if not already in DB.
 
@@ -115,7 +135,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin
         if existing.feed_source == "quoted_fetch":
             existing.feed_source = body.feed_source
             if body.saved_at:
-                existing.saved_at = body.saved_at
+                existing.saved_at = _legacy_safe_saved_at(body.saved_at, existing.created_at, body.client_version)
             await db.commit()
             await db.refresh(existing)
             out = TweetOut.model_validate(existing)
@@ -156,7 +176,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin
             thread_position=body.thread_position,
         )
         if api_data.get("created_at"):
-            kwargs["created_at"] = datetime.fromisoformat(api_data["created_at"].replace("Z", "+00:00"))
+            kwargs["created_at"] = _parse_api_datetime(api_data["created_at"])
     else:
         # Fallback placeholder if X API is down
         kwargs = dict(
@@ -169,7 +189,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin
         )
 
     if body.saved_at:
-        kwargs["saved_at"] = body.saved_at
+        kwargs["saved_at"] = _legacy_safe_saved_at(body.saved_at, kwargs.get("created_at"), body.client_version)
     tweet = Tweet(**kwargs)
     db.add(tweet)
     await db.commit()
