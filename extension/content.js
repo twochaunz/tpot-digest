@@ -211,7 +211,7 @@
 
     const postedDate = extractPostedDate(article);
     const today = toLocalDateStr(new Date());
-    const activeDate = (postedDate && postedDate !== today) ? postedDate : today;
+    const activeDate = postedDate || today;
 
     const CATEGORIES = [
       { key: '', label: 'No category' },
@@ -621,7 +621,7 @@
       const tweetData = extractTweetData(article);
       const postedDate = extractPostedDate(article);
       const today = toLocalDateStr(new Date());
-      const activeDate = (postedDate && postedDate !== today) ? postedDate : today;
+      const activeDate = postedDate || today;
 
       // Show card immediately with empty topics, populate when ready
       showActionCard(dbId, tweetData._author_handle, article, []);
@@ -646,7 +646,7 @@
     };
     const postedDate = extractPostedDate(article);
     const today = toLocalDateStr(new Date());
-    const activeDate = (postedDate && postedDate !== today) ? postedDate : today;
+    const activeDate = postedDate || today;
     tweetPayload.saved_at = activeDate + "T12:00:00";
 
     // Fire save + topics fetch in parallel

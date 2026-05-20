@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -7,6 +8,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const contentScriptPath = path.join(__dirname, 'content.js')
 const require = createRequire(import.meta.url)
 const { chromium } = require('playwright')
+
+const contentScript = fs.readFileSync(contentScriptPath, 'utf8')
+assert.equal(contentScript.includes('postedDate && postedDate !== today'), false)
+assert.match(contentScript, /const activeDate = postedDate \|\| today;/)
 
 const browser = await chromium.launch({
   headless: true,
