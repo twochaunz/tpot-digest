@@ -13,6 +13,7 @@ class TweetSave(BaseModel):
     topic_id: int | None = None
     category: str | None = None
     saved_at: datetime | None = None
+    client_version: int | None = None
 
 
 class TweetOut(BaseModel):
