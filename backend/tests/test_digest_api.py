@@ -54,6 +54,58 @@ async def client():
 
 
 @pytest.mark.asyncio
+async def test_generate_template_fetches_context_for_draft_summary(client: AsyncClient):
+    async with async_session() as session:
+        topic = Topic(title="Test Topic", date=date(2026, 3, 1), position=0)
+        session.add(topic)
+        await session.commit()
+        await session.refresh(topic)
+
+        tweet = Tweet(
+            tweet_id="template_1",
+            author_handle="testuser",
+            author_display_name="Test User",
+            text="Template tweet text",
+            url="https://x.com/testuser/status/template_1",
+            saved_at=datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc),
+        )
+        session.add(tweet)
+        await session.commit()
+        await session.refresh(tweet)
+
+        session.add(TweetAssignment(tweet_id=tweet.id, topic_id=topic.id))
+        await session.commit()
+        topic_id = topic.id
+        tweet_id = tweet.id
+
+    with (
+        patch("app.services.grok_api.fetch_grok_context", new_callable=AsyncMock) as mock_grok,
+        patch("app.routers.digest._generate_topic_summary", new_callable=AsyncMock) as mock_summary,
+        patch("app.routers.digest._generate_category_transitions", new_callable=AsyncMock) as mock_transitions,
+        patch("app.routers.digest._generate_casual_intro", new_callable=AsyncMock) as mock_intro,
+    ):
+        mock_grok.return_value = "Fetched context for draft summaries"
+        mock_summary.return_value = "Generated topic summary"
+        mock_transitions.return_value = {}
+        mock_intro.return_value = None
+
+        resp = await client.post("/api/digest/generate-template", json={
+            "date": "2026-03-01",
+            "topic_ids": [topic_id],
+        })
+
+    assert resp.status_code == 200
+    topic_data = resp.json()["topics"][0]
+    assert topic_data["summary"] == "Generated topic summary"
+    mock_grok.assert_awaited_once_with("https://x.com/testuser/status/template_1")
+    mock_summary.assert_awaited_once_with("Test Topic", ["Fetched context for draft summaries"])
+
+    async with async_session() as session:
+        saved = await session.get(Tweet, tweet_id)
+        assert saved.grok_context == "Fetched context for draft summaries"
+
+
+@pytest.mark.asyncio
 async def test_create_digest_draft(client: AsyncClient):
     resp = await client.post("/api/digest/drafts", json={
         "date": "2026-03-01",
