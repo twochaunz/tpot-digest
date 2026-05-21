@@ -1,7 +1,5 @@
 from datetime import date
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette.background import BackgroundTask
 from starlette.responses import JSONResponse
@@ -10,14 +8,11 @@ from app.auth import require_admin
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
-
 from app.db import get_db
 from app.models.assignment import TweetAssignment
 from app.models.topic import Topic
 from app.models.tweet import Tweet
 from app.schemas.topic import TopicCreate, TopicOut, TopicUpdate
-from app.services.grok_api import fetch_grok_context, GrokAPIError
 from app.services.smart_title import smart_title_case, _fallback_title_case as title_case
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
@@ -92,13 +87,11 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
     data = body.model_dump(exclude_unset=True)
 
     # Handle og_tweet_id: validate tweet exists, auto-assign if needed
-    og_newly_set = False
     if "og_tweet_id" in data and data["og_tweet_id"] is not None:
         tweet_id = data["og_tweet_id"]
         tweet = await db.get(Tweet, tweet_id)
         if not tweet:
             raise HTTPException(404, "Tweet not found")
-        og_newly_set = topic.og_tweet_id != tweet_id
         # Check if assigned to this topic; if not, auto-assign
         existing = (await db.execute(
             select(TweetAssignment).where(
@@ -108,9 +101,6 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
         )).scalar_one_or_none()
         if not existing:
             db.add(TweetAssignment(tweet_id=tweet_id, topic_id=topic_id))
-
-        # Grok fetch + embedding + recategorization all happen in background
-        # (see _process_og_tweet below)
 
     # When date changes, move all assigned tweets to the new date
     if "date" in data and data["date"] != topic.date:
@@ -141,45 +131,7 @@ async def update_topic(topic_id: int, body: TopicUpdate, db: AsyncSession = Depe
     await db.commit()
     await db.refresh(topic)
 
-    # When OG tweet is set/changed, run Grok + embedding + recategorization in background
-    if og_newly_set:
-        logger.info("OG tweet set for topic %d, triggering background processing", topic_id)
-        return JSONResponse(
-            content=TopicOut.model_validate(topic).model_dump(mode="json"),
-            background=BackgroundTask(_process_og_tweet, topic_id),
-        )
-
     return topic
-
-
-async def _process_og_tweet(topic_id: int) -> None:
-    """Background: fetch Grok context, compute embedding, recategorize."""
-    import app.db as db_module
-    from app.services.embeddings import embed_text
-    from app.services.classifier import recategorize_topic_tweets
-
-    async with db_module.async_session() as db:
-        topic = await db.get(Topic, topic_id)
-        if not topic or not topic.og_tweet_id:
-            return
-        tweet = await db.get(Tweet, topic.og_tweet_id)
-        if not tweet:
-            return
-
-        # Fetch Grok context if not already cached
-        if not tweet.grok_context and tweet.url:
-            try:
-                tweet.grok_context = await fetch_grok_context(tweet.url)
-            except GrokAPIError:
-                pass
-
-        # Compute topic embedding
-        embed_source = f"{topic.title} {tweet.text or ''} {tweet.grok_context or ''}"
-        topic.embedding = embed_text(embed_source)
-        await db.commit()
-
-    # Recategorize tweets (uses its own session)
-    await recategorize_topic_tweets(topic_id)
 
 
 @router.post("/{topic_id}/recategorize", status_code=200)

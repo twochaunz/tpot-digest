@@ -187,7 +187,7 @@ async def test_og_tweet_must_be_assigned(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_setting_og_triggers_grok_fetch(client: AsyncClient):
+async def test_setting_og_does_not_fetch_grok_context(client: AsyncClient):
     # Create a tweet with a URL
     tweet_resp = await client.post("/api/tweets", json={"tweet_id": "777888999"})
     tweet_db_id = tweet_resp.json()["id"]
@@ -200,8 +200,12 @@ async def test_setting_og_triggers_grok_fetch(client: AsyncClient):
 
     await client.post("/api/tweets/assign", json={"tweet_ids": [tweet_db_id], "topic_id": topic_id})
 
-    with patch("app.routers.topics.fetch_grok_context", new_callable=AsyncMock) as mock_grok:
+    with patch("app.services.grok_api.fetch_grok_context", new_callable=AsyncMock) as mock_grok:
         mock_grok.return_value = "Auto-fetched context"
         resp = await client.patch(f"/api/topics/{topic_id}", json={"og_tweet_id": tweet_db_id})
         assert resp.status_code == 200
-        mock_grok.assert_called_once()
+        mock_grok.assert_not_called()
+
+    tweet_resp = await client.get("/api/tweets")
+    saved = next(t for t in tweet_resp.json() if t["id"] == tweet_db_id)
+    assert saved["grok_context"] is None
