@@ -1,13 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { useTweets, useFetchGrokContext } from '../api/tweets'
+import { useTweets } from '../api/tweets'
 import { TweetCard } from './TweetCard'
 import type { Tweet } from '../api/tweets'
 import { getCategoryDef } from '../constants/categories'
 import { isKekTopic } from '../utils/topics'
-import { useAuth } from '../contexts/AuthContext'
 import { useMinWidth, useWindowWidth, useIsMobile } from '../hooks/useMediaQuery'
 
 // --- Measure text width using canvas (synchronous, no DOM mutation) ---
@@ -19,93 +16,6 @@ function measureTextWidth(text: string, fontSize: number): number {
   if (!ctx) return text.length * fontSize * 0.6
   ctx.font = `700 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
   return ctx.measureText(text).width
-}
-
-function GrokContextSection({ tweetId, context }: { tweetId: number; context: string }) {
-  const isMobile = useIsMobile()
-  const [collapsed, setCollapsed] = useState(true)
-
-  return (
-    <div style={{ maxWidth: isMobile ? undefined : 600, margin: '0 auto', width: '100%' }}>
-      <div
-        style={{
-          marginTop: 12,
-          border: '1px solid rgba(245, 158, 11, 0.25)',
-          borderRadius: 'var(--radius-md)',
-          background: 'rgba(245, 158, 11, 0.06)',
-        }}
-      >
-        <div
-          onClick={() => setCollapsed((v) => !v)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            userSelect: 'none',
-            padding: '10px 12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{
-              fontSize: 10,
-              color: 'rgba(245, 158, 11, 0.7)',
-              transition: 'transform 0.15s ease',
-              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-            }}>&#9660;</span>
-            <span style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: 'rgba(245, 158, 11, 0.8)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}>
-              Explainer
-            </span>
-          </div>
-          <GrokRefreshButton tweetId={tweetId} />
-        </div>
-        {!collapsed && (
-          <div style={{
-            padding: '0 12px 12px',
-            fontSize: 14,
-            color: 'var(--text-primary)',
-            lineHeight: 1.6,
-          }}
-            className="grok-context-md"
-          >
-            <Markdown remarkPlugins={[remarkGfm]}>{context}</Markdown>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function GrokRefreshButton({ tweetId, label }: { tweetId: number; label?: string }) {
-  const { isAdmin } = useAuth()
-  const fetchGrok = useFetchGrokContext()
-
-  if (!isAdmin) return null
-
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); fetchGrok.mutate({ tweetId, force: true }) }}
-      disabled={fetchGrok.isPending}
-      style={{
-        background: 'none',
-        border: 'none',
-        color: 'var(--text-tertiary)',
-        cursor: fetchGrok.isPending ? 'wait' : 'pointer',
-        fontSize: 12,
-        padding: '2px 4px',
-        opacity: fetchGrok.isPending ? 0.5 : 0.7,
-      }}
-      title="Refresh explainer"
-    >
-      {fetchGrok.isPending ? 'Fetching...' : label ?? '\u21BB'}
-    </button>
-  )
 }
 
 // --- Data wrapper component (calls hooks at top level) ---
@@ -1019,22 +929,6 @@ function TopicSection({
                     <TweetCard tweet={ogTweet} selectable={false} isAdmin={isAdmin} />
                   </div>
 
-                  {/* Grok Context section */}
-                  {ogTweet.grok_context && (
-                    <GrokContextSection tweetId={ogTweet.id} context={ogTweet.grok_context} />
-                  )}
-
-                  {/* No context yet - show fetch button */}
-                  {!ogTweet.grok_context && (
-                    <div style={{ maxWidth: isMobile ? undefined : 600, margin: '0 auto', width: '100%' }}>
-                      <div style={{ marginTop: 10 }}>
-                        <div style={{ height: 1, background: 'var(--border)' }} />
-                      </div>
-                      <div style={{ padding: '10px 12px 12px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-                        <GrokRefreshButton tweetId={ogTweet.id} label="Fetch Context" />
-                      </div>
-                    </div>
-                  )}
                   </div>
                 </div>
               )}
