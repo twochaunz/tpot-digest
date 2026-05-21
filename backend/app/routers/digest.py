@@ -197,6 +197,31 @@ Example: {{"pushback": "some pushback on the pricing model", "kek": "and of cour
         return {}
 
 
+async def _fetch_missing_grok_contexts_for_topic(topic_id: int, db: AsyncSession) -> None:
+    """Fetch missing Grok context when generating draft summaries."""
+    from app.services.grok_api import GrokAPIError, fetch_grok_context
+
+    stmt = (
+        select(Tweet)
+        .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
+        .where(
+            TweetAssignment.topic_id == topic_id,
+            Tweet.grok_context.is_(None),
+        )
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+
+    for tweet in rows:
+        tweet_url = tweet.url or f"https://x.com/{tweet.author_handle}/status/{tweet.tweet_id}"
+        try:
+            tweet.grok_context = await fetch_grok_context(tweet_url)
+        except GrokAPIError:
+            logger.exception("Failed to fetch Grok context for tweet %s", tweet.id)
+
+    if rows:
+        await db.commit()
+
+
 _SKIP_TRANSLATE_LANGS = {"en", "und", "zxx", "qme", "qht", "art", "", None}
 
 
@@ -378,6 +403,8 @@ async def generate_template(body: GenerateTemplateRequest, db: AsyncSession = De
         topic = await db.get(Topic, topic_id)
         if not topic:
             continue
+
+        await _fetch_missing_grok_contexts_for_topic(topic_id, db)
 
         # Fetch tweets with categories
         stmt = (
