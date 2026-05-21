@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { useRef, useState, useCallback } from 'react'
-import { Tweet } from 'react-tweet'
 import { toPng } from 'html-to-image'
 import { useAuth } from '../contexts/AuthContext'
+import { SafeReactTweet } from '../components/SafeReactTweet'
 
 const DEFAULT_TWEET_ID = '2028500984977330453'
 
@@ -451,7 +451,7 @@ export function SettingsPage() {
                 }}
               >
                 <div style={{ width: 500 }}>
-                  <Tweet id={tweetId} apiUrl={`/api/tweet-embed/${tweetId}`} />
+                  <SafeReactTweet id={tweetId} apiUrl={`/api/tweet-embed/${tweetId}`} />
                 </div>
               </div>
               <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 12 }}>

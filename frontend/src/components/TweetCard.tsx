@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { toPng } from 'html-to-image'
-import { Tweet as ReactTweet } from 'react-tweet'
 import type { Tweet } from '../api/tweets'
 import { useTranslateTweet } from '../api/tweets'
 import { useIsMobile } from '../hooks/useMediaQuery'
+import { SafeReactTweet } from './SafeReactTweet'
 
 interface TweetCardProps {
   tweet: Tweet
@@ -809,7 +809,7 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
               marginTop: 10,
             }}
           >
-            <ReactTweet id={tweet.quoted_tweet_id} />
+            <SafeReactTweet id={tweet.quoted_tweet_id} />
           </div>
         )}
       </div>
@@ -1013,4 +1013,3 @@ function ImageLightbox({
     document.body,
   )
 }
-

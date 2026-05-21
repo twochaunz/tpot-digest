@@ -1,5 +1,5 @@
-import { Tweet } from 'react-tweet'
 import type { Tweet as TweetData } from '../api/tweets'
+import { SafeReactTweet } from './SafeReactTweet'
 
 interface EmbeddedTweetProps {
   tweet: TweetData
@@ -24,7 +24,7 @@ export function EmbeddedTweet({ tweet, onContextMenu, onDelete }: EmbeddedTweetP
       }}
     >
       <div data-theme="dark" className="react-tweet-container">
-        <Tweet id={tweet.tweet_id} />
+        <SafeReactTweet id={tweet.tweet_id} />
       </div>
 
       {/* Hover actions overlay */}
