@@ -1,5 +1,6 @@
 """Digest draft endpoints: CRUD, preview, send-test, send, process-scheduled."""
 
+import asyncio
 import json
 import logging
 import re
@@ -44,6 +45,8 @@ router = APIRouter(prefix="/api/digest", tags=["digest"], dependencies=[Depends(
 
 # Category display order for grouping tweets within topics
 CATEGORY_ORDER = ["og post", "echo", "context", "commentary", "pushback", "hot-take", "callout", "kek"]
+DIGEST_CONTEXT_FETCH_LIMIT = 1
+DIGEST_CONTEXT_FETCH_TIMEOUT_SECONDS = 12
 
 
 def _format_date(d) -> str:
@@ -199,8 +202,9 @@ Example: {{"pushback": "some pushback on the pricing model", "kek": "and of cour
 
 async def _fetch_missing_grok_contexts_for_topic(topic_id: int, db: AsyncSession) -> None:
     """Fetch missing Grok context when generating draft summaries."""
-    from app.services.grok_api import GrokAPIError, fetch_grok_context
+    from app.services.grok_api import fetch_grok_context
 
+    topic = await db.get(Topic, topic_id)
     stmt = (
         select(Tweet)
         .join(TweetAssignment, TweetAssignment.tweet_id == Tweet.id)
@@ -210,15 +214,22 @@ async def _fetch_missing_grok_contexts_for_topic(topic_id: int, db: AsyncSession
         )
     )
     rows = (await db.execute(stmt)).scalars().all()
+    if topic and topic.og_tweet_id:
+        rows.sort(key=lambda tw: tw.id != topic.og_tweet_id)
 
-    for tweet in rows:
+    updated = False
+    for tweet in rows[:DIGEST_CONTEXT_FETCH_LIMIT]:
         tweet_url = tweet.url or f"https://x.com/{tweet.author_handle}/status/{tweet.tweet_id}"
         try:
-            tweet.grok_context = await fetch_grok_context(tweet_url)
-        except GrokAPIError:
-            logger.exception("Failed to fetch Grok context for tweet %s", tweet.id)
+            tweet.grok_context = await asyncio.wait_for(
+                fetch_grok_context(tweet_url),
+                timeout=DIGEST_CONTEXT_FETCH_TIMEOUT_SECONDS,
+            )
+            updated = True
+        except Exception:
+            logger.exception("Failed to fetch Grok context for tweet %s during digest generation", tweet.id)
 
-    if rows:
+    if updated:
         await db.commit()
 
 

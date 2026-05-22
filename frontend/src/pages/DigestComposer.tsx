@@ -1671,18 +1671,46 @@ export function DigestComposer() {
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleCreateFromTemplate = useCallback(async (orderedIds: number[]) => {
+    const placeholderBlocks: DigestBlock[] = [{
+      id: nextBlockId(),
+      type: 'text',
+      content: 'Generating template...',
+    }]
     setIsGenerating(true)
     setShowTopicSelector(false)
+    setBlocks(placeholderBlocks)
+    let createdDraftId: number | null = null
     try {
+      setSaveStatus('saving')
+      const created = await createDraft.mutateAsync({
+        date: dateRef.current,
+        content_blocks: placeholderBlocks,
+      })
+      createdDraftId = created.id
+      loadedDraftIdRef.current = created.id
+      setSelectedDraftId(created.id)
+      setSaveStatus('saved')
+
       const newBlocks = await generateTemplateBlocks(orderedIds)
       setBlocks(newBlocks)
-      triggerAutoSave()
+      setSaveStatus('saving')
+      await updateDraft.mutateAsync({
+        id: created.id,
+        content_blocks: newBlocks,
+        scheduled_for: scheduledForRef.current || null,
+        subject: subjectRef.current || undefined,
+      })
+      setSaveStatus('saved')
     } catch {
-      showStatus('Failed to generate template', 'error')
+      setSaveStatus('idle')
+      showStatus(
+        createdDraftId ? 'Draft created, but template generation failed' : 'Failed to create draft',
+        'error',
+      )
     } finally {
       setIsGenerating(false)
     }
-  }, [generateTemplateBlocks, triggerAutoSave])
+  }, [createDraft, generateTemplateBlocks, updateDraft])
 
   const showStatus = (text: string, type: 'success' | 'error' | 'info') => {
     setStatusMessage({ text, type })
