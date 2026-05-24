@@ -39,6 +39,7 @@ export interface Tweet {
 
 export function useTweets(params: {
   date?: string
+  ids?: number[]
   topic_id?: number
   category?: string
   unassigned?: boolean
@@ -52,6 +53,19 @@ export function useTweets(params: {
       return data
     },
     enabled: options?.enabled,
+  })
+}
+
+export function useTweetsByIds(ids: number[], options?: { enabled?: boolean }) {
+  return useQuery<Tweet[]>({
+    queryKey: ['tweets-by-ids', ids],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      for (const id of ids) params.append('ids', String(id))
+      const { data } = await api.get(`/tweets?${params.toString()}`)
+      return data
+    },
+    enabled: options?.enabled ?? ids.length > 0,
   })
 }
 

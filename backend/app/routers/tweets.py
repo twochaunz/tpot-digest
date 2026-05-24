@@ -209,6 +209,7 @@ async def save_tweet(body: TweetSave, db: AsyncSession = Depends(get_db), _admin
 @router.get("", response_model=list[TweetOut])
 async def list_tweets(
     date: date | None = Query(None),
+    ids: list[int] | None = Query(None),
     topic_id: int | None = Query(None),
     category: str | None = Query(None),
     unassigned: bool = Query(False),
@@ -216,6 +217,14 @@ async def list_tweets(
     thread_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
+    if ids:
+        result = await db.execute(
+            select(Tweet)
+            .where(Tweet.id.in_(ids))
+            .order_by(Tweet.saved_at.desc(), Tweet.id.desc())
+        )
+        return result.scalars().all()
+
     if topic_id:
         # Join with TweetAssignment to get category
         stmt = select(Tweet, TweetAssignment.category).join(

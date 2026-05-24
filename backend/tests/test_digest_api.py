@@ -200,6 +200,22 @@ async def test_update_digest_draft(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_update_digest_draft_date(client: AsyncClient):
+    create_resp = await client.post("/api/digest/drafts", json={
+        "date": "2026-05-14",
+        "content_blocks": [],
+    })
+    draft_id = create_resp.json()["id"]
+
+    resp = await client.patch(f"/api/digest/drafts/{draft_id}", json={
+        "date": "2026-05-13",
+    })
+
+    assert resp.status_code == 200
+    assert resp.json()["date"] == "2026-05-13"
+
+
+@pytest.mark.asyncio
 async def test_preview_digest(client: AsyncClient):
     # Seed a topic and tweet
     today = date.today()
