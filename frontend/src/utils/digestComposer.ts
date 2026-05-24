@@ -1,6 +1,5 @@
 export interface DigestComposerTweet {
   id: number
-  [key: string]: unknown
 }
 
 export interface DigestComposerTopic<TTweet extends DigestComposerTweet> {
