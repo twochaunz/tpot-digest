@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle, type TopicBundle } from '../api/dayBundle'
-import type { Tweet } from '../api/tweets'
+import { useTweetsByIds, type Tweet } from '../api/tweets'
 import { sortTopics, isKekTopic } from '../utils/topics'
+import { buildTweetGroups, findDraftTweet, isTemplatePlaceholderDraft, resolveNewDraftDate, uniqueTweetIds, type DigestTweetGroup } from '../utils/digestComposer'
 import {
   type DigestBlock,
   type SubscriberInfo,
@@ -229,6 +230,7 @@ function TweetSelectorPanel({
 function BlockInsertRow({
   index,
   topics,
+  tweetGroups,
   usedTopicIds,
   usedTweetIds,
   onAddText,
@@ -238,6 +240,7 @@ function BlockInsertRow({
 }: {
   index: number
   topics: TopicBundle[]
+  tweetGroups: DigestTweetGroup<Tweet>[]
   usedTopicIds: Set<number>
   usedTweetIds: Set<number>
   onAddText: (atIndex: number) => void
@@ -272,7 +275,7 @@ function BlockInsertRow({
             small
           />
           <TweetPicker
-            topics={topics}
+            tweetGroups={tweetGroups}
             usedTweetIds={usedTweetIds}
             onSelect={(tweetId) => onAddTweet(tweetId, index)}
             small
@@ -288,6 +291,7 @@ function BlockInsertRow({
 function SortableBlock({
   block,
   topics,
+  tweetGroups,
   isSent,
   onUpdateBlock,
   onDeleteBlock,
@@ -296,6 +300,7 @@ function SortableBlock({
 }: {
   block: DigestBlock
   topics: TopicBundle[]
+  tweetGroups: DigestTweetGroup<Tweet>[]
   isSent: boolean
   onUpdateBlock: (id: string, patch: Partial<DigestBlock>) => void
   onDeleteBlock: (id: string) => void
@@ -344,13 +349,7 @@ function SortableBlock({
 
   // For tweet blocks, find the tweet across all topics + unsorted
   const tweetData = block.type === 'tweet' && block.tweet_id
-    ? (() => {
-        for (const t of topics) {
-          const found = t.tweets.find((tw) => tw.id === block.tweet_id)
-          if (found) return { tweet: found, topicTitle: t.title, topicColor: t.color }
-        }
-        return null
-      })()
+    ? findDraftTweet(tweetGroups, block.tweet_id)
     : null
 
   return (
@@ -695,18 +694,18 @@ function TopicPicker({
 
 /* ---- Tweet picker dropdown (grouped by topic) ---- */
 function TweetPicker({
-  topics,
+  tweetGroups,
   usedTweetIds,
   onSelect,
   small,
 }: {
-  topics: TopicBundle[]
+  tweetGroups: DigestTweetGroup<Tweet>[]
   usedTweetIds: Set<number>
   onSelect: (tweetId: number) => void
   small?: boolean
 }) {
   const [open, setOpen] = useState(false)
-  const [expandedTopics, setExpandedTopics] = useState<Set<number>>(new Set())
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -722,16 +721,16 @@ function TweetPicker({
   }, [open])
 
   // Topics that have at least one available (non-used) tweet
-  const topicsWithAvailable = topics.filter((t) =>
-    t.tweets.some((tw) => !usedTweetIds.has(tw.id))
+  const groupsWithAvailable = tweetGroups.filter((group) =>
+    group.tweets.some((tw) => !usedTweetIds.has(tw.id))
   )
-  const hasAny = topicsWithAvailable.length > 0
+  const hasAny = groupsWithAvailable.length > 0
 
-  const toggleTopicExpand = (topicId: number) => {
+  const toggleGroupExpand = (groupKey: string) => {
     setExpandedTopics((prev) => {
       const next = new Set(prev)
-      if (next.has(topicId)) next.delete(topicId)
-      else next.add(topicId)
+      if (next.has(groupKey)) next.delete(groupKey)
+      else next.add(groupKey)
       return next
     })
   }
@@ -755,15 +754,15 @@ function TweetPicker({
 
       {open && hasAny && (
         <div style={{ ...dropdownStyle, minWidth: 340, maxHeight: 400 }}>
-          {topicsWithAvailable.map((topic) => {
-            const isExpanded = expandedTopics.has(topic.id)
-            const availableTweets = topic.tweets.filter((tw) => !usedTweetIds.has(tw.id))
+          {groupsWithAvailable.map((group) => {
+            const isExpanded = expandedTopics.has(group.key)
+            const availableTweets = group.tweets.filter((tw) => !usedTweetIds.has(tw.id))
 
             return (
-              <div key={topic.id}>
+              <div key={group.key}>
                 {/* Topic header */}
                 <div
-                  onClick={() => toggleTopicExpand(topic.id)}
+                  onClick={() => toggleGroupExpand(group.key)}
                   style={{
                     ...dropdownItemStyle,
                     fontWeight: 600,
@@ -778,10 +777,10 @@ function TweetPicker({
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    background: topic.color || 'var(--accent)',
+                    background: group.topicColor || 'var(--accent)',
                     flexShrink: 0,
                   }} />
-                  <span style={{ flex: 1 }}>{topic.title}</span>
+                  <span style={{ flex: 1 }}>{group.topicTitle}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                     {availableTweets.length}
                   </span>
@@ -1344,6 +1343,7 @@ export function DigestComposer() {
   const { data: subscribers } = useSubscribers(showSubs || showSendConfirm)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
   const [showTopicSelector, setShowTopicSelector] = useState(false)
+  const [templateDraftMode, setTemplateDraftMode] = useState<'create' | 'replace'>('create')
   const [tweetSelectorTopicId, setTweetSelectorTopicId] = useState<number | null>(null)
 
   const createDraft = useCreateDigestDraft()
@@ -1377,9 +1377,13 @@ export function DigestComposer() {
   selectedDraftIdRef.current = selectedDraftId
   const dateRef = useRef(date)
   dateRef.current = date
+  const pendingCreateDateRef = useRef<string | null>(null)
 
   const triggerAutoSave = useCallback(() => {
     setSaveStatus('idle')
+    if (!selectedDraftIdRef.current && !pendingCreateDateRef.current) {
+      pendingCreateDateRef.current = dateRef.current
+    }
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(async () => {
       const currentBlocks = blocksRef.current.map(b => ({ ...b }))
@@ -1401,9 +1405,10 @@ export function DigestComposer() {
         setSaveStatus('saving')
         try {
           const created = await createDraft.mutateAsync({
-            date: dateRef.current,
+            date: resolveNewDraftDate(pendingCreateDateRef.current, dateRef.current),
             content_blocks: currentBlocks,
           })
+          pendingCreateDateRef.current = null
           setSelectedDraftId(created.id)
           setSaveStatus('saved')
         } catch {
@@ -1468,8 +1473,15 @@ export function DigestComposer() {
 
   const topics = sortTopics(bundle?.topics || [])
   const saturdayTopics = sortTopics(saturdayBundle?.topics || [])
+  const unsortedTweets = bundle?.unsorted || []
+  const saturdayUnsortedTweets = saturdayBundle?.unsorted || []
   // Combined topics for template generation (Sunday includes Saturday)
   const allTopics = isSunday ? [...saturdayTopics, ...topics] : topics
+  const allUnsortedTweets = isSunday ? [...saturdayUnsortedTweets, ...unsortedTweets] : unsortedTweets
+  const allTweetGroups = useMemo(
+    () => buildTweetGroups(allTopics, allUnsortedTweets),
+    [allTopics, allUnsortedTweets],
+  )
 
   // Set of topic IDs already used in blocks
   const usedTopicIds = new Set(
@@ -1480,6 +1492,11 @@ export function DigestComposer() {
   const usedTweetIds = new Set(
     blocks.filter((b) => b.type === 'tweet' && b.tweet_id).map((b) => b.tweet_id!)
   )
+  const draftTweetIds = useMemo(
+    () => uniqueTweetIds(blocks.map((b) => b.type === 'tweet' ? b.tweet_id : null)),
+    [blocks],
+  )
+  const { data: draftTweets } = useTweetsByIds(draftTweetIds, { enabled: draftTweetIds.length > 0 })
 
   const updateBlock = useCallback((id: string, patch: Partial<DigestBlock>) => {
     setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)))
@@ -1545,6 +1562,62 @@ export function DigestComposer() {
   }, [triggerAutoSave])
 
   const generateTemplate = useGenerateTemplate()
+
+  const buildFallbackTemplateBlocks = useCallback((orderedIds: number[]): DigestBlock[] => {
+    const orderedSet = new Set(orderedIds)
+    const featured = orderedIds.map(id => allTopics.find(t => t.id === id)).filter((t): t is TopicBundle => t !== undefined)
+
+    const kekTopics = allTopics.filter(t => isKekTopic(t.title) && !orderedSet.has(t.id))
+    for (const kek of kekTopics) {
+      featured.push(kek)
+      orderedSet.add(kek.id)
+    }
+
+    const d = new Date(date + 'T00:00:00')
+    const formattedDate = isSunday
+      ? `${d.getMonth() + 1}/${d.getDate() - 1}\u2013${d.getDate()}`
+      : `${d.getMonth() + 1}/${d.getDate()}`
+
+    const blocks: DigestBlock[] = [{
+      id: nextBlockId(),
+      type: 'text',
+      content: `# ${orderedIds.length} topic${orderedIds.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
+    }]
+
+    let isFirstTopic = true
+    for (const topic of featured) {
+      if (topic.tweets.length === 0) continue
+      if (!isFirstTopic) blocks.push({ id: nextBlockId(), type: 'divider' })
+      isFirstTopic = false
+      blocks.push({ id: nextBlockId(), type: 'topic-header', topic_id: topic.id })
+      for (const tw of topic.tweets) {
+        blocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tw.id })
+      }
+    }
+
+    const rest = sortTopics(allTopics).filter(t => !orderedSet.has(t.id))
+    if (rest.length > 0) {
+      const topicDateMap = new Map<number, string>()
+      for (const t of topics) topicDateMap.set(t.id, date)
+      if (isSunday) {
+        for (const t of saturdayTopics) topicDateMap.set(t.id, saturdayDate)
+      }
+      const restLinks = rest.map(t => {
+        const tDate = topicDateMap.get(t.id) || date
+        const dayTopics = sortTopics(tDate === date ? topics : saturdayTopics)
+        const topicNum = dayTopics.indexOf(t) + 1
+        return `- [${t.title}](https://abridged.tech/app/${tDate}/${topicNum})`
+      })
+      blocks.push({ id: nextBlockId(), type: 'divider' })
+      blocks.push({
+        id: nextBlockId(),
+        type: 'text',
+        content: `**More on the timeline**\n\n${restLinks.join('\n')}`,
+      })
+    }
+
+    return blocks
+  }, [allTopics, topics, saturdayTopics, date, saturdayDate, isSunday])
 
   const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
     const orderedSet = new Set(orderedIds)
@@ -1671,46 +1744,59 @@ export function DigestComposer() {
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleCreateFromTemplate = useCallback(async (orderedIds: number[]) => {
-    const placeholderBlocks: DigestBlock[] = [{
-      id: nextBlockId(),
-      type: 'text',
-      content: 'Generating template...',
-    }]
+    const fallbackBlocks = buildFallbackTemplateBlocks(orderedIds)
     setIsGenerating(true)
     setShowTopicSelector(false)
-    setBlocks(placeholderBlocks)
+    const targetDraftId = templateDraftMode === 'replace' ? selectedDraftIdRef.current : null
+    setTemplateDraftMode('create')
+    setBlocks(fallbackBlocks)
     let createdDraftId: number | null = null
     try {
       setSaveStatus('saving')
-      const created = await createDraft.mutateAsync({
-        date: dateRef.current,
-        content_blocks: placeholderBlocks,
-      })
-      createdDraftId = created.id
-      loadedDraftIdRef.current = created.id
-      setSelectedDraftId(created.id)
+      if (targetDraftId) {
+        await updateDraft.mutateAsync({
+          id: targetDraftId,
+          content_blocks: fallbackBlocks,
+          scheduled_for: scheduledForRef.current || null,
+          subject: subjectRef.current || undefined,
+        })
+        createdDraftId = targetDraftId
+        loadedDraftIdRef.current = targetDraftId
+      } else {
+        const created = await createDraft.mutateAsync({
+          date: dateRef.current,
+          content_blocks: fallbackBlocks,
+        })
+        createdDraftId = created.id
+        loadedDraftIdRef.current = created.id
+        setSelectedDraftId(created.id)
+      }
       setSaveStatus('saved')
 
       const newBlocks = await generateTemplateBlocks(orderedIds)
       setBlocks(newBlocks)
       setSaveStatus('saving')
       await updateDraft.mutateAsync({
-        id: created.id,
+        id: createdDraftId,
         content_blocks: newBlocks,
         scheduled_for: scheduledForRef.current || null,
         subject: subjectRef.current || undefined,
       })
       setSaveStatus('saved')
-    } catch {
+    } catch (error) {
       setSaveStatus('idle')
+      const errorDetail = (error as { response?: { data?: { detail?: string } }; message?: string }).response?.data?.detail
+        || (error as { message?: string }).message
       showStatus(
-        createdDraftId ? 'Draft created, but template generation failed' : 'Failed to create draft',
+        createdDraftId
+          ? `Draft created with selected topics, but AI template generation failed${errorDetail ? `: ${errorDetail}` : ''}`
+          : `Failed to create draft${errorDetail ? `: ${errorDetail}` : ''}`,
         'error',
       )
     } finally {
       setIsGenerating(false)
     }
-  }, [createDraft, generateTemplateBlocks, updateDraft])
+  }, [buildFallbackTemplateBlocks, createDraft, generateTemplateBlocks, templateDraftMode, updateDraft])
 
   const showStatus = (text: string, type: 'success' | 'error' | 'info') => {
     setStatusMessage({ text, type })
@@ -1778,6 +1864,7 @@ export function DigestComposer() {
       await deleteDraft.mutateAsync(selectedDraftId)
       setSelectedDraftId(null)
       setBlocks([])
+      pendingCreateDateRef.current = null
       setScheduledFor('')
       setSubject('')
       showStatus('Draft deleted', 'success')
@@ -1795,6 +1882,15 @@ export function DigestComposer() {
     }
     return allTopics
   }, [allTopics, draft, date, draftDateTopics.data])
+  const navTweetGroups = useMemo(() => {
+    const knownIds = new Set<number>()
+    for (const topic of navTopicPool) {
+      for (const tweet of topic.tweets) knownIds.add(tweet.id)
+    }
+    for (const tweet of allUnsortedTweets) knownIds.add(tweet.id)
+    const fallbackTweets = (draftTweets || []).filter((tweet) => !knownIds.has(tweet.id))
+    return buildTweetGroups(navTopicPool, [...allUnsortedTweets, ...fallbackTweets])
+  }, [navTopicPool, allUnsortedTweets, draftTweets])
 
   const topicNavItems = useMemo(() => {
     const items: { id: string; topicId: number | null; label: string; title: string; color: string; tweetCount: number; blockId: string }[] = []
@@ -1835,6 +1931,7 @@ export function DigestComposer() {
   const isBusy = createDraft.isPending || updateDraft.isPending || sendTest.isPending || sendDigest.isPending || isGenerating
   const blockIds = blocks.map((b) => b.id)
   const topicCount = blocks.filter((b) => b.type === 'topic-header').length
+  const isStuckTemplateDraft = !!selectedDraftId && !isSent && isTemplatePlaceholderDraft(blocks)
 
   return (
     <div ref={scrollContainerRef} style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg-base)' }}>
@@ -2040,6 +2137,7 @@ export function DigestComposer() {
                   setDate(d)
                   setSelectedDraftId(null)
                   setBlocks([])
+                  pendingCreateDateRef.current = null
                 }}
                 style={{
                   background: isSelected ? 'var(--accent)' : 'transparent',
@@ -2098,6 +2196,7 @@ export function DigestComposer() {
                 setDate(e.target.value)
                 setSelectedDraftId(null)
                 setBlocks([])
+                pendingCreateDateRef.current = null
               }}
               style={{
                 position: 'absolute', opacity: 0, width: 0, height: 0,
@@ -2136,7 +2235,10 @@ export function DigestComposer() {
               value={selectedDraftId ?? ''}
               onChange={(e) => {
                 setSelectedDraftId(e.target.value ? Number(e.target.value) : null)
-                if (!e.target.value) setBlocks([])
+                if (!e.target.value) {
+                  setBlocks([])
+                  pendingCreateDateRef.current = null
+                }
               }}
               style={{
                 ...inputStyle,
@@ -2197,7 +2299,10 @@ export function DigestComposer() {
         {blocks.length === 0 && !selectedDraftId && allTopics.length > 0 && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <button
-              onClick={() => setShowTopicSelector(true)}
+              onClick={() => {
+                setTemplateDraftMode('create')
+                setShowTopicSelector(true)
+              }}
               disabled={isGenerating}
               style={{
                 background: 'var(--accent)', color: '#fff', border: 'none',
@@ -2207,6 +2312,45 @@ export function DigestComposer() {
               }}
             >
               {isGenerating ? 'Generating...' : 'New Draft from Topics'}
+            </button>
+          </div>
+        )}
+
+        {isStuckTemplateDraft && allTopics.length > 0 && (
+          <div style={{
+            background: 'rgba(248, 113, 113, 0.08)',
+            border: '1px solid rgba(248, 113, 113, 0.22)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              This draft got stuck during template generation. Rebuild it from topics to replace the placeholder.
+            </span>
+            <button
+              onClick={() => {
+                setTemplateDraftMode('replace')
+                setShowTopicSelector(true)
+              }}
+              disabled={isGenerating}
+              style={{
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                padding: '8px 14px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: isGenerating ? 'default' : 'pointer',
+                fontFamily: 'var(--font-body)',
+                whiteSpace: 'nowrap' as const,
+                opacity: isGenerating ? 0.6 : 1,
+              }}
+            >
+              {isGenerating ? 'Rebuilding...' : 'Rebuild from topics'}
             </button>
           </div>
         )}
@@ -2368,6 +2512,7 @@ export function DigestComposer() {
                       <BlockInsertRow
                         index={idx}
                         topics={allTopics}
+                        tweetGroups={allTweetGroups}
                         usedTopicIds={usedTopicIds}
                         usedTweetIds={usedTweetIds}
                         onAddText={addTextBlock}
@@ -2379,6 +2524,7 @@ export function DigestComposer() {
                       <SortableBlock
                         block={block}
                         topics={navTopicPool}
+                        tweetGroups={navTweetGroups}
                         isSent={isSent}
                         onUpdateBlock={updateBlock}
                         onDeleteBlock={deleteBlock}
@@ -2403,7 +2549,7 @@ export function DigestComposer() {
                   onSelect={(topicId) => addTopicHeaderBlock(topicId)}
                 />
                 <TweetPicker
-                  topics={allTopics}
+                  tweetGroups={allTweetGroups}
                   usedTweetIds={usedTweetIds}
                   onSelect={(tweetId) => addTweetBlock(tweetId)}
                 />
@@ -2835,7 +2981,10 @@ export function DigestComposer() {
             { label: '', topics: topics },
           ]}
           onConfirm={handleCreateFromTemplate}
-          onClose={() => setShowTopicSelector(false)}
+          onClose={() => {
+            setShowTopicSelector(false)
+            setTemplateDraftMode('create')
+          }}
         />
       )}
 
@@ -2897,6 +3046,8 @@ export function DigestComposer() {
             setDate(newDate)
             setSelectedDraftId(null)
             setBlocks([])
+            pendingCreateDateRef.current = null
+            setTemplateDraftMode('create')
             setShowTopicSelector(true)
           }}
         />

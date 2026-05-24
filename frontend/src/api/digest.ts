@@ -74,7 +74,15 @@ export function useCreateDigestDraft() {
       const { data } = await api.post('/digest/drafts', body)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['digest-drafts'] }),
+    onSuccess: (created) => {
+      qc.setQueryData(['digest-draft', created.id], created)
+      qc.setQueryData<DigestDraft[]>(['digest-drafts', undefined], (old) => {
+        if (!old) return [created]
+        if (old.some((draft) => draft.id === created.id)) return old
+        return [created, ...old]
+      })
+      qc.invalidateQueries({ queryKey: ['digest-drafts'] })
+    },
   })
 }
 
@@ -160,7 +168,7 @@ export function useSendDigest() {
 export function useGenerateTemplate() {
   return useMutation<GenerateTemplateResult, Error, { date: string; topic_ids: number[] }>({
     mutationFn: async (body) => {
-      const { data } = await api.post('/digest/generate-template', body)
+      const { data } = await api.post('/digest/generate-template', body, { timeout: 120000 })
       return data
     },
   })

@@ -26,6 +26,7 @@ class DigestDraftCreate(BaseModel):
 
 
 class DigestDraftUpdate(BaseModel):
+    date: _dt.date | None = None
     content_blocks: list[DigestBlock] | None = None
     scheduled_for: _dt.datetime | None = None
     subject: str | None = None

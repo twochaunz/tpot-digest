@@ -113,6 +113,24 @@ async def test_list_tweets(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_list_tweets_by_ids_ignores_date_filter(client: AsyncClient):
+    await client.post("/api/tweets", json={"tweet_id": "ids_old", "saved_at": "2026-05-13T12:00:00Z"})
+    await client.post("/api/tweets", json={"tweet_id": "ids_new", "saved_at": "2026-05-14T12:00:00Z"})
+    tweets = (await client.get("/api/tweets")).json()
+    old_id = next(t["id"] for t in tweets if t["tweet_id"] == "ids_old")
+
+    resp = await client.get("/api/tweets", params={
+        "ids": [old_id],
+        "date": "2026-05-14",
+    })
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == old_id
+
+
+@pytest.mark.asyncio
 async def test_delete_tweet(client: AsyncClient):
     await client.post("/api/tweets", json={"tweet_id": "del1"})
     tweets = (await client.get("/api/tweets")).json()
