@@ -22,6 +22,12 @@ export interface DraftTweetMatch<TTweet extends DigestComposerTweet> {
   topicColor: string | null
 }
 
+export interface DraftSelectionState<TBlock> {
+  selectedDraftId: number | null
+  loadedDraftId: number | null
+  blocks: TBlock[]
+}
+
 export function buildTweetGroups<TTweet extends DigestComposerTweet>(
   topics: DigestComposerTopic<TTweet>[],
   unsortedTweets: TTweet[] = [],
@@ -74,4 +80,33 @@ export function isTemplatePlaceholderDraft(blocks: Array<{ type?: string; conten
   return blocks.length === 1
     && blocks[0].type === 'text'
     && (blocks[0].content || '').trim().toLowerCase() === 'generating template...'
+}
+
+export function shouldLoadSelectedDraft(
+  draft: { id: number } | null | undefined,
+  loadedDraftId: number | null,
+  selectedDraftId: number | null,
+): boolean {
+  return !!draft && draft.id === selectedDraftId && draft.id !== loadedDraftId
+}
+
+export function clearDraftSelectionState<TBlock>(): DraftSelectionState<TBlock> {
+  return {
+    selectedDraftId: null,
+    loadedDraftId: null,
+    blocks: [],
+  }
+}
+
+export function createFallbackDigestIntro(topicTitles: string[]): string {
+  const titles = topicTitles.map((title) => title.trim()).filter(Boolean)
+  if (titles.length === 0) {
+    return "quick catch-up on what happened in tech today"
+  }
+  if (titles.length === 1) {
+    return `quick catch-up on ${titles[0]}`
+  }
+  const last = titles[titles.length - 1]
+  const first = titles.slice(0, -1).join(', ')
+  return `quick catch-up on ${first}, and ${last}`
 }

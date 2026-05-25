@@ -4,7 +4,17 @@ import { useAuth } from '../contexts/AuthContext'
 import { useDayBundle, type TopicBundle } from '../api/dayBundle'
 import { useTweetsByIds, type Tweet } from '../api/tweets'
 import { sortTopics, isKekTopic } from '../utils/topics'
-import { buildTweetGroups, findDraftTweet, isTemplatePlaceholderDraft, resolveNewDraftDate, uniqueTweetIds, type DigestTweetGroup } from '../utils/digestComposer'
+import {
+  buildTweetGroups,
+  clearDraftSelectionState,
+  createFallbackDigestIntro,
+  findDraftTweet,
+  isTemplatePlaceholderDraft,
+  resolveNewDraftDate,
+  shouldLoadSelectedDraft,
+  uniqueTweetIds,
+  type DigestTweetGroup,
+} from '../utils/digestComposer'
 import {
   type DigestBlock,
   type SubscriberInfo,
@@ -1452,24 +1462,33 @@ export function DigestComposer() {
 
   // Load draft data when a *different* draft is selected (not on every auto-save update)
   const loadedDraftIdRef = useRef<number | null>(null)
+  const clearDraftSelection = useCallback(() => {
+    const cleared = clearDraftSelectionState<DigestBlock>()
+    loadedDraftIdRef.current = cleared.loadedDraftId
+    setSelectedDraftId(cleared.selectedDraftId)
+    setBlocks(cleared.blocks)
+    pendingCreateDateRef.current = null
+  }, [])
+
   useEffect(() => {
-    if (draft && draft.id !== loadedDraftIdRef.current) {
+    if (draft && shouldLoadSelectedDraft(draft, loadedDraftIdRef.current, selectedDraftId)) {
       loadedDraftIdRef.current = draft.id
       setBlocks(draft.content_blocks || [])
       setScheduledFor(draft.scheduled_for ? normalizeDateTime(draft.scheduled_for) : '')
       setSubject(draft.subject || defaultSubject(draft.date))
       setDate(draft.date)
     }
-  }, [draft])
+  }, [draft, selectedDraftId])
 
   // Auto-select existing draft for this date (draft or scheduled)
   useEffect(() => {
     if (!drafts) return
     const existing = drafts.find((d) => d.date === date && (d.status === 'draft' || d.status === 'scheduled'))
-    if (existing) {
+    if (existing && existing.id !== selectedDraftId) {
+      loadedDraftIdRef.current = null
       setSelectedDraftId(existing.id)
     }
-  }, [drafts, date])
+  }, [drafts, date, selectedDraftId])
 
   const topics = sortTopics(bundle?.topics || [])
   const saturdayTopics = sortTopics(saturdayBundle?.topics || [])
@@ -1581,7 +1600,11 @@ export function DigestComposer() {
     const blocks: DigestBlock[] = [{
       id: nextBlockId(),
       type: 'text',
-      content: `# ${orderedIds.length} topic${orderedIds.length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
+      content: createFallbackDigestIntro(featured.filter(t => !isKekTopic(t.title)).map(t => t.title)),
+    }, {
+      id: nextBlockId(),
+      type: 'text',
+      content: `# ${featured.filter(t => !isKekTopic(t.title)).length} topic${featured.filter(t => !isKekTopic(t.title)).length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
     }]
 
     let isFirstTopic = true
@@ -1646,9 +1669,11 @@ export function DigestComposer() {
     const newBlocks: DigestBlock[] = []
 
     // Casual intro
-    if (templateData.intro) {
-      newBlocks.push({ id: nextBlockId(), type: 'text', content: templateData.intro })
-    }
+    newBlocks.push({
+      id: nextBlockId(),
+      type: 'text',
+      content: templateData.intro || createFallbackDigestIntro(featured.filter(t => !isKekTopic(t.title)).map(t => t.title)),
+    })
 
     // Header
     const topicCount = featured.filter(t => !isKekTopic(t.title)).length
@@ -1862,9 +1887,7 @@ export function DigestComposer() {
     }
     try {
       await deleteDraft.mutateAsync(selectedDraftId)
-      setSelectedDraftId(null)
-      setBlocks([])
-      pendingCreateDateRef.current = null
+      clearDraftSelection()
       setScheduledFor('')
       setSubject('')
       showStatus('Draft deleted', 'success')
@@ -2135,9 +2158,7 @@ export function DigestComposer() {
                 key={d}
                 onClick={() => {
                   setDate(d)
-                  setSelectedDraftId(null)
-                  setBlocks([])
-                  pendingCreateDateRef.current = null
+                  clearDraftSelection()
                 }}
                 style={{
                   background: isSelected ? 'var(--accent)' : 'transparent',
@@ -2194,9 +2215,7 @@ export function DigestComposer() {
               value={date}
               onChange={(e) => {
                 setDate(e.target.value)
-                setSelectedDraftId(null)
-                setBlocks([])
-                pendingCreateDateRef.current = null
+                clearDraftSelection()
               }}
               style={{
                 position: 'absolute', opacity: 0, width: 0, height: 0,
@@ -2234,10 +2253,11 @@ export function DigestComposer() {
             <select
               value={selectedDraftId ?? ''}
               onChange={(e) => {
-                setSelectedDraftId(e.target.value ? Number(e.target.value) : null)
-                if (!e.target.value) {
-                  setBlocks([])
-                  pendingCreateDateRef.current = null
+                if (e.target.value) {
+                  loadedDraftIdRef.current = null
+                  setSelectedDraftId(Number(e.target.value))
+                } else {
+                  clearDraftSelection()
                 }
               }}
               style={{
@@ -2274,6 +2294,7 @@ export function DigestComposer() {
             <button
               onClick={async () => {
                 const newDraft = await duplicateDraft.mutateAsync(selectedDraftId!)
+                loadedDraftIdRef.current = null
                 setSelectedDraftId(newDraft.id)
               }}
               disabled={duplicateDraft.isPending}
@@ -2375,7 +2396,10 @@ export function DigestComposer() {
             return (
               <div
                 key={d.id}
-                onClick={() => setSelectedDraftId(d.id)}
+                onClick={() => {
+                  loadedDraftIdRef.current = null
+                  setSelectedDraftId(d.id)
+                }}
                 style={{
                   padding: '12px 20px',
                   cursor: 'pointer',
@@ -3040,13 +3064,14 @@ export function DigestComposer() {
         <DraftsModal
           drafts={drafts}
           selectedDraftId={selectedDraftId}
-          onSelect={(id) => setSelectedDraftId(id)}
+          onSelect={(id) => {
+            loadedDraftIdRef.current = null
+            setSelectedDraftId(id)
+          }}
           onClose={() => setShowDraftsModal(false)}
           onCreate={(newDate) => {
             setDate(newDate)
-            setSelectedDraftId(null)
-            setBlocks([])
-            pendingCreateDateRef.current = null
+            clearDraftSelection()
             setTemplateDraftMode('create')
             setShowTopicSelector(true)
           }}
