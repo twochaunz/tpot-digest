@@ -3,10 +3,12 @@ import {
   clearDraftSelectionState,
   createFallbackDigestIntro,
   findDraftTweet,
+  getDefaultTemplateTopicIds,
   getDigestLookbackDates,
   isTemplatePlaceholderDraft,
   mapTopicDates,
   resolveNewDraftDate,
+  resolveSelectedTemplateTopics,
   shouldLoadSelectedDraft,
 } from '../src/utils/digestComposer'
 
@@ -106,4 +108,34 @@ assertDeepEqual(
   ]).entries()),
   [[1, '2026-05-22'], [2, '2026-05-20']],
   'topic date mapping keeps timeline links pointed at the source day',
+)
+
+assertDeepEqual(
+  getDefaultTemplateTopicIds([
+    { date: '2026-05-25', label: 'Mon 5/25', topics: [
+      { id: 3, title: 'Main topic', tweets: [] },
+      { id: 4, title: 'kek', tweets: [] },
+    ] },
+    { date: '2026-05-24', label: 'Sun 5/24', topics: [
+      { id: 5, title: 'kek', tweets: [] },
+    ] },
+  ], '2026-05-25'),
+  [4],
+  'only the draft day kek topic is checked by default',
+)
+
+assertDeepEqual(
+  resolveSelectedTemplateTopics([
+    { id: 1, title: 'Selected story', tweets: [] },
+    { id: 2, title: 'kek', tweets: [] },
+    { id: 3, title: 'Older kek', tweets: [] },
+  ], [1, 3]),
+  {
+    featured: [
+      { id: 1, title: 'Selected story', tweets: [] },
+      { id: 3, title: 'Older kek', tweets: [] },
+    ],
+    rest: [],
+  },
+  'unselected kek topics are hidden from draft output entirely',
 )

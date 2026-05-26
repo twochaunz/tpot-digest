@@ -10,10 +10,12 @@ import {
   createFallbackDigestIntro,
   formatDigestTopicGroupLabel,
   findDraftTweet,
+  getDefaultTemplateTopicIds,
   getDigestLookbackDates,
   isTemplatePlaceholderDraft,
   mapTopicDates,
   resolveNewDraftDate,
+  resolveSelectedTemplateTopics,
   shouldLoadSelectedDraft,
   uniqueTweetIds,
   type DigestTopicGroup,
@@ -970,14 +972,16 @@ function DraftsModal({
 /* ---- Topic selector for new draft template ---- */
 function TopicSelectorModal({
   topicGroups,
+  defaultSelectedIds,
   onConfirm,
   onClose,
 }: {
   topicGroups: { label: string; topics: TopicBundle[] }[]
+  defaultSelectedIds: number[]
   onConfirm: (orderedIds: number[]) => void
   onClose: () => void
 }) {
-  const [ordered, setOrdered] = useState<number[]>([])
+  const [ordered, setOrdered] = useState<number[]>(defaultSelectedIds)
   const allTopics = topicGroups.flatMap(g => g.topics)
 
   const toggle = (id: number) => {
@@ -1498,6 +1502,10 @@ export function DigestComposer() {
     new Map(topicGroups.map((group) => [group.date, group.topics]))
   ), [topicGroups])
   const topicDateMap = useMemo(() => mapTopicDates(topicGroups), [topicGroups])
+  const defaultTemplateTopicIds = useMemo(
+    () => getDefaultTemplateTopicIds(topicGroups, date),
+    [topicGroups, date],
+  )
   const allTopics = useMemo(() => (
     topicGroups.flatMap((group) => group.topics)
   ), [topicGroups])
@@ -1590,14 +1598,7 @@ export function DigestComposer() {
   const generateTemplate = useGenerateTemplate()
 
   const buildFallbackTemplateBlocks = useCallback((orderedIds: number[]): DigestBlock[] => {
-    const orderedSet = new Set(orderedIds)
-    const featured = orderedIds.map(id => allTopics.find(t => t.id === id)).filter((t): t is TopicBundle => t !== undefined)
-
-    const kekTopics = allTopics.filter(t => isKekTopic(t.title) && !orderedSet.has(t.id))
-    for (const kek of kekTopics) {
-      featured.push(kek)
-      orderedSet.add(kek.id)
-    }
+    const { featured, rest } = resolveSelectedTemplateTopics(allTopics, orderedIds)
 
     const d = new Date(date + 'T00:00:00')
     const formattedDate = d.getDay() === 0
@@ -1625,7 +1626,6 @@ export function DigestComposer() {
       }
     }
 
-    const rest = allTopics.filter(t => !orderedSet.has(t.id))
     if (rest.length > 0) {
       const restLinks = rest.map(t => {
         const tDate = topicDateMap.get(t.id) || date
@@ -1645,17 +1645,7 @@ export function DigestComposer() {
   }, [allTopics, date, topicDateMap, topicsByDate])
 
   const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
-    const orderedSet = new Set(orderedIds)
-    const featured = orderedIds.map(id => allTopics.find(t => t.id === id)).filter((t): t is TopicBundle => t !== undefined)
-
-    // Auto-include kek topics from all available days if not already selected
-    const kekTopics = allTopics.filter(t => isKekTopic(t.title) && !orderedSet.has(t.id))
-    for (const kek of kekTopics) {
-      featured.push(kek)
-      orderedSet.add(kek.id)
-    }
-
-    const rest = allTopics.filter(t => !orderedSet.has(t.id))
+    const { featured, rest } = resolveSelectedTemplateTopics(allTopics, orderedIds)
 
     const d = new Date(date + 'T00:00:00')
     const formattedDate = d.getDay() === 0
@@ -1726,9 +1716,9 @@ export function DigestComposer() {
       }
     }
 
-    // Kek topics: just header + tweets, no summary/transitions (may have kek from both days)
-    const allKekTopics = allTopics.filter(t => isKekTopic(t.title) && t.tweets.length > 0)
-    for (const kekTopic of allKekTopics) {
+    // Selected kek topics: just header + tweets, no summary/transitions
+    const selectedKekTopics = featured.filter(t => isKekTopic(t.title) && t.tweets.length > 0)
+    for (const kekTopic of selectedKekTopics) {
       newBlocks.push({ id: nextBlockId(), type: 'divider' })
       newBlocks.push({ id: nextBlockId(), type: 'topic-header', topic_id: kekTopic.id })
       for (const tw of kekTopic.tweets) {
@@ -1744,7 +1734,7 @@ export function DigestComposer() {
       const topicNum = dayTopics.indexOf(t) + 1
       return `- [${t.title}](https://abridged.tech/app/${tDate}/${topicNum})`
     })
-    const kekLinks = allKekTopics.map(kekTopic => {
+    const kekLinks = selectedKekTopics.map(kekTopic => {
       const tDate = topicDateMap.get(kekTopic.id) || date
       const dayTopics = topicsByDate.get(tDate) || []
       const topicNum = dayTopics.indexOf(kekTopic) + 1
@@ -2996,6 +2986,7 @@ export function DigestComposer() {
       {showTopicSelector && (
         <TopicSelectorModal
           topicGroups={topicGroups}
+          defaultSelectedIds={defaultTemplateTopicIds}
           onConfirm={handleCreateFromTemplate}
           onClose={() => {
             setShowTopicSelector(false)
