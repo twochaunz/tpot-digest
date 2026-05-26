@@ -153,3 +153,27 @@ export function mapTopicDates<TTopic extends { id: number }>(
   }
   return topicDateMap
 }
+
+export function getDefaultTemplateTopicIds<TTopic extends { id: number; title: string }>(
+  topicGroups: Array<{ date: string; topics: TTopic[]; label?: string }>,
+  draftDate: string,
+): number[] {
+  const draftDay = topicGroups.find((group) => group.date === draftDate)
+  if (!draftDay) return []
+  return draftDay.topics
+    .filter((topic) => topic.title.trim().toLowerCase() === 'kek')
+    .map((topic) => topic.id)
+}
+
+export function resolveSelectedTemplateTopics<TTopic extends { id: number; title: string }>(
+  topics: TTopic[],
+  orderedIds: number[],
+): { featured: TTopic[]; rest: TTopic[] } {
+  const selectedSet = new Set(orderedIds)
+  return {
+    featured: orderedIds
+      .map((id) => topics.find((topic) => topic.id === id))
+      .filter((topic): topic is TTopic => topic !== undefined),
+    rest: topics.filter((topic) => !selectedSet.has(topic.id) && topic.title.trim().toLowerCase() !== 'kek'),
+  }
+}
