@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useDayBundle, type TopicBundle } from '../api/dayBundle'
+import { useDayBundle, useDayBundles, type TopicBundle } from '../api/dayBundle'
 import { useTweetsByIds, type Tweet } from '../api/tweets'
 import { sortTopics, isKekTopic } from '../utils/topics'
 import {
   buildTweetGroups,
   clearDraftSelectionState,
   createFallbackDigestIntro,
+  formatDigestTopicGroupLabel,
   findDraftTweet,
+  getDigestLookbackDates,
   isTemplatePlaceholderDraft,
+  mapTopicDates,
   resolveNewDraftDate,
   shouldLoadSelectedDraft,
   uniqueTweetIds,
+  type DigestTopicGroup,
   type DigestTweetGroup,
 } from '../utils/digestComposer'
 import {
@@ -1332,17 +1336,8 @@ export function DigestComposer() {
   const [subject, setSubject] = useState('')
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null)
 
-  // On Sundays, also fetch Saturday's topics for weekend digest
-  const isSunday = new Date(date + 'T00:00:00').getDay() === 0
-  const saturdayDate = useMemo(() => {
-    if (!isSunday) return ''
-    const sat = new Date(date + 'T00:00:00')
-    sat.setDate(sat.getDate() - 1)
-    return sat.toISOString().slice(0, 10)
-  }, [date, isSunday])
-
-  const { data: bundle } = useDayBundle(date)
-  const { data: saturdayBundle } = useDayBundle(saturdayDate || date, { enabled: isSunday })
+  const topicLookbackDates = useMemo(() => getDigestLookbackDates(date), [date])
+  const dayBundles = useDayBundles(topicLookbackDates)
   const { data: drafts } = useDigestDrafts()
   const { data: draft } = useDigestDraft(selectedDraftId)
   const { data: preview } = useDigestPreview(selectedDraftId)
@@ -1490,13 +1485,25 @@ export function DigestComposer() {
     }
   }, [drafts, date, selectedDraftId])
 
-  const topics = sortTopics(bundle?.topics || [])
-  const saturdayTopics = sortTopics(saturdayBundle?.topics || [])
-  const unsortedTweets = bundle?.unsorted || []
-  const saturdayUnsortedTweets = saturdayBundle?.unsorted || []
-  // Combined topics for template generation (Sunday includes Saturday)
-  const allTopics = isSunday ? [...saturdayTopics, ...topics] : topics
-  const allUnsortedTweets = isSunday ? [...saturdayUnsortedTweets, ...unsortedTweets] : unsortedTweets
+  const topicGroups = useMemo<DigestTopicGroup<TopicBundle>[]>(() => (
+    dayBundles
+      .map((dayBundle) => ({
+        date: dayBundle.date,
+        label: formatDigestTopicGroupLabel(dayBundle.date),
+        topics: sortTopics(dayBundle.data?.topics || []),
+      }))
+      .filter((group) => group.topics.length > 0)
+  ), [dayBundles])
+  const topicsByDate = useMemo(() => (
+    new Map(topicGroups.map((group) => [group.date, group.topics]))
+  ), [topicGroups])
+  const topicDateMap = useMemo(() => mapTopicDates(topicGroups), [topicGroups])
+  const allTopics = useMemo(() => (
+    topicGroups.flatMap((group) => group.topics)
+  ), [topicGroups])
+  const allUnsortedTweets = useMemo(() => (
+    dayBundles.flatMap((dayBundle) => dayBundle.data?.unsorted || [])
+  ), [dayBundles])
   const allTweetGroups = useMemo(
     () => buildTweetGroups(allTopics, allUnsortedTweets),
     [allTopics, allUnsortedTweets],
@@ -1593,7 +1600,7 @@ export function DigestComposer() {
     }
 
     const d = new Date(date + 'T00:00:00')
-    const formattedDate = isSunday
+    const formattedDate = d.getDay() === 0
       ? `${d.getMonth() + 1}/${d.getDate() - 1}\u2013${d.getDate()}`
       : `${d.getMonth() + 1}/${d.getDate()}`
 
@@ -1618,16 +1625,11 @@ export function DigestComposer() {
       }
     }
 
-    const rest = sortTopics(allTopics).filter(t => !orderedSet.has(t.id))
+    const rest = allTopics.filter(t => !orderedSet.has(t.id))
     if (rest.length > 0) {
-      const topicDateMap = new Map<number, string>()
-      for (const t of topics) topicDateMap.set(t.id, date)
-      if (isSunday) {
-        for (const t of saturdayTopics) topicDateMap.set(t.id, saturdayDate)
-      }
       const restLinks = rest.map(t => {
         const tDate = topicDateMap.get(t.id) || date
-        const dayTopics = sortTopics(tDate === date ? topics : saturdayTopics)
+        const dayTopics = topicsByDate.get(tDate) || []
         const topicNum = dayTopics.indexOf(t) + 1
         return `- [${t.title}](https://abridged.tech/app/${tDate}/${topicNum})`
       })
@@ -1640,7 +1642,7 @@ export function DigestComposer() {
     }
 
     return blocks
-  }, [allTopics, topics, saturdayTopics, date, saturdayDate, isSunday])
+  }, [allTopics, date, topicDateMap, topicsByDate])
 
   const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
     const orderedSet = new Set(orderedIds)
@@ -1653,10 +1655,10 @@ export function DigestComposer() {
       orderedSet.add(kek.id)
     }
 
-    const rest = sortTopics(allTopics).filter(t => !orderedSet.has(t.id))
+    const rest = allTopics.filter(t => !orderedSet.has(t.id))
 
     const d = new Date(date + 'T00:00:00')
-    const formattedDate = isSunday
+    const formattedDate = d.getDay() === 0
       ? `${d.getMonth() + 1}/${d.getDate() - 1}\u2013${d.getDate()}`
       : `${d.getMonth() + 1}/${d.getDate()}`
 
@@ -1736,20 +1738,15 @@ export function DigestComposer() {
 
     // "More on the timeline" section
     // Build links using each topic's own date for correct URL
-    const topicDateMap = new Map<number, string>()
-    for (const t of topics) topicDateMap.set(t.id, date)
-    if (isSunday) {
-      for (const t of saturdayTopics) topicDateMap.set(t.id, saturdayDate)
-    }
     const restLinks = rest.map(t => {
       const tDate = topicDateMap.get(t.id) || date
-      const dayTopics = sortTopics(tDate === date ? topics : saturdayTopics)
+      const dayTopics = topicsByDate.get(tDate) || []
       const topicNum = dayTopics.indexOf(t) + 1
       return `- [${t.title}](https://abridged.tech/app/${tDate}/${topicNum})`
     })
     const kekLinks = allKekTopics.map(kekTopic => {
       const tDate = topicDateMap.get(kekTopic.id) || date
-      const dayTopics = sortTopics(tDate === date ? topics : saturdayTopics)
+      const dayTopics = topicsByDate.get(tDate) || []
       const topicNum = dayTopics.indexOf(kekTopic) + 1
       return `- [more kek](https://abridged.tech/app/${tDate}/${topicNum})`
     })
@@ -1764,7 +1761,7 @@ export function DigestComposer() {
     }
 
     return newBlocks
-  }, [allTopics, topics, saturdayTopics, date, saturdayDate, isSunday, generateTemplate])
+  }, [allTopics, date, generateTemplate, topicDateMap, topicsByDate])
 
   const [isGenerating, setIsGenerating] = useState(false)
 
@@ -2998,12 +2995,7 @@ export function DigestComposer() {
       {/* Topic selector modal */}
       {showTopicSelector && (
         <TopicSelectorModal
-          topicGroups={isSunday ? [
-            { label: 'Saturday', topics: saturdayTopics },
-            { label: 'Sunday', topics: topics },
-          ] : [
-            { label: '', topics: topics },
-          ]}
+          topicGroups={topicGroups}
           onConfirm={handleCreateFromTemplate}
           onClose={() => {
             setShowTopicSelector(false)

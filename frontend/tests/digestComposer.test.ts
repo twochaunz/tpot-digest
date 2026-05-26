@@ -3,7 +3,9 @@ import {
   clearDraftSelectionState,
   createFallbackDigestIntro,
   findDraftTweet,
+  getDigestLookbackDates,
   isTemplatePlaceholderDraft,
+  mapTopicDates,
   resolveNewDraftDate,
   shouldLoadSelectedDraft,
 } from '../src/utils/digestComposer'
@@ -81,4 +83,27 @@ assertEqual(
   isTemplatePlaceholderDraft([{ type: 'text', content: 'Generating template...' }]),
   true,
   'still identifies legacy stuck placeholder drafts',
+)
+
+assertDeepEqual(
+  getDigestLookbackDates('2026-05-22'),
+  [
+    '2026-05-22',
+    '2026-05-21',
+    '2026-05-20',
+    '2026-05-19',
+    '2026-05-18',
+    '2026-05-17',
+    '2026-05-16',
+  ],
+  'digest topic picker uses seven total days including the selected date',
+)
+
+assertDeepEqual(
+  Array.from(mapTopicDates([
+    { date: '2026-05-22', topics: [{ id: 1, title: 'Friday topic', tweets: [] }] },
+    { date: '2026-05-20', topics: [{ id: 2, title: 'Wednesday topic', tweets: [] }] },
+  ]).entries()),
+  [[1, '2026-05-22'], [2, '2026-05-20']],
+  'topic date mapping keeps timeline links pointed at the source day',
 )
