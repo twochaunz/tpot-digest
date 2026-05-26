@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
+import { useQuery, useQueries, useQueryClient, useMutation } from '@tanstack/react-query'
+import type { UseQueryResult } from '@tanstack/react-query'
 import { api } from './client'
 import type { Tweet } from './tweets'
 import type { Topic } from './topics'
@@ -36,6 +37,27 @@ export function useDayBundle(date: string, opts?: { enabled?: boolean; live?: bo
     refetchOnWindowFocus: true, // respects staleTime instead of always refetching
     enabled: opts?.enabled,
   })
+}
+
+export function useDayBundles(
+  dates: string[],
+  opts?: { enabled?: boolean; live?: boolean },
+): Array<UseQueryResult<DayBundle> & { date: string }> {
+  const results = useQueries({
+    queries: dates.map((date) => ({
+      queryKey: ['day-bundle', date],
+      queryFn: async () => {
+        const { data } = await api.get(`/days/${date}/bundle`)
+        return data as DayBundle
+      },
+      staleTime: opts?.live ? 0 : 30_000,
+      refetchInterval: opts?.live ? 10_000 : false,
+      refetchOnWindowFocus: true,
+      enabled: opts?.enabled,
+    })),
+  }) as UseQueryResult<DayBundle>[]
+
+  return results.map((result, index) => ({ ...result, date: dates[index] }))
 }
 
 export function useOptimisticAssign() {

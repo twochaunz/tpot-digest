@@ -9,6 +9,12 @@ export interface DigestComposerTopic<TTweet extends DigestComposerTweet> {
   tweets: TTweet[]
 }
 
+export interface DigestTopicGroup<TTopic extends { id: number }> {
+  date: string
+  label: string
+  topics: TTopic[]
+}
+
 export interface DigestTweetGroup<TTweet extends DigestComposerTweet> {
   key: string
   topicTitle: string
@@ -109,4 +115,41 @@ export function createFallbackDigestIntro(topicTitles: string[]): string {
   const last = titles[titles.length - 1]
   const first = titles.slice(0, -1).join(', ')
   return `quick catch-up on ${first}, and ${last}`
+}
+
+function formatDateStr(date: Date): string {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+export function getDigestLookbackDates(dateStr: string, totalDays = 7): string[] {
+  const start = new Date(dateStr + 'T00:00:00')
+  return Array.from({ length: totalDays }, (_, offset) => {
+    const d = new Date(start)
+    d.setDate(d.getDate() - offset)
+    return formatDateStr(d)
+  })
+}
+
+export function formatDigestTopicGroupLabel(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'numeric',
+    day: 'numeric',
+  })
+}
+
+export function mapTopicDates<TTopic extends { id: number }>(
+  topicGroups: Array<{ date: string; topics: TTopic[] }>,
+): Map<number, string> {
+  const topicDateMap = new Map<number, string>()
+  for (const group of topicGroups) {
+    for (const topic of group.topics) {
+      topicDateMap.set(topic.id, group.date)
+    }
+  }
+  return topicDateMap
 }
