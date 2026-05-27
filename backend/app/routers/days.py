@@ -21,6 +21,27 @@ def _tweet_out_with_category(tweet: Tweet, category: str | None) -> TweetOut:
     return out
 
 
+async def _ensure_default_kek_topic(day: date, db: AsyncSession) -> None:
+    existing = (await db.execute(
+        select(Topic).where(Topic.date == day, func.lower(Topic.title) == "kek")
+    )).scalar_one_or_none()
+    if existing:
+        return
+
+    max_position = (await db.execute(
+        select(func.max(Topic.position)).where(Topic.date == day)
+    )).scalar()
+    position = 0 if max_position is None else max_position + 1
+
+    db.add(Topic(
+        title="kek",
+        date=day,
+        color="#8b5cf6",
+        position=position,
+    ))
+    await db.commit()
+
+
 @router.get("/latest-date")
 async def get_latest_date(db: AsyncSession = Depends(get_db)):
     """Return the latest date (in LA timezone) that has at least one tweet."""
@@ -42,6 +63,8 @@ async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
     la = ZoneInfo("America/Los_Angeles")
     day_start = datetime.combine(day, time.min, tzinfo=la).astimezone(timezone.utc)
     day_end = datetime.combine(day, time.max, tzinfo=la).astimezone(timezone.utc)
+
+    await _ensure_default_kek_topic(day, db)
 
     # 1. Fetch all topics for this date
     topic_rows = (await db.execute(
