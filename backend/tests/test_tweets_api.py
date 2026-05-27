@@ -334,9 +334,22 @@ async def test_day_bundle(client: AsyncClient):
     assert resp.status_code == 200
     bundle = resp.json()
 
-    # Should have 1 topic with 1 tweet and 2 unsorted
-    assert len(bundle["topics"]) == 1
+    # Should have the explicit topic plus the default kek topic.
+    assert len(bundle["topics"]) == 2
     assert bundle["topics"][0]["id"] == topic_id
     assert len(bundle["topics"][0]["tweets"]) == 1
     assert bundle["topics"][0]["tweets"][0]["category"] == "commentary"
+    assert bundle["topics"][1]["title"] == "kek"
+    assert bundle["topics"][1]["tweets"] == []
     assert len(bundle["unsorted"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_day_bundle_creates_default_kek_topic(client: AsyncClient):
+    resp = await client.get("/api/days/2026-05-27/bundle")
+    assert resp.status_code == 200
+
+    topics = resp.json()["topics"]
+    assert len(topics) == 1
+    assert topics[0]["title"] == "kek"
+    assert topics[0]["position"] == 0
