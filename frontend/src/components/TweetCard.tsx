@@ -809,7 +809,7 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
               marginTop: 10,
             }}
           >
-            <SafeReactTweet id={tweet.quoted_tweet_id} />
+            <SafeReactTweet id={tweet.quoted_tweet_id} apiUrl={`/api/tweet-embed/${tweet.quoted_tweet_id}`} />
           </div>
         )}
       </div>
