@@ -35,6 +35,7 @@ export interface Tweet {
   ai_related_topic_id: number | null
   ai_topic_title: string | null
   ai_override: boolean
+  quoted_tweet?: Tweet | null
 }
 
 export function useTweets(params: {

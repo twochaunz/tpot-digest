@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -128,6 +129,39 @@ async def test_list_tweets_by_ids_ignores_date_filter(client: AsyncClient):
     data = resp.json()
     assert len(data) == 1
     assert data[0]["id"] == old_id
+
+
+@pytest.mark.asyncio
+async def test_list_tweets_includes_persisted_quoted_tweet(client: AsyncClient):
+    async with async_session() as session:
+        quoted = Tweet(
+            tweet_id="quoted_x_id",
+            author_handle="quoted",
+            author_display_name="Quoted User",
+            text="quoted tweet text",
+            url="https://x.com/quoted/status/quoted_x_id",
+            saved_at=datetime(2026, 5, 27, 12, 0, tzinfo=timezone.utc),
+            feed_source="quoted_fetch",
+        )
+        parent = Tweet(
+            tweet_id="parent_x_id",
+            author_handle="parent",
+            author_display_name="Parent User",
+            text="parent tweet text",
+            url="https://x.com/parent/status/parent_x_id",
+            quoted_tweet_id="quoted_x_id",
+            saved_at=datetime(2026, 5, 27, 12, 1, tzinfo=timezone.utc),
+        )
+        session.add_all([quoted, parent])
+        await session.commit()
+
+    resp = await client.get("/api/tweets")
+    assert resp.status_code == 200
+    tweets = resp.json()
+    assert len(tweets) == 1
+    assert tweets[0]["tweet_id"] == "parent_x_id"
+    assert tweets[0]["quoted_tweet"]["tweet_id"] == "quoted_x_id"
+    assert tweets[0]["quoted_tweet"]["text"] == "quoted tweet text"
 
 
 @pytest.mark.asyncio

@@ -15,9 +15,15 @@ from app.schemas.tweet import TweetOut
 router = APIRouter(prefix="/api/days", tags=["days"])
 
 
-def _tweet_out_with_category(tweet: Tweet, category: str | None) -> TweetOut:
+async def _tweet_out_with_category(tweet: Tweet, category: str | None, db: AsyncSession) -> TweetOut:
     out = TweetOut.model_validate(tweet)
     out.category = category
+    if tweet.quoted_tweet_id:
+        quoted = (await db.execute(
+            select(Tweet).where(Tweet.tweet_id == tweet.quoted_tweet_id)
+        )).scalars().first()
+        if quoted:
+            out.quoted_tweet = TweetOut.model_validate(quoted)
     return out
 
 
@@ -101,7 +107,7 @@ async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
     topics: list[TopicBundle] = []
     for topic in topic_rows:
         topic_tweets = [
-            _tweet_out_with_category(tw, cat)
+            await _tweet_out_with_category(tw, cat, db)
             for tw, cat in topic_tweets_map[topic.id]
         ]
         tb = TopicBundle.model_validate(topic)
@@ -111,7 +117,7 @@ async def get_day_bundle(day: date, db: AsyncSession = Depends(get_db)):
 
     # Unsorted = tweets not assigned to any topic
     unsorted = [
-        TweetOut.model_validate(t)
+        await _tweet_out_with_category(t, None, db)
         for t in all_tweets
         if t.id not in assigned_tweet_ids
     ]
