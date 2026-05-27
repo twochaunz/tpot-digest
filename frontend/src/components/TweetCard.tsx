@@ -4,7 +4,6 @@ import { toPng } from 'html-to-image'
 import type { Tweet } from '../api/tweets'
 import { useTranslateTweet } from '../api/tweets'
 import { useIsMobile } from '../hooks/useMediaQuery'
-import { SafeReactTweet } from './SafeReactTweet'
 
 interface TweetCardProps {
   tweet: Tweet
@@ -797,10 +796,9 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
         {/* Link preview cards */}
         <LinkPreviewCards urlEntities={tweet.url_entities} />
 
-        {/* Quoted tweet embed */}
+        {/* Quoted tweet */}
         {tweet.quoted_tweet_id && (
           <div
-            data-theme="dark"
             onClick={(e) => e.stopPropagation()}
             style={{
               border: '1px solid var(--border)',
@@ -809,11 +807,93 @@ function NativeCard({ tweet }: { tweet: Tweet }) {
               marginTop: 10,
             }}
           >
-            <SafeReactTweet id={tweet.quoted_tweet_id} apiUrl={`/api/tweet-embed/${tweet.quoted_tweet_id}`} />
+            {tweet.quoted_tweet ? (
+              <QuotedTweetCard tweet={tweet.quoted_tweet} />
+            ) : (
+              <a
+                href={`https://x.com/i/status/${tweet.quoted_tweet_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  display: 'block',
+                  padding: '12px 14px',
+                  color: 'var(--accent)',
+                  textDecoration: 'none',
+                  fontSize: 14,
+                }}
+              >
+                Open quoted post on X
+              </a>
+            )}
           </div>
         )}
       </div>
     </div>
+    </div>
+  )
+}
+
+function QuotedTweetCard({ tweet }: { tweet: Tweet }) {
+  return (
+    <div style={{ padding: 12, background: 'var(--bg-base)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        {tweet.author_avatar_url && (
+          <img
+            src={tweet.author_avatar_url}
+            alt=""
+            style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0 }}
+          />
+        )}
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+          {tweet.author_display_name || tweet.author_handle}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+          @{tweet.author_handle}
+        </span>
+      </div>
+      <div
+        style={{
+          fontSize: 14,
+          lineHeight: 1.4,
+          color: 'var(--text-primary)',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        <TweetText
+          text={tweet.text}
+          hasMedia={!!(tweet.media_urls && tweet.media_urls.length > 0)}
+          hasQuotedTweet={!!tweet.quoted_tweet_id}
+          hasArticleTitle={!!tweet.article_title}
+          urlEntities={tweet.url_entities}
+        />
+      </div>
+      {tweet.article_title && (
+        <a
+          href={tweet.url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            display: 'block',
+            marginTop: 6,
+            fontSize: 14,
+            fontWeight: 700,
+            color: 'var(--accent)',
+            textDecoration: 'none',
+            lineHeight: 1.3,
+          }}
+        >
+          {tweet.article_title}
+        </a>
+      )}
+      {tweet.media_urls && tweet.media_urls.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <MediaGrid media={tweet.media_urls} authorHandle={tweet.author_handle} tweetUrl={tweet.url ?? undefined} />
+        </div>
+      )}
+      <LinkPreviewCards urlEntities={tweet.url_entities} />
     </div>
   )
 }

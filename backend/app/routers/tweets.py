@@ -95,6 +95,18 @@ async def _persist_quoted_tweet(db, quoted_tweet_id: str, included_tweets: list[
     db.add(qt)
 
 
+async def _tweet_out_with_quoted(tweet: Tweet, db: AsyncSession, category: str | None = None) -> TweetOut:
+    out = TweetOut.model_validate(tweet)
+    out.category = category
+    if tweet.quoted_tweet_id:
+        quoted = (await db.execute(
+            select(Tweet).where(Tweet.tweet_id == tweet.quoted_tweet_id)
+        )).scalars().first()
+        if quoted:
+            out.quoted_tweet = TweetOut.model_validate(quoted)
+    return out
+
+
 async def _post_save_tasks(tweet_id: int, tweet_x_id: str, topic_id: int | None, category: str | None, api_data: dict | None):
     """Background task: persist quoted tweets, handle topic assignment, auto-categorize."""
     async with db_module.async_session() as db:
@@ -223,7 +235,7 @@ async def list_tweets(
             .where(Tweet.id.in_(ids))
             .order_by(Tweet.saved_at.desc(), Tweet.id.desc())
         )
-        return result.scalars().all()
+        return [await _tweet_out_with_quoted(tweet, db) for tweet in result.scalars().all()]
 
     if topic_id:
         # Join with TweetAssignment to get category
@@ -270,12 +282,11 @@ async def list_tweets(
         for row in result.all():
             tweet_obj = row[0]
             cat = row[1]
-            tweet_out = TweetOut.model_validate(tweet_obj)
-            tweet_out.category = cat
+            tweet_out = await _tweet_out_with_quoted(tweet_obj, db, cat)
             tweets.append(tweet_out)
         return tweets
     else:
-        return result.scalars().all()
+        return [await _tweet_out_with_quoted(tweet, db) for tweet in result.scalars().all()]
 
 
 @router.delete("/{tweet_id}", status_code=204)

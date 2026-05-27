@@ -16,7 +16,7 @@ class TweetSave(BaseModel):
     client_version: int | None = None
 
 
-class TweetOut(BaseModel):
+class QuotedTweetOut(BaseModel):
     id: int
     tweet_id: str
     author_handle: str
@@ -59,6 +59,10 @@ class TweetOut(BaseModel):
     @classmethod
     def unescape_text(cls, v: str) -> str:
         return html.unescape(v) if v else v
+
+
+class TweetOut(QuotedTweetOut):
+    quoted_tweet: QuotedTweetOut | None = None
 
 
 class TweetUpdate(BaseModel):
