@@ -1597,53 +1597,6 @@ export function DigestComposer() {
 
   const generateTemplate = useGenerateTemplate()
 
-  const buildFallbackTemplateBlocks = useCallback((orderedIds: number[]): DigestBlock[] => {
-    const { featured, rest } = resolveSelectedTemplateTopics(allTopics, orderedIds)
-
-    const d = new Date(date + 'T00:00:00')
-    const formattedDate = d.getDay() === 0
-      ? `${d.getMonth() + 1}/${d.getDate() - 1}\u2013${d.getDate()}`
-      : `${d.getMonth() + 1}/${d.getDate()}`
-
-    const blocks: DigestBlock[] = [{
-      id: nextBlockId(),
-      type: 'text',
-      content: createFallbackDigestIntro(featured.filter(t => !isKekTopic(t.title)).map(t => t.title)),
-    }, {
-      id: nextBlockId(),
-      type: 'text',
-      content: `# ${featured.filter(t => !isKekTopic(t.title)).length} topic${featured.filter(t => !isKekTopic(t.title)).length !== 1 ? 's' : ''} from ${formattedDate} tech discourse`,
-    }]
-
-    let isFirstTopic = true
-    for (const topic of featured) {
-      if (topic.tweets.length === 0) continue
-      if (!isFirstTopic) blocks.push({ id: nextBlockId(), type: 'divider' })
-      isFirstTopic = false
-      blocks.push({ id: nextBlockId(), type: 'topic-header', topic_id: topic.id })
-      for (const tw of topic.tweets) {
-        blocks.push({ id: nextBlockId(), type: 'tweet', tweet_id: tw.id })
-      }
-    }
-
-    if (rest.length > 0) {
-      const restLinks = rest.map(t => {
-        const tDate = topicDateMap.get(t.id) || date
-        const dayTopics = topicsByDate.get(tDate) || []
-        const topicNum = dayTopics.indexOf(t) + 1
-        return `- [${t.title}](https://abridged.tech/app/${tDate}/${topicNum})`
-      })
-      blocks.push({ id: nextBlockId(), type: 'divider' })
-      blocks.push({
-        id: nextBlockId(),
-        type: 'text',
-        content: `**More on the timeline**\n\n${restLinks.join('\n')}`,
-      })
-    }
-
-    return blocks
-  }, [allTopics, date, topicDateMap, topicsByDate])
-
   const generateTemplateBlocks = useCallback(async (orderedIds: number[]): Promise<DigestBlock[]> => {
     const { featured, rest } = resolveSelectedTemplateTopics(allTopics, orderedIds)
 
@@ -1756,59 +1709,46 @@ export function DigestComposer() {
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleCreateFromTemplate = useCallback(async (orderedIds: number[]) => {
-    const fallbackBlocks = buildFallbackTemplateBlocks(orderedIds)
     setIsGenerating(true)
     setShowTopicSelector(false)
     const targetDraftId = templateDraftMode === 'replace' ? selectedDraftIdRef.current : null
+    const previousBlocks = blocksRef.current.map(b => ({ ...b }))
     setTemplateDraftMode('create')
-    setBlocks(fallbackBlocks)
-    let createdDraftId: number | null = null
     try {
       setSaveStatus('saving')
+      const newBlocks = await generateTemplateBlocks(orderedIds)
+      setBlocks(newBlocks)
+
       if (targetDraftId) {
         await updateDraft.mutateAsync({
           id: targetDraftId,
-          content_blocks: fallbackBlocks,
+          content_blocks: newBlocks,
           scheduled_for: scheduledForRef.current || null,
           subject: subjectRef.current || undefined,
         })
-        createdDraftId = targetDraftId
         loadedDraftIdRef.current = targetDraftId
       } else {
         const created = await createDraft.mutateAsync({
           date: dateRef.current,
-          content_blocks: fallbackBlocks,
+          content_blocks: newBlocks,
         })
-        createdDraftId = created.id
         loadedDraftIdRef.current = created.id
         setSelectedDraftId(created.id)
       }
       setSaveStatus('saved')
-
-      const newBlocks = await generateTemplateBlocks(orderedIds)
-      setBlocks(newBlocks)
-      setSaveStatus('saving')
-      await updateDraft.mutateAsync({
-        id: createdDraftId,
-        content_blocks: newBlocks,
-        scheduled_for: scheduledForRef.current || null,
-        subject: subjectRef.current || undefined,
-      })
-      setSaveStatus('saved')
     } catch (error) {
+      setBlocks(targetDraftId ? previousBlocks : [])
       setSaveStatus('idle')
       const errorDetail = (error as { response?: { data?: { detail?: string } }; message?: string }).response?.data?.detail
         || (error as { message?: string }).message
       showStatus(
-        createdDraftId
-          ? `Draft created with selected topics, but AI template generation failed${errorDetail ? `: ${errorDetail}` : ''}`
-          : `Failed to create draft${errorDetail ? `: ${errorDetail}` : ''}`,
+        `Failed to generate draft${errorDetail ? `: ${errorDetail}` : ''}`,
         'error',
       )
     } finally {
       setIsGenerating(false)
     }
-  }, [buildFallbackTemplateBlocks, createDraft, generateTemplateBlocks, templateDraftMode, updateDraft])
+  }, [createDraft, generateTemplateBlocks, templateDraftMode, updateDraft])
 
   const showStatus = (text: string, type: 'success' | 'error' | 'info') => {
     setStatusMessage({ text, type })
