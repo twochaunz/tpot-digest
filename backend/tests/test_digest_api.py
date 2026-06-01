@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -98,7 +99,7 @@ async def test_generate_template_fetches_context_for_draft_summary(client: Async
     topic_data = resp.json()["topics"][0]
     assert topic_data["summary"] == "Generated topic summary"
     mock_grok.assert_awaited_once_with("https://x.com/testuser/status/template_1")
-    mock_summary.assert_awaited_once_with("Test Topic", ["Fetched context for draft summaries"])
+    mock_summary.assert_awaited_once_with("Test Topic", ["Fetched context for draft summaries"], ["Template tweet text"])
 
     async with async_session() as session:
         saved = await session.get(Tweet, tweet_id)
@@ -148,11 +149,42 @@ async def test_generate_template_continues_when_context_fetch_fails(client: Asyn
 
     assert resp.status_code == 200
     assert resp.json()["topics"][0]["topic_id"] == topic_id
-    mock_summary.assert_awaited_once_with("Resilient Draft Topic", [])
+    mock_summary.assert_awaited_once_with("Resilient Draft Topic", [], ["Template tweet text"])
 
     async with async_session() as session:
         saved = await session.get(Tweet, tweet_id)
         assert saved.grok_context is None
+
+
+@pytest.mark.asyncio
+async def test_topic_summary_falls_back_to_tweet_text(monkeypatch):
+    from app.routers import digest as digest_router
+
+    prompts = []
+
+    class FakeMessages:
+        async def create(self, **kwargs):
+            prompts.append(kwargs["messages"][0]["content"])
+            return SimpleNamespace(content=[SimpleNamespace(text="Fallback summary")])
+
+    class FakeAnthropic:
+        def __init__(self, api_key):
+            assert api_key == "test-key"
+            self.messages = FakeMessages()
+
+    monkeypatch.setattr(digest_router.settings, "anthropic_api_key", "test-key")
+    monkeypatch.setattr(digest_router.anthropic, "AsyncAnthropic", FakeAnthropic)
+
+    summary = await digest_router._generate_topic_summary(
+        "Corgi post",
+        [],
+        ["Corgi posted a demo people were debating https://t.co/abc123"],
+    )
+
+    assert summary == "Fallback summary"
+    assert "Tweet text in this topic" in prompts[0]
+    assert "Corgi posted a demo people were debating" in prompts[0]
+    assert "https://t.co" not in prompts[0]
 
 
 @pytest.mark.asyncio
