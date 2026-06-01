@@ -76,21 +76,36 @@ async def _get_or_create_settings(db: AsyncSession) -> DigestSettings:
     return settings_row
 
 
-async def _generate_topic_summary(topic_title: str, grok_contexts: list[str]) -> str | None:
-    """Generate a 1-2 sentence topic summary from all tweets' grok_context."""
-    if not settings.anthropic_api_key or not grok_contexts:
+async def _generate_topic_summary(
+    topic_title: str,
+    grok_contexts: list[str],
+    tweet_texts: list[str] | None = None,
+) -> str | None:
+    """Generate a 1-2 sentence topic summary from Grok context, falling back to tweet text."""
+    if not settings.anthropic_api_key:
         return None
 
-    contexts_text = "\n---\n".join(c for c in grok_contexts if c)
-    if not contexts_text.strip():
+    contexts_text = "\n---\n".join(c.strip() for c in grok_contexts if c and c.strip())
+    tweets_text = "\n---\n".join(
+        _strip_tco_links(text).strip()[:500]
+        for text in (tweet_texts or [])
+        if text and _strip_tco_links(text).strip()
+    )
+    if not contexts_text.strip() and not tweets_text.strip():
         return None
+
+    source_sections = []
+    if contexts_text.strip():
+        source_sections.append(f"Context from tweets in this topic (each separated by ---):\n{contexts_text}")
+    if tweets_text.strip():
+        source_sections.append(f"Tweet text in this topic (use this when context is sparse or unavailable):\n{tweets_text}")
+    source_text = "\n\n".join(source_sections)
 
     prompt = f"""You are writing a brief summary for a daily tech digest email.
 
 Topic: "{topic_title}"
 
-Context from tweets in this topic (each separated by ---):
-{contexts_text}
+{source_text}
 
 Write a 1-2 sentence summary that captures the FULL discourse around this topic — not just the original post, but the reactions, pushback, and key points of debate. Be concise and informative. Write in a neutral, journalistic tone. No hype. No emojis. Use simple past tense (e.g. "announced", "sparked debate", "pushed back"), NOT past progressive (e.g. "is announcing", "are debating"). Keep it quippy.
 
@@ -427,8 +442,10 @@ async def generate_template(body: GenerateTemplateRequest, db: AsyncSession = De
         rows = await db.execute(stmt)
         tweet_rows = rows.all()
 
-        # Collect grok_contexts for summary
+        # Collect summary sources. Grok context is preferred, tweet text keeps drafts from
+        # losing summaries when context fetching is missing or flaky.
         grok_contexts = [tw.grok_context for tw, _ in tweet_rows if tw.grok_context]
+        tweet_texts = [tw.text for tw, _ in tweet_rows if tw.text]
 
         # Group tweets by category
         category_tweets: OrderedDict[str, list[dict]] = OrderedDict()
@@ -453,7 +470,7 @@ async def generate_template(body: GenerateTemplateRequest, db: AsyncSession = De
         ]
 
         # Generate AI summary
-        summary = await _generate_topic_summary(topic.title, grok_contexts)
+        summary = await _generate_topic_summary(topic.title, grok_contexts, tweet_texts)
 
         # Generate AI transitions
         transition_groups = [
