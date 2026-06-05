@@ -17,13 +17,14 @@ function shiftDate(dateStr: string, days: number): string {
 interface DayCarouselProps {
   date: string
   onDateChange: (date: string) => void
+  maxDate?: string
   search: string
   genPanelOpen: boolean
   onGenPanelClose: () => void
   initialTopicNum?: number | null
 }
 
-export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPanelClose, initialTopicNum }: DayCarouselProps) {
+export function DayCarousel({ date, onDateChange, maxDate, search, genPanelOpen, onGenPanelClose, initialTopicNum }: DayCarouselProps) {
   const isMobile = useIsMobile()
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -44,6 +45,9 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
 
   // Generate 5 days: current -2 to +2
   const days = Array.from({ length: 5 }, (_, i) => shiftDate(date, i - 2))
+  const clampToMaxDate = useCallback((targetDate: string) => (
+    maxDate && targetDate > maxDate ? maxDate : targetDate
+  ), [maxDate])
 
   // Panel width/scale/opacity config
   const panelConfig = [
@@ -117,16 +121,17 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
           if (i !== 2) {
             // Not the center panel -- shift date
             const offset = i - 2
-            const newDate = shiftDate(date, offset)
+            const newDate = clampToMaxDate(shiftDate(date, offset))
             saveScrollPosition()
-            onDateChange(newDate)
+            if (newDate !== date) onDateChange(newDate)
+            else scrollToCenter('smooth')
           }
           break
         }
         accum += panel.offsetWidth
       }
     }, 150)
-  }, [date, onDateChange, saveScrollPosition])
+  }, [date, onDateChange, saveScrollPosition, clampToMaxDate, scrollToCenter])
 
   // Keyboard navigation
   useEffect(() => {
@@ -138,16 +143,16 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
       if (e.key === 'ArrowLeft' || e.key === 'h') {
         e.preventDefault()
         saveScrollPosition()
-        onDateChange(shiftDate(date, -1))
+        onDateChange(clampToMaxDate(shiftDate(date, -1)))
       } else if (e.key === 'ArrowRight' || e.key === 'l') {
         e.preventDefault()
         saveScrollPosition()
-        onDateChange(shiftDate(date, 1))
+        onDateChange(clampToMaxDate(shiftDate(date, 1)))
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [date, onDateChange, isMobile, saveScrollPosition])
+  }, [date, onDateChange, isMobile, saveScrollPosition, clampToMaxDate])
 
   const navigateToTopic = useCallback((direction: 'next' | 'prev') => {
     const feedPanel = document.querySelector<HTMLElement>('[data-active-feed="true"]')
@@ -173,7 +178,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
   }, [])
 
   const swipeHandlers = useSwipeGesture({
-    onSwipeLeft: () => { saveScrollPosition(); onDateChange(shiftDate(date, 1)) },
+    onSwipeLeft: () => { saveScrollPosition(); onDateChange(clampToMaxDate(shiftDate(date, 1))) },
     onSwipeRight: () => { saveScrollPosition(); onDateChange(shiftDate(date, -1)) },
     onSwipeUp: () => navigateToTopic('next'),
     onSwipeDown: () => navigateToTopic('prev'),
@@ -217,6 +222,7 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
         const config = panelConfig[i]
         const isCenter = i === 2
         const isAdjacent = i === 1 || i === 3
+        const isBeyondArchive = !!maxDate && dayDate > maxDate
 
         return (
           <div
@@ -237,9 +243,9 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
             }}
           >
             {/* Click overlay for side panels */}
-            {!isCenter && (
+            {!isCenter && !isBeyondArchive && (
               <div
-                onClick={() => { saveScrollPosition(); onDateChange(dayDate) }}
+                onClick={() => { saveScrollPosition(); onDateChange(clampToMaxDate(dayDate)) }}
                 style={{
                   position: 'absolute',
                   inset: 0,
@@ -250,7 +256,11 @@ export function DayCarousel({ date, onDateChange, search, genPanelOpen, onGenPan
             )}
 
             <div style={{ pointerEvents: isCenter ? 'auto' : 'none', height: '100%', width: '100%' }}>
-              {(isCenter || isAdjacent) ? (
+              {isBeyondArchive ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
+                  <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>archive ends {maxDate}</span>
+                </div>
+              ) : (isCenter || isAdjacent) ? (
                 <DayFeedPanel
                   date={dayDate}
                   search={isCenter ? search : ''}

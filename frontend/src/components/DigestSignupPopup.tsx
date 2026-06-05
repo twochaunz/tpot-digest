@@ -38,9 +38,9 @@ export function DigestSignupPopup() {
       } else if (result.already_registered) {
         setSuccessMessage("you're already on the list 😀")
       } else if (result.sent_immediately) {
-        setSuccessMessage('done — just sent you the latest edition!')
+        setSuccessMessage('done — sent you the latest archive note')
       } else {
-        setSuccessMessage("you're in — we'll send you the latest edition shortly!")
+        setSuccessMessage("you're in — i'll send a note if abridged tech resumes")
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -80,10 +80,10 @@ export function DigestSignupPopup() {
       ) : (
         <>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-            Top tech discourse, sent out daily.
+            abridged tech is paused.
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5, whiteSpace: 'normal' }}>
-            Keep up with the news, inside jokes, drama of tech — w/o doomscrolling ads, viral bait, and infinite slop.
+            The archive is available through June 2. Join the list for a note if it comes back.
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -129,7 +129,7 @@ export function DigestSignupPopup() {
                 transition: 'opacity 0.15s ease',
               }}
             >
-              {subscribe.isPending ? 'subscribing...' : 'subscribe'}
+              {subscribe.isPending ? 'saving...' : 'notify me'}
             </button>
           </form>
           <button
