@@ -54,6 +54,49 @@ body {
 .day-carousel::-webkit-scrollbar { display: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 
+.newsletter-pause-banner {
+  flex: 0 0 auto;
+  height: 30px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  background: #b91c1c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.newsletter-pause-track {
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+  animation: newsletterPauseChiron 42s linear infinite;
+}
+
+.newsletter-pause-item {
+  flex: 0 0 auto;
+  padding-right: 56px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+@keyframes newsletterPauseChiron {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .newsletter-pause-track {
+    animation: none;
+  }
+
+  .newsletter-pause-item:nth-child(n + 2) {
+    display: none;
+  }
+}
+
 /* react-tweet (used for quoted tweet embeds): clean up chrome */
 [data-theme="dark"] [class*="actions"] {
   display: none !important;

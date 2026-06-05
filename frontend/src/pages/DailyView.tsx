@@ -2,10 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DatePicker } from '../components/DatePicker'
 import { DayCarousel } from '../components/DayCarousel'
+import { NewsletterPauseBanner } from '../components/NewsletterPauseBanner'
 import { TableOfContents } from '../components/TableOfContents'
 import { useAuth } from '../contexts/AuthContext'
 import { useLatestDate } from '../api/dayBundle'
 import { useIsMobile, useIsTouchDevice } from '../hooks/useMediaQuery'
+import { clampNewsletterDate } from '../constants/newsletterPause'
 
 function todayDateStr(): string {
   const now = new Date()
@@ -24,7 +26,7 @@ function defaultDateStr(): string {
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
+  return clampNewsletterDate(`${yyyy}-${mm}-${dd}`)
 }
 
 function parseDateParam(dateStr?: string): string | null {
@@ -57,32 +59,33 @@ export function DailyView() {
   const isTouchDevice = useIsTouchDevice()
 
   const { data: latestDate } = useLatestDate()
-  const today = todayDateStr()
-  const maxDate = isAdmin ? today : (latestDate || today)
+  const today = clampNewsletterDate(todayDateStr())
+  const maxDate = clampNewsletterDate(isAdmin ? today : (latestDate || today))
 
   const parsedDate = parseDateParam(urlDateStr)
-  // Clamp: never go beyond today; for non-admin, effect below further clamps to latestDate
-  const initialDate = parsedDate ? (parsedDate > today ? today : parsedDate) : defaultDateStr()
+  // Clamp to the newsletter archive endpoint.
+  const initialDate = parsedDate ? clampNewsletterDate(parsedDate > today ? today : parsedDate) : defaultDateStr()
   const [date, setDateRaw] = useState(initialDate)
   const pendingTopicNum = useRef<number | null>(urlTopicNum ? parseInt(urlTopicNum, 10) : null)
 
-  // For non-admin: clamp to latest date once it loads
+  // Clamp again once latestDate loads or if a URL points past the archive endpoint.
   useEffect(() => {
-    if (!isAdmin && latestDate && date > latestDate) {
-      setDateRaw(latestDate)
-      navigate(`/app/${toDateParam(latestDate)}`, { replace: true })
+    if (date > maxDate) {
+      setDateRaw(maxDate)
+      navigate(`/app/${toDateParam(maxDate)}`, { replace: true })
     }
-  }, [isAdmin, latestDate, date, navigate])
+  }, [maxDate, date, navigate])
 
   const setDate = useCallback((d: string) => {
-    if (d > maxDate) return
-    setDateRaw(d)
+    const nextDate = clampNewsletterDate(d)
+    if (nextDate > maxDate) return
+    setDateRaw(nextDate)
     pendingTopicNum.current = null
-    navigate(`/app/${toDateParam(d)}`, { replace: true })
+    navigate(`/app/${toDateParam(nextDate)}`, { replace: true })
   }, [maxDate, navigate])
-  // Sync URL on initial load if no date param was provided
+  // Sync URL on initial load, including when a future URL is clamped to the archive endpoint.
   useEffect(() => {
-    if (!urlDateStr) {
+    if (!urlDateStr || parseDateParam(urlDateStr) !== date) {
       navigate(`/app/${toDateParam(date)}`, { replace: true })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -194,6 +197,8 @@ export function DailyView() {
         flexDirection: 'column' as const,
       }}
     >
+      <NewsletterPauseBanner />
+
       {/* Header */}
       <header
         style={{
@@ -412,6 +417,7 @@ export function DailyView() {
       <DayCarousel
         date={date}
         onDateChange={setDate}
+        maxDate={maxDate}
         search={debouncedSearch}
         genPanelOpen={genPanelOpen}
         onGenPanelClose={() => setGenPanelOpen(false)}

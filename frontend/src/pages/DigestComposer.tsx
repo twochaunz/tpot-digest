@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { NewsletterPauseBanner } from '../components/NewsletterPauseBanner'
 import { useDayBundle, useDayBundles, type TopicBundle } from '../api/dayBundle'
 import { useTweetsByIds, type Tweet } from '../api/tweets'
 import { sortTopics, isKekTopic } from '../utils/topics'
+import { NEWSLETTER_LAST_DATE, clampNewsletterDate } from '../constants/newsletterPause'
 import {
   buildTweetGroups,
   clearDraftSelectionState,
@@ -66,12 +68,12 @@ function formatDateStr(d: Date): string {
 function defaultDateStr(): string {
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
-  return formatDateStr(yesterday)
+  return clampNewsletterDate(formatDateStr(yesterday))
 }
 
 function recentDates(count: number): string[] {
   const dates: string[] = []
-  const now = new Date()
+  const now = new Date(clampNewsletterDate(formatDateStr(new Date())) + 'T00:00:00')
   for (let i = 0; i < count; i++) {
     const d = new Date(now)
     d.setDate(d.getDate() - i)
@@ -1885,6 +1887,8 @@ export function DigestComposer() {
 
   return (
     <div ref={scrollContainerRef} style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg-base)' }}>
+      <NewsletterPauseBanner />
+
       {/* Header */}
       <header
         style={{
@@ -2140,8 +2144,9 @@ export function DigestComposer() {
               ref={datePickerRef}
               type="date"
               value={date}
+              max={NEWSLETTER_LAST_DATE}
               onChange={(e) => {
-                setDate(e.target.value)
+                setDate(clampNewsletterDate(e.target.value))
                 clearDraftSelection()
               }}
               style={{
