@@ -40,7 +40,7 @@ export function DigestSignupPopup() {
       } else if (result.sent_immediately) {
         setSuccessMessage('Done. Sent the latest archive note.')
       } else {
-        setSuccessMessage('Done. You will receive a note if Abridged Tech resumes.')
+        setSuccessMessage('Done. You will receive a note if abridged.tech resumes.')
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -80,7 +80,7 @@ export function DigestSignupPopup() {
       ) : (
         <>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-            Abridged Tech is paused.
+            abridged.tech is currently paused.
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5, whiteSpace: 'normal' }}>
             The archive is available through June 2, 2026. Join the list for updates if it resumes.
