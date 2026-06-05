@@ -34,13 +34,13 @@ export function DigestSignupPopup() {
     try {
       const result = await subscribe.mutateAsync({ email: email.trim() })
       if (result.re_subscribed) {
-        setSuccessMessage('welcome back 😀')
+        setSuccessMessage('Welcome back.')
       } else if (result.already_registered) {
-        setSuccessMessage("you're already on the list 😀")
+        setSuccessMessage("You're already on the list.")
       } else if (result.sent_immediately) {
-        setSuccessMessage('done — sent you the latest archive note')
+        setSuccessMessage('Done. Sent the latest archive note.')
       } else {
-        setSuccessMessage("you're in — i'll send a note if abridged tech resumes")
+        setSuccessMessage('Done. You will receive a note if Abridged Tech resumes.')
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -80,10 +80,10 @@ export function DigestSignupPopup() {
       ) : (
         <>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-            abridged tech is paused.
+            Abridged Tech is paused.
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5, whiteSpace: 'normal' }}>
-            The archive is available through June 2. Join the list for a note if it comes back.
+            The archive is available through June 2, 2026. Join the list for updates if it resumes.
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -129,7 +129,7 @@ export function DigestSignupPopup() {
                 transition: 'opacity 0.15s ease',
               }}
             >
-              {subscribe.isPending ? 'saving...' : 'notify me'}
+              {subscribe.isPending ? 'Saving...' : 'Notify me'}
             </button>
           </form>
           <button
