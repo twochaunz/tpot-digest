@@ -17,6 +17,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import all models so that Base.metadata is fully populated
+from app.config import settings  # noqa: E402
 from app.db import Base  # noqa: E402
 from app.models import Tweet, Topic, TweetAssignment  # noqa: E402, F401
 from app.models.subscriber import Subscriber  # noqa: E402, F401
@@ -25,10 +26,12 @@ from app.models.digest_settings import DigestSettings  # noqa: E402, F401
 
 target_metadata = Base.metadata
 
-# Override sqlalchemy.url from environment variable if set
-database_url = os.getenv("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+# alembic.ini deliberately has no sqlalchemy.url; always take it from the
+# application settings (DATABASE_URL env var / backend/.env). A plain
+# DATABASE_URL env var still wins, matching previous behaviour.
+database_url = os.getenv("DATABASE_URL") or settings.database_url
+# configparser treats '%' as interpolation, so escape it.
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:

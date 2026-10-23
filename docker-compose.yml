@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: tpot_digest
       POSTGRES_USER: ${DB_USER:-tpot}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-***REMOVED***}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set (copy .env.example to .env and choose a password)}
     ports:
       - "5432:5432"
     volumes:
@@ -20,7 +20,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER:-tpot}:${DB_PASSWORD:-***REMOVED***}@db:5432/tpot_digest
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-tpot}:${DB_PASSWORD:?DB_PASSWORD must be set (copy .env.example to .env and choose a password)}@db:5432/tpot_digest
       DATA_DIR: /app/data
     volumes:
       - ./backend:/app

@@ -1,8 +1,12 @@
+from pydantic import ValidationError
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://tpot:***REMOVED***@localhost:5432/tpot_digest"
+    # Deliberately has no default: the database URL (and therefore the DB
+    # password) must come from the environment or backend/.env, never from
+    # source. docker-compose sets DATABASE_URL from DB_USER/DB_PASSWORD.
+    database_url: str
     data_dir: str = "./data"
     x_api_bearer_token: str = ""
     twitter_api_io_key: str = ""
@@ -19,4 +23,13 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env"}
 
 
-settings = Settings()
+try:
+    settings = Settings()
+except ValidationError as exc:
+    if any(err.get("loc") == ("database_url",) for err in exc.errors()):
+        raise RuntimeError(
+            "DATABASE_URL is not set. Export it or add it to backend/.env, e.g. "
+            "DATABASE_URL=postgresql+asyncpg://tpot:<password>@localhost:5432/tpot_digest "
+            "(when running under docker compose, set DB_PASSWORD instead; see .env.example)."
+        ) from exc
+    raise

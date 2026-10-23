@@ -175,8 +175,8 @@ Migrations: Alembic (async-aware) at `backend/alembic/`.
 | Variable | Required | Description |
 |---|---|---|
 | `DB_USER` | No (default: tpot) | PostgreSQL user |
-| `DB_PASSWORD` | Yes (prod) | PostgreSQL password |
-| `DATABASE_URL` | Auto | Set by docker-compose |
+| `DB_PASSWORD` | Yes | PostgreSQL password (no default; compose fails fast if unset) |
+| `DATABASE_URL` | Yes outside compose | Set by docker-compose from DB_USER/DB_PASSWORD; must be exported (or in backend/.env) to run the backend/alembic directly |
 | `DATA_DIR` | Auto | Screenshot storage directory |
 | `AUTH_USER` | No | Dashboard basic auth username |
 | `AUTH_PASS` | No | Dashboard basic auth password |

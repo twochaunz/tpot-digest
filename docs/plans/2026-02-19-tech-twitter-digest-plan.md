@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: tpot_digest
       POSTGRES_USER: ${DB_USER:-tpot}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-***REMOVED***}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set via DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -44,7 +44,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER:-tpot}:${DB_PASSWORD:-***REMOVED***}@db:5432/tpot_digest
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-tpot}:${DB_PASSWORD:?set via DB_PASSWORD}@db:5432/tpot_digest
       DATA_DIR: /app/data
     volumes:
       - ./backend:/app
@@ -178,7 +178,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://tpot:***REMOVED***@localhost:5432/tpot_digest"
+    database_url: str  # no default: <set via DATABASE_URL / DB_PASSWORD>, never hard-coded
     data_dir: str = "./data"
 
     model_config = {"env_file": ".env"}
